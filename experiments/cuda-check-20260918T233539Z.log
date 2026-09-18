@@ -1,0 +1,110 @@
+sha256 c05b5ce703768d9232d094069f531be90580c0e9f40bd07de390eacdccf5b432 Makefile
+sha256 48066c14c1b544a4e2983e5503c3a1f7544dd7ca427a13aa39c915cc9645d6fe hopper.cuh
+sha256 0b7286c0717ee57d691df68af62456b7d9dbac4e53aca3e08efacd4d4f2a6491 megakernel.cuh
+sha256 a3a0dc94b64ed4544066b2482e12fd43004161767c911ab5eb5daae8996eb4c0 validate.cu
+$ nvidia-smi
+Fri Sep 18 23:35:17 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:00:0C.0 Off |                    0 |
+| N/A   32C    P0             71W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda validate validate_wgmma
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills validate.cu -lcublas -o validate
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelENS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelENS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelENS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 80 registers, used 1 barriers, 8 bytes cumulative stack size, 8196 bytes smem
+ptxas info    : Compile time = 252.309 ms
+ptxas info    : Compiling entry function '_Z13staged_kernelN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z13staged_kernelN4nano6MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 95 registers, used 1 barriers, 8192 bytes smem
+ptxas info    : Compile time = 1652.624 ms
+ptxas info    : Compiling entry function '_Z18reference_epiloguePKfN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z18reference_epiloguePKfN4nano6MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 17 registers, used 0 barriers
+ptxas info    : Compile time = 10.951 ms
+ptxas info    : Compiling entry function '_Z6unpackPK13__nv_fp8_e4m3Pfi' for 'sm_90a'
+ptxas info    : Function properties for _Z6unpackPK13__nv_fp8_e4m3Pfi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 10 registers, used 0 barriers
+ptxas info    : Compile time = 1.579 ms
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_WGMMA=1 validate.cu -lcublas -o validate_wgmma
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelENS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelENS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 96 registers, used 1 barriers, 8196 bytes smem
+ptxas info    : Compile time = 274.152 ms
+ptxas info    : Compiling entry function '_Z13staged_kernelN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z13staged_kernelN4nano6MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 95 registers, used 1 barriers, 8192 bytes smem
+ptxas info    : Compile time = 2032.060 ms
+ptxas info    : Compiling entry function '_Z18reference_epiloguePKfN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z18reference_epiloguePKfN4nano6MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 17 registers, used 0 barriers
+ptxas info    : Compile time = 12.015 ms
+ptxas info    : Compiling entry function '_Z6unpackPK13__nv_fp8_e4m3Pfi' for 'sm_90a'
+ptxas info    : Function properties for _Z6unpackPK13__nv_fp8_e4m3Pfi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 10 registers, used 0 barriers
+ptxas info    : Compile time = 1.722 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/validate_wgmma
+FAIL: post numerical mismatch
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=96 static_shared=8196 local_bytes=0
+resident_blocks_per_SM=5
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0
+  raw    rel_l2=3.2502787e-05 max_abs=1.1444092e-05 different=68/231
+raw diff [13] got=-0.05043792725 reference=-0.05043983459
+raw diff [35] got=0.1122894287 reference=0.1122899055
+raw diff [44] got=-0.1525878906 reference=-0.1525993347
+raw diff [48] got=0.1061019897 reference=0.1061038971
+raw diff [49] got=-0.04846191406 reference=-0.04846096039
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0
+  raw    rel_l2=4.3908434e-05 max_abs=4.36306e-05 different=18999/20640
+raw diff [0] got=0.2147445679 reference=0.2147493362
+raw diff [1] got=0.1321754456 reference=0.1321773529
+raw diff [2] got=0.1589069366 reference=0.158914566
+raw diff [3] got=-0.2398605347 reference=-0.2398619652
+raw diff [4] got=-0.1774215698 reference=-0.1774265766
+  post   rel_l2=0.0044135672 max_abs=0.5 different=21/20640

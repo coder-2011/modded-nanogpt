@@ -1,6 +1,78 @@
 import os
 import sys
 
+def cuda_check(sanitize=False, wgmma=False, main_shapes=False):
+    """Build and validate the native CUDA graph; Python only launches processes."""
+    import subprocess
+    import hashlib
+    import re
+    from pathlib import Path
+
+    root = Path("/workspace/cuda") if Path("/workspace/cuda").exists() else Path(__file__).parent / "cuda"
+    binary = "validate_wgmma" if wgmma else "validate"
+    run = [str(root / binary)] + (["--main-shapes"] if main_shapes else [])
+    commands = [["nvidia-smi"], ["nvcc", "--version"], ["make", "-C", str(root), binary], run]
+    if sanitize:
+        commands.append(["make", "-C", str(root), "sanitize", f"BIN={binary}"])
+    hashes = "\n".join(f"sha256 {hashlib.sha256(p.read_bytes()).hexdigest()} {p.name}"
+                       for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh"} or p.name == "Makefile")
+    print(hashes, flush=True)
+    output = [hashes]
+    for command in commands:
+        result = subprocess.run(command, text=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, timeout=600)
+        text = "$ " + " ".join(command) + "\n" + result.stdout
+        print(text, flush=True)
+        output.append(text)
+        if result.returncode:
+            return result.returncode, "\n".join(output)
+    sass = subprocess.check_output(["cuobjdump", "--dump-sass", str(root / binary)], text=True)
+    kernel = next(section for section in sass.split("Function : ") if "nano10megakernel" in section.splitlines()[0])
+    counts = {instruction: len(re.findall(r"\b" + instruction + r"\b", kernel))
+              for instruction in ("HMMA", "HGMMA", "LDGSTS", "LDL", "STL")}
+    summary = f"Static SASS instruction counts for megakernel: {counts}"
+    print(summary, flush=True)
+    output.append(summary)
+    return 0, "\n".join(output)
+
+
+if "--cuda-check" in sys.argv:
+    from pathlib import Path
+    import datetime
+    import tarfile
+
+    sanitize = "--sanitize" in sys.argv
+    wgmma = "--wgmma" in sys.argv
+    main_shapes = "--main-shapes" in sys.argv
+    folder = Path(__file__).parent / "experiments"
+    folder.mkdir(exist_ok=True)
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    with tarfile.open(folder / f"cuda-check-{stamp}-source.tar.gz", "w:gz") as archive:
+        for source in sorted((Path(__file__).parent / "cuda").iterdir()):
+            if source.suffix in {".cu", ".cuh"} or source.name == "Makefile":
+                archive.add(source, arcname=f"cuda/{source.name}")
+        archive.add(__file__, arcname="train_gpt.py")
+    if "--modal" in sys.argv:
+        import modal
+
+        if sys.version_info[:2] != (3, 12):
+            raise SystemExit("Use uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal")
+
+        image = (modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu24.04", add_python="3.12")
+                 .entrypoint([]).apt_install("make", "g++")
+                 .add_local_dir(Path(__file__).parent / "cuda", "/workspace/cuda"))
+        app = modal.App("nanogpt-cuda-megakernel")
+        remote_check = app.function(image=image, gpu="H100", cpu=4, timeout=1800,
+                                    serialized=True)(cuda_check)
+        with modal.enable_output(), app.run():
+            status, output = remote_check.remote(sanitize, wgmma, main_shapes)
+    else:
+        status, output = cuda_check(sanitize, wgmma, main_shapes)
+    log = folder / f"cuda-check-{stamp}.log"
+    log.write_text(output)
+    print(f"Saved {log}")
+    raise SystemExit(status)
+
 # Read the current file and the kernels file code ASAP, for logging
 with open(sys.argv[0], 'r') as f:
     code = f.read()
