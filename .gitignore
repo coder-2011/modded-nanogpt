@@ -30,3 +30,5 @@ cuda/validate_merged
 cuda/attention
 cuda/bf16
 cuda/bf16_control
+cuda/anvil
+cuda/anvil_idle64

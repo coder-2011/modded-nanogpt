@@ -100,6 +100,8 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
                     [str(root / binary), sys.executable, str(root / "gpt2.json")]]
     if ablate and experiment == "bf16":
         commands.extend([["make", "-C", str(root), "bf16_control"], [str(root / "bf16_control")]])
+    elif ablate and experiment == "anvil":
+        commands.extend([["make", "-C", str(root), "anvil_idle64"], [str(root / "anvil_idle64")]])
     elif ablate:
         if wgmma:
             raise ValueError("--ablate compares the accepted MMA implementation only")
@@ -121,6 +123,8 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
     if sanitize:
         commands.append(["make", "-C", str(root), "sanitize", f"BIN={binary}",
                          "CHECK_FLAGS=" if experiment else f"CHECK_FLAGS=--gradient-chunk={gradient_chunk}"])
+        if ablate and experiment == "anvil":
+            commands.append(["make", "-C", str(root), "sanitize", "BIN=anvil_idle64", "CHECK_FLAGS="])
     hashes = "\n".join(f"sha256 {hashlib.sha256(p.read_bytes()).hexdigest()} {p.name}"
                        for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh", ".cpp"} or p.name == "Makefile")
     print(hashes, flush=True)
@@ -155,7 +159,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
         build_flags = shlex.split(subprocess.check_output(
             ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
         subprocess.run(["nvcc"] + build_flags + ["--ptx",
-                        str(root / ("attention.cu" if experiment == "attention" else "validate.cu")),
+                        str(root / (experiment + ".cu" if experiment in {"attention", "anvil"} else "validate.cu")),
                         "-o", str(ptx)], check=True)
         artifacts[ptx.name] = ptx.read_bytes()
         command = ["ncu", "--set", "full", "--clock-control", "none", "--cache-control", "none",
@@ -191,14 +195,14 @@ if "--cuda-check" in sys.argv:
     if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
         raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
-    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16"}:
+    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil"}:
         raise SystemExit("Unknown native experiment")
-    if experiment and (wgmma or (ablate and experiment != "bf16")):
+    if experiment and (wgmma or (ablate and experiment not in {"bf16", "anvil"})):
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")
-    if profile and (experiment not in {"", "attention"} or wgmma or ablate):
-        raise SystemExit("--profile targets the native MLP or attention megakernel")
+    if profile and (experiment not in {"", "attention", "anvil"} or wgmma or ablate):
+        raise SystemExit("--profile targets the native MLP, attention or ANVIL megakernel")
     if (variant or kernel_compare) and (experiment or wgmma or ablate):
         raise SystemExit("Kernel variants require the native MMA path")
     if kernel_compare and variant not in {"", "control"}:

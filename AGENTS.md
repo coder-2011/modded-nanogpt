@@ -51,7 +51,17 @@ FP64 mathematical checks do not establish parity with the pinned FA3 binary.
 `--experiment=bf16 --ablate --sanitize` compares the native BF16 GEMM's coalesced
 and original strided loaders on the same GPU. This primitive preserves the
 scaled-weight and split-product rounding needed by O projections and ANVIL,
-but the complete projection/gain and optimizer paths are not wired yet.
+but the complete projection/gain path is not wired yet.
+
+`--experiment=anvil --ablate --sanitize` checks the rank-local optimizer update
+body, including velocity state, six matrix maps, lane-energy normalization and
+the split FP32 parameter shadow. It compares idle delays of 1024 and 64 ns on
+one GPU. The default stays at 1024 ns because the shorter delay has no consistent
+benefit. Serial and concurrent CUDA-Graph controls preserve the same matrix
+dependencies. Scalar/rank-one divergence is reported separately when both the
+native implementation and independent arithmetic reference reproduce it.
+This is not a full optimizer/training integration or a pinned-trainer parity test.
+Use `--experiment=anvil --profile` for the optimizer worker's PTX/SASS/NCU report.
 
 Record the GPU actually supplied, compiler resources, numerical errors and raw
 timings. Modal may supply H200 for an H100 request. Compare candidates on the same

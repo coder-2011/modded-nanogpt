@@ -8,6 +8,8 @@ OPTFLAGS := $(ALIGNED_FLAGS) -DNANO_K_LOOP=1
 validate_FLAGS := $(OPTFLAGS) -DNANO_FRONTIER=1
 attention_FLAGS := $(validate_FLAGS)
 bf16_FLAGS := $(validate_FLAGS) -DNANO_BF16_COALESCED=1
+anvil_FLAGS := $(bf16_FLAGS)
+anvil_idle64_FLAGS := $(anvil_FLAGS) -DNANO_ANVIL_IDLE_NS=64
 bf16_control_FLAGS := $(validate_FLAGS)
 validate_merged_FLAGS := $(OPTFLAGS)
 validate_control_FLAGS := -DNANO_FRONTIER=1
@@ -28,17 +30,20 @@ VARIANTS := validate validate_merged validate_control validate_pad validate_dire
             validate_aligned validate_aligned_k64 validate_aligned_loop validate_wgmma validate_fifo \
             validate_serial validate_baseline validate_k32 validate_k64
 
-$(VARIANTS): validate.cu megakernel.cuh attention.cuh qkv.cuh bf16_gemm.cuh hopper.cuh frontier.cuh Makefile
+$(VARIANTS): validate.cu megakernel.cuh attention.cuh qkv.cuh bf16_gemm.cuh anvil.cuh hopper.cuh frontier.cuh Makefile
 	$(NVCC) $(NVFLAGS) $($@_FLAGS) validate.cu -lcublas -o $@
 
-quantize: quantize.cu bench.cuh megakernel.cuh attention.cuh qkv.cuh bf16_gemm.cuh hopper.cuh Makefile
+quantize: quantize.cu bench.cuh megakernel.cuh attention.cuh qkv.cuh bf16_gemm.cuh anvil.cuh hopper.cuh Makefile
 	$(NVCC) $(NVFLAGS) quantize.cu -lcublas -o $@
 
-attention: attention.cu attention.cuh qkv.cuh bf16_gemm.cuh bench.cuh megakernel.cuh hopper.cuh frontier.cuh Makefile
+attention: attention.cu attention.cuh qkv.cuh bf16_gemm.cuh anvil.cuh bench.cuh megakernel.cuh hopper.cuh frontier.cuh Makefile
 	$(NVCC) $(NVFLAGS) $(attention_FLAGS) attention.cu -o $@
 
-bf16 bf16_control: bf16.cu bf16_gemm.cuh megakernel.cuh attention.cuh qkv.cuh bench.cuh hopper.cuh Makefile
+bf16 bf16_control: bf16.cu bf16_gemm.cuh anvil.cuh megakernel.cuh attention.cuh qkv.cuh bench.cuh hopper.cuh Makefile
 	$(NVCC) $(NVFLAGS) $($@_FLAGS) bf16.cu -lcublas -o $@
+
+anvil anvil_idle64: anvil.cu anvil_graph.cuh anvil.cuh bf16_gemm.cuh megakernel.cuh attention.cuh qkv.cuh bench.cuh frontier.cuh Makefile
+	$(NVCC) $(NVFLAGS) $($@_FLAGS) anvil.cu -lcublas -o $@
 
 transport: transport.cu bench.cuh Makefile
 	$(NVCC) $(NVFLAGS) transport.cu -lnccl -o $@
@@ -57,4 +62,4 @@ sanitize: $(BIN)
 	compute-sanitizer --tool synccheck --error-exitcode 1 ./$(BIN) --quick $(CHECK_FLAGS)
 
 clean:
-	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control
+	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control anvil anvil_idle64

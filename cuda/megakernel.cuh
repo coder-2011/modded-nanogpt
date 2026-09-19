@@ -7,8 +7,13 @@
 #include "attention.cuh"
 #include "qkv.cuh"
 #include "bf16_gemm.cuh"
+#include "anvil.cuh"
 
 namespace nano {
+
+#ifndef NANO_ANVIL_IDLE_NS
+#define NANO_ANVIL_IDLE_NS 1024
+#endif
 
 constexpr int tile = 64;
 constexpr int threads = 128;
@@ -85,6 +90,7 @@ struct Graph {
     const Attention *attention = nullptr;
     const QKVTransform *qkv = nullptr;
     const BF16Matmul *bf16_ops = nullptr;
+    const Anvil *anvil = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -397,7 +403,8 @@ __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task,
 #endif
 }
 
-template <bool Audited = false, bool Full = false, bool WithAttention = false, bool WithBF16 = false>
+template <bool Audited = false, bool Full = false, bool WithAttention = false, bool WithBF16 = false,
+          bool WithAnvil = false>
 __global__
 #ifdef NANO_MIN_BLOCKS
 __launch_bounds__(threads, NANO_MIN_BLOCKS)
@@ -405,6 +412,7 @@ __launch_bounds__(threads, NANO_MIN_BLOCKS)
 __launch_bounds__(threads)
 #endif
     void megakernel(Graph g) {
+    static_assert(!WithAnvil || WithBF16, "ANVIL requires BF16 matrix tasks");
     __shared__ __align__(1024) fp8 scratch[WithBF16 ? bf16_scratch_bytes : scratch_bytes];
     __shared__ int next, ticket;
     if (threadIdx.x == 0)
@@ -420,17 +428,20 @@ __launch_bounds__(threads)
         if (task_id == -2)
             return;
         if (task_id == -1) {
-            __nanosleep(1024);
+            __nanosleep(WithAnvil ? NANO_ANVIL_IDLE_NS : 1024);
             continue;
         }
         const Task task = g.tasks[task_id];
         if (Audited && threadIdx.x == 0) {
             atomicAdd(g.audit + task_id, 1);
-            if (!WithAttention && !WithBF16 && task.op >= 4 &&
+            if (!WithAttention && !WithBF16 && !WithAnvil && task.op >= 4 &&
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithBF16 && task.kind == TaskKind::bf16_matmul) {
+        if (WithAnvil && task.kind == TaskKind::anvil) {
+            const Anvil op = g.anvil[task.op];
+            anvil_tile(op, AnvilStage(task.col), task.row, reinterpret_cast<float *>(scratch));
+        } else if (WithBF16 && task.kind == TaskKind::bf16_matmul) {
             const BF16Matmul op = g.bf16_ops[task.op];
             bf16_matmul_tile(op, task.row, task.col, scratch);
         } else if constexpr (WithAttention) {
@@ -452,7 +463,7 @@ __launch_bounds__(threads)
         __threadfence();
         __syncthreads();
         if (threadIdx.x == 0) {
-            if (Audited && !WithAttention && !WithBF16 && task.op == 0)
+            if (Audited && !WithAttention && !WithBF16 && !WithAnvil && task.op == 0)
                 add_acq_rel(g.audit + g.task_count, 1);
             // Task descriptors are immutable. Reload only on the controller so
             // every worker lane need not retain both signals across the math.

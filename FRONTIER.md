@@ -58,7 +58,7 @@ constants and schedule constructor produce the values below.
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Not implemented |
 | MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Not implemented |
 | Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Not implemented |
-| Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | BF16 matrix primitives implemented; optimizer state transitions and full cascade absent |
+| Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | Rank-local update body implemented in the persistent worker; training schedules, gradient exchange and model integration remain |
 | Other optimizer state | Parameter-specific Adam rules; sparse touched-row exchange/update; value/n-gram cadence changes at step 336 | Not implemented |
 | Loss | Sampled softcapped CE early, full vocabulary later; MTP and prefix auxiliary schedules; full-vocabulary validation | Not implemented |
 | Timing | Reset warmup state, charge first data fetch, prefix-table construction, table updates, final weight blends and required validation row gathering | Not implemented |
@@ -338,3 +338,131 @@ and all four sanitizers in `cuda-check-20260919T034855970984Z-9866c50a`. The BF1
 validator also checks that its outputs remain identical when attention support
 is compiled into the worker. These still are separate component graphs, not a
 complete native training step.
+
+## Rank-local ANVIL update body
+
+`cuda/anvil.cuh` and `cuda/anvil_graph.cuh` now run the complete rank-local
+matrix-update body in one persistent launch. The graph starts with BF16 reduced
+gradients and FP32 fast/slow velocity state, builds the unnormalized Gram,
+normalizes from its trace, executes the six pinned matrix maps, updates lane
+energy, restores the update norm, and applies cautious decay plus the parameter
+update. Each matrix has independent dependencies, so different banks can progress
+concurrently. This body is not yet connected to the model's backward pass,
+reduce-scatter/all-gather, step schedule, Adam updates or final parameter blends.
+
+There are 24 stages and 18 BF16 products per matrix. GEMMs remain 64x64 tensor-core
+tasks. Elementwise work is partitioned into 1024-element tasks, and lane reductions
+have one CTA per lane. The actual per-rank workload (six 256x768 QK matrices, two
+768x768 VO matrices, three 2816x768 MLP matrices) has 198 matrix products, with
+independently shuffled initial tasks and persistent per-matrix scalar addresses.
+Changing the momentum, fast beta, blend, decay and learning-rate scalars needs no
+graph rebuild.
+
+The port preserves executable details that differ from loose descriptions:
+
+- The first normalization uses the trace of the BF16-rounded unnormalized Gram.
+  Matrices with more than 1024 rows round the product to BF16 before the additive
+  map term. Square matrices use the left-multiply branch.
+- The lane reduction runs over columns when rows >= columns, and over rows
+  otherwise. It reduces the shorter dimension, despite the reference comment
+  saying "LONGER". Energy state and the reciprocal-square-root gain are separate.
+- The cautious-decay gate reads the slow velocity. The parameter and mantissa
+  buffers store the high and low 16 bits of an FP32 shadow. The high half is
+  truncated, not rounded to BF16. The decay scalar already contains a learning
+  rate and is multiplied by the per-matrix learning rate again, as in the source.
+- Lerp follows [PyTorch 2.10's compiled decomposition](https://github.com/pytorch/pytorch/blob/v2.10.0/torch/_refs/__init__.py#L4900-L4927),
+  including its alternate base for weights at or above 0.5. The slow-rail and
+  energy coefficients are 0.02f and 0.1f, preserving the reference's Python
+  constant evaluation. Minimum clamps propagate NaNs instead of replacing them.
+
+`cuda/anvil.cu` uses an independent CPU scalar implementation, FP64 reduction
+sums and pedantic FP32 cuBLAS products with explicit BF16 rounding. The composed
+cascade gate was set to 1% relative L2 before the first run, with a small absolute
+fallback for near-zero outputs. The stricter existing BF16 GEMM gate is unchanged.
+This approximate oracle does not establish bitwise parity with the pinned
+PyTorch/Triton trainer or convergence parity. Velocity state and the FP32 shadow
+update are checked bitwise. Staged kernels, serial and concurrent CUDA Graphs,
+instrumented/production persistent workers and the combined worker must produce
+identical outputs from the same state.
+
+Checks cover three evolving updates, changed resident scalars and gradients,
+poisoned work buffers, shuffled roots, task visits, one-worker execution, ragged
+wide/tall/square inputs, zero gradients and both sides of the 1024-row split.
+The validator also records an inherited numerical limitation: the independent
+arithmetic reference and native cascade both diverge on the tested 1x1 input
+and 17x33 rank-one input. These are explicit non-finite classification checks,
+not successful finite training updates. The transposed 33x17 rank-one case remains
+finite and passes the ordinary numerical gate. No stabilizing clamp or alternate
+map was introduced. Whether this edge occurs in a real training trajectory is
+unverified.
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=anvil --ablate --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=anvil --profile
+```
+
+The same-GPU idle-delay experiment uses H100 80GB HBM3, CUDA 12.8.93, five warmups
+and ten retained event samples. Each path starts from the same saved optimizer
+state and runs repeated stateful updates with warm buffers. Persistent timing
+includes queue reset. The concurrent CUDA Graph has independent matrix branches,
+while the serial control intentionally orders them. All controls use the same
+native tile math, not the reference trainer's faster library kernels.
+
+| Workload, 528 workers | Default 1024 ns idle | Candidate 64 ns idle | Concurrent CUDA Graph, default build |
+| --- | ---: | ---: | ---: |
+| One 256x768 matrix | 1.081328 ms | 1.101184 ms | 0.507888 ms |
+| One 768x768 matrix | 2.617216 ms | 2.623776 ms | 1.136880 ms |
+| One 2816x768 matrix | 7.304304 ms | 7.307440 ms | 3.504624 ms |
+| One matrix of each shape | 7.404928 ms | 7.489600 ms | 3.589104 ms |
+| Full rank-local 11-matrix batch | 9.504608 ms | 9.170848 ms | 4.284352 ms |
+
+The full-batch samples overlap substantially, and the shorter delay is worse on
+the other 528-worker cases. It is not promoted. Reducing workers to 132 or 264 also
+fails to improve the full batch. The serial Graph takes 15.818480 ms there, but
+using it alone would overstate the persistent kernel's performance. The fairer
+concurrent Graph remains more than twice as fast. This is an optimizer component
+result, not a full-model or leaderboard result.
+
+The profiler archive `profile-20260919T040954882457Z-c59d91be.tar.gz` contains
+PTX/SASS and the full Nsight Compute report for one 2816x768 update at 528 workers.
+The worker has 128 registers/thread, 32776 shared bytes/CTA, no reported spills,
+24.85% achieved occupancy, 93.81% cycles with no eligible warp and 0.67% tensor-pipe
+activity. Sleeping accounts for 41.42 of 63.73 warp cycles per issued instruction.
+This led to the bounded idle-delay experiment, whose negative result shows that
+sleep-stall share alone does not identify the critical path. Profiler timings
+are diagnostic, not the event timings in the table.
+
+Initial validation and all four sanitizers passed in
+`cuda-check-20260919T040652485566Z-aaf6bc31`. The two scalar non-finite diagnostic
+runs are preserved as `cuda-check-20260919T040921575094Z-6a73dbd6` and
+`cuda-check-20260919T041201316461Z-e2ed8bc3`. Expanded validation and all four
+sanitizers passed in `cuda-check-20260919T041342080683Z-22774a55` before the
+concurrent Graph control was added. Shared-dispatch regression checks and all
+four sanitizers passed for MLP in `cuda-check-20260919T040954882545Z-231da927`,
+attention/QKV in `cuda-check-20260919T040954882509Z-0155f343`, and BF16 GEMM in
+`cuda-check-20260919T040954882490Z-70af11a5`. Their non-ANVIL arithmetic remains
+unchanged by the optimizer-specific idle-delay option and NaN clamp correction.
+
+The complete idle comparison and all four sanitizers for **both** variants are
+in `cuda-check-20260919T041538442378Z-d20c1784`. That comparison and the profiler
+predate the NaN-preserving clamp correction. The corrected kernel passes all numerical,
+state/replay and sanitizer checks in `cuda-check-20260919T041839305095Z-b481f800`.
+Maximum relative-L2 errors are 0.00817729591 for
+the equalized update, 0.00475073883 for lane energy and 0.000451144754 for the
+parameter shadow, including the finite rank-one stress case. Velocity and the
+shadow arithmetic on the native update remain bit-exact. The final full batch
+contains 62158 tasks, 253 dependency groups and 198 GEMMs. Its persistent + reset
+median is 9.546208 ms versus 4.276944 ms for the concurrent Graph. Dedicated and
+combined workers still have 128 registers and no spill loads/stores. These final
+timings confirm the performance gap and do not establish a frontier speedup.
+
+Final planner review added a dimension ceiling that includes tile-padding
+arithmetic, with rejection checks before any large task allocation. The first
+host-test build failed because nvcc could not deduce the braced range type,
+retained in `cuda-check-20260919T042455536240Z-0ac16fa2`. Giving the test array an
+explicit type fixes the build. The final committed source passes the complete
+numerical/replay suite and all four sanitizers in
+`cuda-check-20260919T042600741821Z-9dabf0c4`. Every source-archive member matches
+the final native source/build files, Python glue and frontier lock. Numerical
+maxima are unchanged. On its H100, the full batch takes 9.319728 ms persistent
+plus reset versus 4.327216 ms for the concurrent Graph, again showing no speedup.
