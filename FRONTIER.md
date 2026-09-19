@@ -54,7 +54,7 @@ constants and schedule constructor produce the values below.
 | --- | --- | --- |
 | Residual stream | Width 768, eleven numbered layers, six heads | Dimensions pinned |
 | MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | Individual six-GEMM branch implemented; full routing absent |
-| Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | Scalar forward/backward and QKV transforms implemented in the persistent worker; projections and gates not wired, FA3 parity unverified |
+| Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | Connected training-attention forward/backward including FP8 QKV, O projections, XSA, head gates and gain gradients; BF16 eval projections and full routing remain; FA3/compiled-trainer parity unverified |
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Not implemented |
 | MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Not implemented |
 | Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Not implemented |
@@ -466,3 +466,148 @@ numerical/replay suite and all four sanitizers in
 the final native source/build files, Python glue and frontier lock. Numerical
 maxima are unchanged. On its H100, the full batch takes 9.319728 ms persistent
 plus reset versus 4.327216 ms for the concurrent Graph, again showing no speedup.
+
+## Connected training-attention layer
+
+`cuda/attention_layer.cuh` now builds one persistent graph for the training
+attention-call boundary. It connects cached E4M3 QKV projections, Q/K RMS
+normalization and rotary transforms, paired or ordinary causal attention,
+auxiliary values, optional XSA and head gates, the BF16 O projection, and all
+backward products and gain gradients. The three supported head geometries are
+QK64/V128 paired, QK64/V64, and QK128/V128 with shifted keys. Inactive V64 auxiliary
+gradients are zeroed in the original 128-wide storage. Packed QKV weights and
+returned gradients use compact logical rows. The enclosing model still needs
+the actual bank packing/scatter and routing.
+
+The O products round gain-scaled BF16 weights before multiplication. QKV gain
+gradients dot unscaled BF16 weight gradients with the original BF16 weights,
+not dequantized FP8 values. A root task reads resident scales and gains each
+execution, including zero and negative gains, so graph reuse does not capture
+stale scalar values. XSA uses a 1e-8 denominator floor and joins its FP32 value
+side-gradient with attention's BF16 dV before the final BF16 cast.
+
+The post-attention arithmetic uses FP32 fused intermediates with BF16 stores at
+materialized boundaries. This follows the pinned compiler's default
+[`emulate_precision_casts=False`](https://github.com/pytorch/pytorch/blob/v2.10.0/torch/_inductor/config.py#L745-L760),
+but exact materialization and numerical parity with the compiled pinned trainer
+remain unverified. The independent references check mathematical stages on their
+actual validated input boundaries. They do not substitute for a full-model
+training/convergence comparison or patched-FA3 binary parity.
+
+The full validation checks all five active attention roles across three graph
+executions with changed gains/scales. It includes zero QKV/O gains, negative O
+gains, poison/replay checks, exact BF16 and E4M3 stores, auxiliary gradient padding,
+and finite-difference checks on the XSA/head-gate derivatives. Dedicated XSA tests
+exercise zero V and magnitudes below/above the denominator floor, zero/negative
+head gates and saturated alpha. GPU primitive results retain the existing
+relative-L2 2e-4 or max-absolute 2e-5 gate. Audited, production, stage-by-stage and
+CUDA-Graph execution must agree bitwise.
+
+Initial compilation failed on a mixed-type `auto` declaration, retained in
+`cuda-check-20260919T044720900064Z-75aa5048`. The corrected replay smoke test is
+`cuda-check-20260919T044805814117Z-d5a16b12`. Initial independent stage checks and
+all four sanitizers passed in `cuda-check-20260919T045354127362Z-40a41dc7`.
+Expanded graph reuse, XSA stress, full-size replay, and all four sanitizers pass
+in `cuda-check-20260919T050903781403Z-43d5b34b`. Shared-dispatch regressions and all
+four sanitizers pass in `cuda-check-20260919T050944335319Z-f1278f2d` (MLP),
+`cuda-check-20260919T050944335321Z-78539b10` (attention/QKV),
+`cuda-check-20260919T050944335318Z-3211406a` (BF16), and
+`cuda-check-20260919T050944335317Z-20f13048` (ANVIL).
+
+The first layer profiler, `profile-20260919T050929722575Z-0552ee58.tar.gz`, records
+128 registers/thread, 32776 shared bytes/block, no spills in the combined worker,
+24.98% achieved occupancy and only 0.17 eligible warps per scheduler. Sleep stalls
+account for 13.77 of 29.81 warp cycles per issued instruction, long-scoreboard
+stalls for 6.94, and barrier stalls for 3.72. SASS samples locate large non-sleep
+stalls at the scalar attention loads. The attention-only dispatcher specialization
+has a four-byte spill, while the combined attention/BF16/ANVIL worker used for
+these initial timings does not.
+
+The graph contains 210339–217923 tile tasks at 16384 tokens, but currently uses
+fifteen whole-stage dependencies. Publishing each stage's ready tasks from one
+controller thread was expensive. A cooperative candidate lets the controller
+acquire the final dependency counter and reserve the queue range, then uses a
+block barrier to pass visibility to all 128 threads before they publish disjoint
+queue slots with release stores. Task ownership and all numerical operations
+remain unchanged. This is a scheduler optimization, not a full-model result.
+
+Both publication variants pass the full numerical/replay suite and all four
+sanitizers in `cuda-check-20260919T051140680180Z-50fa263a`. On the same H100 80GB
+HBM3 with CUDA 12.8.93 and 528 worker blocks, cooperative publication gives:
+
+| Synthetic attention workload | Single-thread publication | Cooperative publication | Matching CUDA Graph |
+| --- | ---: | ---: | ---: |
+| Paired QK64/V128, window 128 | 77.496704 ms | 16.485744 ms | 17.672112 ms |
+| QK64/V64, window 128 | 76.201057 ms | 15.173632 ms | 16.025344 ms |
+| QK128/V128, window 384 | 80.487984 ms | 33.357344 ms | 36.696527 ms |
+
+These use 16384 tokens, nineteen documents capped at 896 original tokens,
+five warmups and ten retained event samples. Paired document offsets are doubled.
+Timings include resident scalar setup and persistent queue reset, but prepacked
+activation/weight caches, host planning and allocation are outside the timed
+region. The Graph control uses the same fifteen stages and tile primitives.
+All stage and gradient outputs agree bitwise at these geometries. The independent
+FP64 stage oracles run on the smaller stress cases, not on the 16384-token cases.
+
+The cooperative worker uses 128 registers, 32800 shared bytes, an eight-byte
+stack frame and four bytes each of spill loads/stores. It was faster despite
+that small spill. Worker counts of 132 and 264 were slower for these workloads.
+Cooperative publication is promoted only for the attention-layer target. The
+existing MLP, BF16, attention-core and ANVIL targets retain their prior build flags.
+The initial comparison archive calls the candidate `layer_cooperative` and the
+original `layer`. After promotion, `layer` selects the candidate and
+`layer_serial` retains the original publication control. No kernel arithmetic or
+scheduler implementation changed during that target rename.
+
+This is a 2.4–5.0x reduction in this native component's persistent time. Its
+apparent 5–9% advantage over the initial CUDA Graph is superseded by the stronger
+control below. It does not establish a full-model training speedup or a leaderboard result. BF16 evaluation QKV/MLP,
+normalization and residual/MUDD routing, embedding/gate construction, loss, Adam,
+optimizer communication/schedules, dynamic-scale updates and the distributed
+training loop still need to be connected and validated against the pinned trainer.
+
+The promoted default and renamed original control passed again in
+`cuda-check-20260919T052247126211Z-98a4da54`, on an **H100 NVL** rather than the
+80GB HBM3 model in the preceding table. Persistent times were
+17.723007/15.966928/36.146175 ms versus single-thread-publication times of
+69.519474/67.377693/74.267216 ms. Those comparisons are within that same NVL run,
+not across GPU models. Its companion H100 80GB profile is
+`profile-20260919T052247126211Z-2669b656.tar.gz`.
+
+Review found an occupancy mismatch in the initial Graph control: its generic
+stage dispatcher used 153 registers, while the persistent worker used 128.
+The final harness measures both the unconstrained stage kernel and a stage
+kernel with the same four-block launch-bounds target as the persistent worker.
+The latter compiles to 126 registers without spills and is the faster control.
+Both are checked against the audited graph bitwise before timing. The final
+comparison on H100 80GB HBM3 is:
+
+| Workload | Cooperative persistent + reset | Faster native CUDA Graph | Persistent overhead |
+| --- | ---: | ---: | ---: |
+| Paired QK64/V128, window 128 | 16.477280 ms | 15.048384 ms | 9.50% |
+| QK64/V64, window 128 | 15.173520 ms | 13.605152 ms | 11.53% |
+| QK128/V128, window 384 | 33.335663 ms | 31.855248 ms | 4.65% |
+
+Thus cooperative publication fixes a large native scheduler regression, but the
+persistent attention layer **does not beat the stronger CUDA-Graph control**.
+Do not use the earlier weaker control to claim a fusion win. The remaining
+scalar-attention cost also precludes a claim against the pinned FA3 trainer.
+
+The final harness, including both occupancy controls, passes numerical checks,
+bitwise replay and all four sanitizers in
+`cuda-check-20260919T052415996137Z-21e63829`. The 24 members of its source archive
+match the final CUDA/build files, Python glue and frontier lock exactly. No
+numerical or scheduler changes were made after that snapshot. Maximum relative-L2
+errors in the expanded suite are 8.14953908e-7 for BF16 products,
+6.37381712e-7 for gain gradients, and 1.78119669e-7 for attention gradients.
+The independent finite-difference check reaches at most 7.45278173e-8 relative L2.
+
+The final H100 80GB profile, `profile-20260919T052435618777Z-fa4b6e9e.tar.gz`,
+contains PTX, SASS, the complete NCU report, metrics and instruction samples.
+The combined worker has 128 registers/thread, 32800 shared bytes/block and a
+four-byte spill load/store. Achieved occupancy is 25.00%, with 0.38 eligible
+warps per scheduler. Of 13.99 warp cycles per issued instruction, long-scoreboard
+stalls account for 7.28, sleeping for 1.23 and barriers for 0.67. This confirms
+that queue publication no longer dominates in the same way. Scalar attention
+memory dependencies are now the principal measured stall source. The profiler's
+33.45 ms duration is diagnostic and is not substituted for the event timings.

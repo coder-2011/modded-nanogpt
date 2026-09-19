@@ -1,0 +1,772 @@
+sha256 8a2e8f6d5dc1140b9375525a9c54406ac9a9d74556f909da5be07cc94dd50014 Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 e812d0893018744a951d04067f35048daff4799b3f4404eb146ba669f81f4d45 attention.cuh
+sha256 dddedc9fe55b96a0e67e8a3b2f46adc55317e34af0d20278914fe0cd819566cf attention_layer.cu
+sha256 695c4567bd0491798eca2523d60012dfb9b59e3e22e925826af6260032b9e585 attention_layer.cuh
+sha256 d150c6816360a510f69d26627bd4efa712e46f182c78771f531ea1c9d6ab75ff attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 a1239425b438fa85c0628a25decee76f394162bc6c3aae2cfa03cc6e5fd1c3d9 bf16.cu
+sha256 538793c348108ea29c361401d86cd7855e8b16db9f441ec824bbd6b4f927e12b bf16_gemm.cuh
+sha256 6eb043b0deec41825720d6ba638468d9aec856a01cb2b9dec6c23a28ffe49a81 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 37cff44cfee07a18bc64f7d901559a8d2b848b3491460ce7db4682557d0b11ec megakernel.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 05:09:55 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:45:00.0 Off |                    0 |
+| N/A   33C    P0             71W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda anvil
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 anvil.cu -lcublas -o anvil
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb0ELb1ELb1ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb1ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 1188.565 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 1619.930 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb0ELb1ELb1ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb0ELb1ELb1ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 1103.593 ms
+ptxas info    : Compiling entry function '_Z12staged_anvilN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_anvilN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 96 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 495.866 ms
+ptxas info    : Compiling entry function '_Z11reset_anvilN4nano5GraphEPKii' for 'sm_90a'
+ptxas info    : Function properties for _Z11reset_anvilN4nano5GraphEPKii
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 2.170 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/anvil
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ANVIL idle_ns=1024
+ANVIL batch=3 workers=3 pattern=0
+ANVIL matrix rows=17 cols=33 split=0
+ANVIL matrix rows=33 cols=17 split=0
+ANVIL matrix rows=17 cols=17 split=0
+ANVIL tasks=152 dependencies=69 roots=3 products=54
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=5.20318378e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.93558859e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.83463464e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.74051453e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.09008785e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=9.53933353e-09 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=1.94294596e-08 max_abs=9.31322575e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0.00817729591 max_abs=0.00634765625
+ANVIL lane energy rel_l2=0.00228436415 max_abs=7.97100365e-05
+ANVIL parameter shadow rel_l2=0.000451144754 max_abs=7.61672854e-05
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=1 workers=1 pattern=1
+ANVIL matrix rows=31 cols=65 split=0
+ANVIL tasks=98 dependencies=23 roots=2 products=18
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL RECIPE LIMITATION rows=1 cols=1 pattern=0: native and independent reference both produce 1/1 non-finite updates; no clamp applied
+ANVIL RECIPE LIMITATION rows=17 cols=33 pattern=2: native and independent reference both produce 561/561 non-finite updates; no clamp applied
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL batch=2 workers=17 pattern=0
+ANVIL matrix rows=1024 cols=17 split=0
+ANVIL matrix rows=1025 cols=17 split=1
+ANVIL tasks=2381 dependencies=46 roots=35 products=36
+ANVIL step=0
+ANVIL equalized update rel_l2=0.000568586622 max_abs=0.00048828125
+ANVIL lane energy rel_l2=0.000203256371 max_abs=3.80074198e-07
+ANVIL parameter shadow rel_l2=8.14349317e-06 max_abs=1.12354755e-05
+ANVIL equalized update rel_l2=0.00730047284 max_abs=0.00512695312
+ANVIL lane energy rel_l2=0.00475073883 max_abs=7.20110256e-06
+ANVIL parameter shadow rel_l2=0.00010538983 max_abs=0.000117920339
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00500108127 max_abs=0.0009765625
+ANVIL lane energy rel_l2=0.00180307109 max_abs=1.79035123e-06
+ANVIL parameter shadow rel_l2=2.80408695e-05 max_abs=8.7916851e-06
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.70510967e-08 max_abs=2.91038305e-11
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0.000354944 max_abs=0.00048828125
+ANVIL lane energy rel_l2=7.29807229e-05 max_abs=4.55795089e-07
+ANVIL parameter shadow rel_l2=8.84623229e-07 max_abs=1.95391476e-06
+ANVIL equalized update rel_l2=3.95125101e-05 max_abs=0.000122070312
+ANVIL lane energy rel_l2=3.18696482e-06 max_abs=2.86090653e-08
+ANVIL parameter shadow rel_l2=1.98715898e-07 max_abs=9.76026058e-07
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=1 workers=528 pattern=0
+ANVIL matrix rows=256 cols=768 split=0
+ANVIL tasks=1818 dependencies=23 roots=192 products=18
+ANVIL step=0
+ANVIL equalized update rel_l2=0.0043587749 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000722074853 max_abs=3.06346919e-07
+ANVIL parameter shadow rel_l2=7.24349851e-05 max_abs=3.36915255e-05
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00480235504 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000421177622 max_abs=3.64118023e-07
+ANVIL parameter shadow rel_l2=3.12236557e-05 max_abs=1.75796449e-05
+ANVIL step=2
+ANVIL equalized update rel_l2=0.00410800777 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000252270706 max_abs=3.1341915e-07
+ANVIL parameter shadow rel_l2=1.18629854e-05 max_abs=5.85988164e-06
+ANVIL timing_workers=132
+ANVIL persistent+reset repeated_steps median_ms=1.038096 samples_ms= 1.036992 1.043552 1.043424 1.038496 1.036736 1.032224 1.040576 1.039968 1.037696 1.032320
+ANVIL timing_workers=264
+ANVIL persistent+reset repeated_steps median_ms=1.074304 samples_ms= 1.067008 1.066208 1.059520 1.078912 1.091680 1.061696 1.069696 1.094880 1.080320 1.087936
+ANVIL timing_workers=528
+ANVIL persistent+reset repeated_steps median_ms=1.079088 samples_ms= 1.078112 1.079136 1.089568 1.087392 1.079040 1.067328 1.084192 1.068640 1.081632 1.068768
+ANVIL separate repeated_steps median_ms=0.532448 samples_ms= 0.532160 0.533376 0.532480 0.532416 0.532320 0.537280 0.533408 0.533920 0.531104 0.532160
+ANVIL serial CUDA-graph repeated_steps median_ms=0.509536 samples_ms= 0.510368 0.508928 0.514816 0.508992 0.514688 0.509952 0.515712 0.509056 0.509120 0.508736
+ANVIL concurrent CUDA-graph repeated_steps median_ms=0.509056 samples_ms= 0.513120 0.508512 0.508608 0.508992 0.508544 0.512992 0.509280 0.510880 0.508800 0.509120
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=1 workers=528 pattern=0
+ANVIL matrix rows=768 cols=768 split=0
+ANVIL tasks=4874 dependencies=23 roots=576 products=18
+ANVIL step=0
+ANVIL equalized update rel_l2=0.00387288628 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.00269568349 max_abs=1.69726263e-06
+ANVIL parameter shadow rel_l2=6.35369301e-05 max_abs=3.36915255e-05
+ANVIL step=1
+ANVIL equalized update rel_l2=0.0039120179 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.00125915058 max_abs=1.65401434e-06
+ANVIL parameter shadow rel_l2=2.51110108e-05 max_abs=1.31838024e-05
+ANVIL step=2
+ANVIL equalized update rel_l2=0.00414385732 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000835784342 max_abs=1.54480222e-06
+ANVIL parameter shadow rel_l2=1.172694e-05 max_abs=5.86360693e-06
+ANVIL timing_workers=132
+ANVIL persistent+reset repeated_steps median_ms=3.180720 samples_ms= 3.182944 3.178496 3.183680 3.166688 3.177280 3.167424 3.188736 3.176096 3.193376 3.201472
+ANVIL timing_workers=264
+ANVIL persistent+reset repeated_steps median_ms=2.611232 samples_ms= 2.601664 2.663648 2.626528 2.642176 2.618528 2.602528 2.613408 2.591232 2.609056 2.604896
+ANVIL timing_workers=528
+ANVIL persistent+reset repeated_steps median_ms=2.629536 samples_ms= 2.640480 2.646240 2.651616 2.630560 2.619488 2.634464 2.628512 2.623776 2.592160 2.619776
+ANVIL separate repeated_steps median_ms=1.172688 samples_ms= 1.170336 1.173088 1.172960 1.166496 1.175712 1.172416 1.166496 1.175584 1.173632 1.170144
+ANVIL serial CUDA-graph repeated_steps median_ms=1.148784 samples_ms= 1.150784 1.144448 1.148576 1.145728 1.151456 1.148992 1.145024 1.152224 1.145600 1.152096
+ANVIL concurrent CUDA-graph repeated_steps median_ms=1.147824 samples_ms= 1.148256 1.146336 1.147392 1.150688 1.150880 1.143360 1.145440 1.154336 1.146080 1.150496
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=1 workers=528 pattern=0
+ANVIL matrix rows=2816 cols=768 split=1
+ANVIL tasks=13834 dependencies=23 roots=2112 products=18
+ANVIL step=0
+ANVIL equalized update rel_l2=0.0056073797 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000521315162 max_abs=7.26868166e-08
+ANVIL parameter shadow rel_l2=4.86334686e-05 max_abs=4.4927001e-05
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00565382865 max_abs=0.00219726562
+ANVIL lane energy rel_l2=0.000276716307 max_abs=9.31249815e-08
+ANVIL parameter shadow rel_l2=1.91913171e-05 max_abs=1.97775662e-05
+ANVIL step=2
+ANVIL equalized update rel_l2=0.00436526328 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000147170553 max_abs=5.41476766e-08
+ANVIL parameter shadow rel_l2=6.59032186e-06 max_abs=7.81565905e-06
+ANVIL timing_workers=132
+ANVIL persistent+reset repeated_steps median_ms=7.459728 samples_ms= 7.489760 7.456384 7.460576 7.472160 7.467296 7.458880 7.452480 7.421440 7.450432 7.475936
+ANVIL timing_workers=264
+ANVIL persistent+reset repeated_steps median_ms=7.311504 samples_ms= 7.296736 7.259648 7.389760 7.312704 7.342144 7.361568 7.359968 7.310304 7.300032 7.273632
+ANVIL timing_workers=528
+ANVIL persistent+reset repeated_steps median_ms=7.279920 samples_ms= 7.301280 7.280512 7.279328 7.346048 7.261280 7.301216 7.190336 7.338176 7.264416 7.265888
+ANVIL separate repeated_steps median_ms=3.538688 samples_ms= 3.533024 3.536000 3.559328 3.536128 3.542144 3.532992 3.541248 3.632704 3.535008 3.624032
+ANVIL serial CUDA-graph repeated_steps median_ms=3.520736 samples_ms= 3.601024 3.511232 3.552064 3.549088 3.502880 3.501440 3.528128 3.509696 3.604576 3.513344
+ANVIL concurrent CUDA-graph repeated_steps median_ms=3.520208 samples_ms= 3.592000 3.602656 3.513248 3.533568 3.520032 3.506528 3.506368 3.526240 3.513984 3.520384
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=3 workers=528 pattern=0
+ANVIL matrix rows=256 cols=768 split=0
+ANVIL matrix rows=768 cols=768 split=0
+ANVIL matrix rows=2816 cols=768 split=1
+ANVIL tasks=20526 dependencies=69 roots=2880 products=54
+ANVIL step=0
+ANVIL equalized update rel_l2=0.0043587749 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000722074853 max_abs=3.06346919e-07
+ANVIL parameter shadow rel_l2=7.24349851e-05 max_abs=3.36915255e-05
+ANVIL equalized update rel_l2=0.00397612578 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.00251395348 max_abs=1.64628727e-06
+ANVIL parameter shadow rel_l2=6.52118961e-05 max_abs=3.36915255e-05
+ANVIL equalized update rel_l2=0.00539795511 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000481601372 max_abs=7.23957783e-08
+ANVIL parameter shadow rel_l2=4.67897769e-05 max_abs=4.49232757e-05
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00480235504 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000421177622 max_abs=3.64118023e-07
+ANVIL parameter shadow rel_l2=3.12236557e-05 max_abs=1.75796449e-05
+ANVIL equalized update rel_l2=0.00390282471 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.00149914223 max_abs=1.74152956e-06
+ANVIL parameter shadow rel_l2=5.00901716e-05 max_abs=3.51592898e-05
+ANVIL equalized update rel_l2=0.00536004872 max_abs=0.00219726562
+ANVIL lane energy rel_l2=0.000263637925 max_abs=7.34071364e-08
+ANVIL parameter shadow rel_l2=5.45489345e-05 max_abs=5.93289733e-05
+ANVIL step=2
+ANVIL equalized update rel_l2=0.00410800777 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000252270706 max_abs=3.1341915e-07
+ANVIL parameter shadow rel_l2=1.18629854e-05 max_abs=5.85988164e-06
+ANVIL equalized update rel_l2=0.0040393766 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.00076069439 max_abs=1.58548937e-06
+ANVIL parameter shadow rel_l2=2.28548348e-05 max_abs=1.17197633e-05
+ANVIL equalized update rel_l2=0.00447735078 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.00015153321 max_abs=5.97792678e-08
+ANVIL parameter shadow rel_l2=2.02729126e-05 max_abs=2.34395266e-05
+ANVIL timing_workers=132
+ANVIL persistent+reset repeated_steps median_ms=7.829136 samples_ms= 8.095456 7.820640 7.953248 7.837632 7.721504 7.902880 7.735840 7.729600 7.671424 7.927424
+ANVIL timing_workers=264
+ANVIL persistent+reset repeated_steps median_ms=7.538448 samples_ms= 7.526848 7.463776 7.543424 7.533472 7.551520 7.546880 7.501472 7.554272 7.604864 7.481888
+ANVIL timing_workers=528
+ANVIL persistent+reset repeated_steps median_ms=7.418864 samples_ms= 7.382656 7.357760 7.413120 7.453920 7.391296 7.424608 7.475424 7.460576 7.329408 7.431680
+ANVIL separate repeated_steps median_ms=5.249216 samples_ms= 5.238688 5.262592 5.249088 5.268256 5.229056 5.225312 5.249344 5.253504 5.270560 5.242336
+ANVIL serial CUDA-graph repeated_steps median_ms=5.163568 samples_ms= 5.160224 5.166912 5.151872 5.181600 5.195008 5.182880 5.155456 5.153056 5.177664 5.155712
+ANVIL concurrent CUDA-graph repeated_steps median_ms=3.585888 samples_ms= 3.579744 3.574592 3.594784 3.598240 3.587392 3.577152 3.584384 3.638784 3.572864 3.593696
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=11 workers=528 pattern=0
+ANVIL matrix rows=256 cols=768 split=0
+ANVIL matrix rows=256 cols=768 split=0
+ANVIL matrix rows=256 cols=768 split=0
+ANVIL matrix rows=256 cols=768 split=0
+ANVIL matrix rows=256 cols=768 split=0
+ANVIL matrix rows=256 cols=768 split=0
+ANVIL matrix rows=768 cols=768 split=0
+ANVIL matrix rows=768 cols=768 split=0
+ANVIL matrix rows=2816 cols=768 split=1
+ANVIL matrix rows=2816 cols=768 split=1
+ANVIL matrix rows=2816 cols=768 split=1
+ANVIL tasks=62158 dependencies=253 roots=8640 products=198
+ANVIL step=0
+ANVIL equalized update rel_l2=0.0043587749 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000722074853 max_abs=3.06346919e-07
+ANVIL parameter shadow rel_l2=7.24349851e-05 max_abs=3.36915255e-05
+ANVIL equalized update rel_l2=0.00436991454 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000687571235 max_abs=2.6714406e-07
+ANVIL parameter shadow rel_l2=7.27853427e-05 max_abs=4.49232757e-05
+ANVIL equalized update rel_l2=0.00464773762 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000758217267 max_abs=3.67072062e-07
+ANVIL parameter shadow rel_l2=7.72084618e-05 max_abs=4.49232757e-05
+ANVIL equalized update rel_l2=0.00443391537 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000715752044 max_abs=2.87618604e-07
+ANVIL parameter shadow rel_l2=7.36081987e-05 max_abs=3.36915255e-05
+ANVIL equalized update rel_l2=0.00418653675 max_abs=0.00244140625
+ANVIL lane energy rel_l2=0.000686101909 max_abs=2.86105205e-07
+ANVIL parameter shadow rel_l2=6.95757387e-05 max_abs=5.61531633e-05
+ANVIL equalized update rel_l2=0.00417773605 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000694108173 max_abs=4.20361175e-07
+ANVIL parameter shadow rel_l2=6.94596112e-05 max_abs=3.36915255e-05
+ANVIL equalized update rel_l2=0.00389782895 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.00284170209 max_abs=1.75507739e-06
+ANVIL parameter shadow rel_l2=6.38384267e-05 max_abs=3.36915255e-05
+ANVIL equalized update rel_l2=0.00398222695 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.00297117848 max_abs=2.18000787e-06
+ANVIL parameter shadow rel_l2=6.52990207e-05 max_abs=3.36915255e-05
+ANVIL equalized update rel_l2=0.00574524685 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000556417069 max_abs=7.19810487e-08
+ANVIL parameter shadow rel_l2=4.97670315e-05 max_abs=4.4927001e-05
+ANVIL equalized update rel_l2=0.00552890236 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000549472835 max_abs=7.54807843e-08
+ANVIL parameter shadow rel_l2=4.79184193e-05 max_abs=4.4927001e-05
+ANVIL equalized update rel_l2=0.00545986014 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000502936467 max_abs=6.79683581e-08
+ANVIL parameter shadow rel_l2=4.72927336e-05 max_abs=4.49232757e-05
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00480235504 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000421177622 max_abs=3.64118023e-07
+ANVIL parameter shadow rel_l2=3.12236557e-05 max_abs=1.75796449e-05
+ANVIL equalized update rel_l2=0.00439782588 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000378213641 max_abs=2.68715667e-07
+ANVIL parameter shadow rel_l2=5.73216413e-05 max_abs=3.51555645e-05
+ANVIL equalized update rel_l2=0.00441267471 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000376611482 max_abs=2.91678589e-07
+ANVIL parameter shadow rel_l2=8.60294286e-05 max_abs=3.95551324e-05
+ANVIL equalized update rel_l2=0.00419465845 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000367611257 max_abs=3.2549724e-07
+ANVIL parameter shadow rel_l2=0.000108951368 max_abs=7.03111291e-05
+ANVIL equalized update rel_l2=0.0043183998 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000359504703 max_abs=3.09868483e-07
+ANVIL parameter shadow rel_l2=0.000140327822 max_abs=8.7890774e-05
+ANVIL equalized update rel_l2=0.00431117465 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000374915406 max_abs=3.71481292e-07
+ANVIL parameter shadow rel_l2=0.000168117634 max_abs=0.000105466694
+ANVIL equalized update rel_l2=0.00392745043 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.00141133741 max_abs=1.64554513e-06
+ANVIL parameter shadow rel_l2=0.000176059694 max_abs=9.22866166e-05
+ANVIL equalized update rel_l2=0.00387462703 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.00138436028 max_abs=1.682929e-06
+ANVIL parameter shadow rel_l2=0.000198656468 max_abs=0.000105468556
+ANVIL equalized update rel_l2=0.00540746148 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000275436584 max_abs=6.5920176e-08
+ANVIL parameter shadow rel_l2=0.000165047755 max_abs=0.000158205628
+ANVIL equalized update rel_l2=0.00524073216 max_abs=0.00219726562
+ANVIL lane energy rel_l2=0.000253169891 max_abs=6.40502549e-08
+ANVIL parameter shadow rel_l2=0.000177802524 max_abs=0.000197754009
+ANVIL equalized update rel_l2=0.00531620766 max_abs=0.00219726562
+ANVIL lane energy rel_l2=0.000251411742 max_abs=6.28642738e-08
+ANVIL parameter shadow rel_l2=0.000198304492 max_abs=0.000217530876
+ANVIL step=2
+ANVIL equalized update rel_l2=0.00410800777 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000252270706 max_abs=3.1341915e-07
+ANVIL parameter shadow rel_l2=1.18629854e-05 max_abs=5.85988164e-06
+ANVIL equalized update rel_l2=0.00443405342 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000323915778 max_abs=4.58210707e-07
+ANVIL parameter shadow rel_l2=2.56688849e-05 max_abs=1.56275928e-05
+ANVIL equalized update rel_l2=0.00448807553 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000288009494 max_abs=4.44008037e-07
+ANVIL parameter shadow rel_l2=3.88540801e-05 max_abs=2.34376639e-05
+ANVIL equalized update rel_l2=0.0043787578 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000264370359 max_abs=3.94298695e-07
+ANVIL parameter shadow rel_l2=5.0491984e-05 max_abs=2.34395266e-05
+ANVIL equalized update rel_l2=0.00436917641 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000285954948 max_abs=4.83851181e-07
+ANVIL parameter shadow rel_l2=6.30380377e-05 max_abs=3.90633941e-05
+ANVIL equalized update rel_l2=0.0043544259 max_abs=0.001953125
+ANVIL lane energy rel_l2=0.000268022572 max_abs=3.88856279e-07
+ANVIL parameter shadow rel_l2=7.53862583e-05 max_abs=4.68753278e-05
+ANVIL equalized update rel_l2=0.00398274891 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000837379602 max_abs=1.65388337e-06
+ANVIL parameter shadow rel_l2=7.87020466e-05 max_abs=4.10228968e-05
+ANVIL equalized update rel_l2=0.00408520355 max_abs=0.00146484375
+ANVIL lane energy rel_l2=0.000858471038 max_abs=1.67434337e-06
+ANVIL parameter shadow rel_l2=9.22964204e-05 max_abs=4.68753278e-05
+ANVIL equalized update rel_l2=0.00450423806 max_abs=0.00219726562
+ANVIL lane energy rel_l2=0.000155661544 max_abs=6.23258529e-08
+ANVIL parameter shadow rel_l2=6.11525171e-05 max_abs=7.90953636e-05
+ANVIL equalized update rel_l2=0.00438480744 max_abs=0.00219726562
+ANVIL lane energy rel_l2=0.000150575515 max_abs=6.00048224e-08
+ANVIL parameter shadow rel_l2=6.61674267e-05 max_abs=8.7890774e-05
+ANVIL equalized update rel_l2=0.00428615935 max_abs=0.00219726562
+ANVIL lane energy rel_l2=0.00014618567 max_abs=5.1673851e-08
+ANVIL parameter shadow rel_l2=7.11041009e-05 max_abs=9.66796651e-05
+ANVIL timing_workers=132
+ANVIL persistent+reset repeated_steps median_ms=15.970384 samples_ms= 15.666400 15.773824 16.240353 16.018944 15.986752 16.077568 15.917600 16.344769 15.633632 15.954016
+ANVIL timing_workers=264
+ANVIL persistent+reset repeated_steps median_ms=11.387008 samples_ms= 11.489536 11.159328 10.810784 11.636032 11.284480 11.496768 11.025312 11.615648 10.794944 11.719616
+ANVIL timing_workers=528
+ANVIL persistent+reset repeated_steps median_ms=9.626848 samples_ms= 9.694560 10.184576 9.593184 8.822144 9.614848 8.833824 10.213344 9.638848 9.087168 9.669792
+ANVIL separate repeated_steps median_ms=16.175137 samples_ms= 16.179008 16.144800 16.110624 16.248447 16.171265 16.254881 16.133921 16.158943 16.210367 16.263103
+ANVIL serial CUDA-graph repeated_steps median_ms=15.882368 samples_ms= 15.931584 15.832352 15.956512 15.848128 15.854144 15.880160 15.884576 15.935776 15.951584 15.836576
+ANVIL concurrent CUDA-graph repeated_steps median_ms=4.273184 samples_ms= 4.279808 4.285088 4.273600 4.272768 4.272032 4.265472 4.263232 4.299136 4.300928 4.255776
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+
+$ make -C /workspace/cuda sanitize BIN=anvil CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./anvil --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ANVIL idle_ns=1024
+ANVIL batch=3 workers=3 pattern=0
+ANVIL matrix rows=17 cols=33 split=0
+ANVIL matrix rows=33 cols=17 split=0
+ANVIL matrix rows=17 cols=17 split=0
+ANVIL tasks=152 dependencies=69 roots=3 products=54
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=5.20318378e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.93558859e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.83463464e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.74051453e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.09008785e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=9.53933353e-09 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=1.94294596e-08 max_abs=9.31322575e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0.00817729591 max_abs=0.00634765625
+ANVIL lane energy rel_l2=0.00228436415 max_abs=7.97100365e-05
+ANVIL parameter shadow rel_l2=0.000451144754 max_abs=7.61672854e-05
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=1 workers=1 pattern=1
+ANVIL matrix rows=31 cols=65 split=0
+ANVIL tasks=98 dependencies=23 roots=2 products=18
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL RECIPE LIMITATION rows=1 cols=1 pattern=0: native and independent reference both produce 1/1 non-finite updates; no clamp applied
+ANVIL RECIPE LIMITATION rows=17 cols=33 pattern=2: native and independent reference both produce 561/561 non-finite updates; no clamp applied
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL batch=2 workers=17 pattern=0
+ANVIL matrix rows=1024 cols=17 split=0
+ANVIL matrix rows=1025 cols=17 split=1
+ANVIL tasks=2381 dependencies=46 roots=35 products=36
+ANVIL step=0
+ANVIL equalized update rel_l2=0.000568586622 max_abs=0.00048828125
+ANVIL lane energy rel_l2=0.000203256371 max_abs=3.80074198e-07
+ANVIL parameter shadow rel_l2=8.14349317e-06 max_abs=1.12354755e-05
+ANVIL equalized update rel_l2=0.00730047284 max_abs=0.00512695312
+ANVIL lane energy rel_l2=0.00475073883 max_abs=7.20110256e-06
+ANVIL parameter shadow rel_l2=0.00010538983 max_abs=0.000117920339
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00500108127 max_abs=0.0009765625
+ANVIL lane energy rel_l2=0.00180307109 max_abs=1.79035123e-06
+ANVIL parameter shadow rel_l2=2.80408695e-05 max_abs=8.7916851e-06
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.70510967e-08 max_abs=2.91038305e-11
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0.000354944 max_abs=0.00048828125
+ANVIL lane energy rel_l2=7.29807229e-05 max_abs=4.55795089e-07
+ANVIL parameter shadow rel_l2=8.84623229e-07 max_abs=1.95391476e-06
+ANVIL equalized update rel_l2=3.95125101e-05 max_abs=0.000122070312
+ANVIL lane energy rel_l2=3.18696482e-06 max_abs=2.86090653e-08
+ANVIL parameter shadow rel_l2=1.98715898e-07 max_abs=9.76026058e-07
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./anvil --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ANVIL idle_ns=1024
+ANVIL batch=3 workers=3 pattern=0
+ANVIL matrix rows=17 cols=33 split=0
+ANVIL matrix rows=33 cols=17 split=0
+ANVIL matrix rows=17 cols=17 split=0
+ANVIL tasks=152 dependencies=69 roots=3 products=54
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=5.20318378e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.93558859e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.83463464e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.74051453e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.09008785e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=9.53933353e-09 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=1.94294596e-08 max_abs=9.31322575e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0.00817729591 max_abs=0.00634765625
+ANVIL lane energy rel_l2=0.00228436415 max_abs=7.97100365e-05
+ANVIL parameter shadow rel_l2=0.000451144754 max_abs=7.61672854e-05
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=1 workers=1 pattern=1
+ANVIL matrix rows=31 cols=65 split=0
+ANVIL tasks=98 dependencies=23 roots=2 products=18
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL RECIPE LIMITATION rows=1 cols=1 pattern=0: native and independent reference both produce 1/1 non-finite updates; no clamp applied
+ANVIL RECIPE LIMITATION rows=17 cols=33 pattern=2: native and independent reference both produce 561/561 non-finite updates; no clamp applied
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL batch=2 workers=17 pattern=0
+ANVIL matrix rows=1024 cols=17 split=0
+ANVIL matrix rows=1025 cols=17 split=1
+ANVIL tasks=2381 dependencies=46 roots=35 products=36
+ANVIL step=0
+ANVIL equalized update rel_l2=0.000568586622 max_abs=0.00048828125
+ANVIL lane energy rel_l2=0.000203256371 max_abs=3.80074198e-07
+ANVIL parameter shadow rel_l2=8.14349317e-06 max_abs=1.12354755e-05
+ANVIL equalized update rel_l2=0.00730047284 max_abs=0.00512695312
+ANVIL lane energy rel_l2=0.00475073883 max_abs=7.20110256e-06
+ANVIL parameter shadow rel_l2=0.00010538983 max_abs=0.000117920339
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00500108127 max_abs=0.0009765625
+ANVIL lane energy rel_l2=0.00180307109 max_abs=1.79035123e-06
+ANVIL parameter shadow rel_l2=2.80408695e-05 max_abs=8.7916851e-06
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.70510967e-08 max_abs=2.91038305e-11
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0.000354944 max_abs=0.00048828125
+ANVIL lane energy rel_l2=7.29807229e-05 max_abs=4.55795089e-07
+ANVIL parameter shadow rel_l2=8.84623229e-07 max_abs=1.95391476e-06
+ANVIL equalized update rel_l2=3.95125101e-05 max_abs=0.000122070312
+ANVIL lane energy rel_l2=3.18696482e-06 max_abs=2.86090653e-08
+ANVIL parameter shadow rel_l2=1.98715898e-07 max_abs=9.76026058e-07
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./anvil --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ANVIL idle_ns=1024
+ANVIL batch=3 workers=3 pattern=0
+ANVIL matrix rows=17 cols=33 split=0
+ANVIL matrix rows=33 cols=17 split=0
+ANVIL matrix rows=17 cols=17 split=0
+ANVIL tasks=152 dependencies=69 roots=3 products=54
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=5.20318378e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.93558859e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.83463464e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.74051453e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.09008785e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=9.53933353e-09 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=1.94294596e-08 max_abs=9.31322575e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0.00817729591 max_abs=0.00634765625
+ANVIL lane energy rel_l2=0.00228436415 max_abs=7.97100365e-05
+ANVIL parameter shadow rel_l2=0.000451144754 max_abs=7.61672854e-05
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=1 workers=1 pattern=1
+ANVIL matrix rows=31 cols=65 split=0
+ANVIL tasks=98 dependencies=23 roots=2 products=18
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL RECIPE LIMITATION rows=1 cols=1 pattern=0: native and independent reference both produce 1/1 non-finite updates; no clamp applied
+ANVIL RECIPE LIMITATION rows=17 cols=33 pattern=2: native and independent reference both produce 561/561 non-finite updates; no clamp applied
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL batch=2 workers=17 pattern=0
+ANVIL matrix rows=1024 cols=17 split=0
+ANVIL matrix rows=1025 cols=17 split=1
+ANVIL tasks=2381 dependencies=46 roots=35 products=36
+ANVIL step=0
+ANVIL equalized update rel_l2=0.000568586622 max_abs=0.00048828125
+ANVIL lane energy rel_l2=0.000203256371 max_abs=3.80074198e-07
+ANVIL parameter shadow rel_l2=8.14349317e-06 max_abs=1.12354755e-05
+ANVIL equalized update rel_l2=0.00730047284 max_abs=0.00512695312
+ANVIL lane energy rel_l2=0.00475073883 max_abs=7.20110256e-06
+ANVIL parameter shadow rel_l2=0.00010538983 max_abs=0.000117920339
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00500108127 max_abs=0.0009765625
+ANVIL lane energy rel_l2=0.00180307109 max_abs=1.79035123e-06
+ANVIL parameter shadow rel_l2=2.80408695e-05 max_abs=8.7916851e-06
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.70510967e-08 max_abs=2.91038305e-11
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0.000354944 max_abs=0.00048828125
+ANVIL lane energy rel_l2=7.29807229e-05 max_abs=4.55795089e-07
+ANVIL parameter shadow rel_l2=8.84623229e-07 max_abs=1.95391476e-06
+ANVIL equalized update rel_l2=3.95125101e-05 max_abs=0.000122070312
+ANVIL lane energy rel_l2=3.18696482e-06 max_abs=2.86090653e-08
+ANVIL parameter shadow rel_l2=1.98715898e-07 max_abs=9.76026058e-07
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./anvil --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ANVIL idle_ns=1024
+ANVIL batch=3 workers=3 pattern=0
+ANVIL matrix rows=17 cols=33 split=0
+ANVIL matrix rows=33 cols=17 split=0
+ANVIL matrix rows=17 cols=17 split=0
+ANVIL tasks=152 dependencies=69 roots=3 products=54
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=5.20318378e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.93558859e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.83463464e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.74051453e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=3.09008785e-08 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=9.53933353e-09 max_abs=4.65661287e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=1.94294596e-08 max_abs=9.31322575e-10
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL equalized update rel_l2=0.00817729591 max_abs=0.00634765625
+ANVIL lane energy rel_l2=0.00228436415 max_abs=7.97100365e-05
+ANVIL parameter shadow rel_l2=0.000451144754 max_abs=7.61672854e-05
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL batch=1 workers=1 pattern=1
+ANVIL matrix rows=31 cols=65 split=0
+ANVIL tasks=98 dependencies=23 roots=2 products=18
+ANVIL step=0
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=1
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+ANVIL RECIPE LIMITATION rows=1 cols=1 pattern=0: native and independent reference both produce 1/1 non-finite updates; no clamp applied
+ANVIL RECIPE LIMITATION rows=17 cols=33 pattern=2: native and independent reference both produce 561/561 non-finite updates; no clamp applied
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=0 max_abs=0
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL batch=2 workers=17 pattern=0
+ANVIL matrix rows=1024 cols=17 split=0
+ANVIL matrix rows=1025 cols=17 split=1
+ANVIL tasks=2381 dependencies=46 roots=35 products=36
+ANVIL step=0
+ANVIL equalized update rel_l2=0.000568586622 max_abs=0.00048828125
+ANVIL lane energy rel_l2=0.000203256371 max_abs=3.80074198e-07
+ANVIL parameter shadow rel_l2=8.14349317e-06 max_abs=1.12354755e-05
+ANVIL equalized update rel_l2=0.00730047284 max_abs=0.00512695312
+ANVIL lane energy rel_l2=0.00475073883 max_abs=7.20110256e-06
+ANVIL parameter shadow rel_l2=0.00010538983 max_abs=0.000117920339
+ANVIL step=1
+ANVIL equalized update rel_l2=0.00500108127 max_abs=0.0009765625
+ANVIL lane energy rel_l2=0.00180307109 max_abs=1.79035123e-06
+ANVIL parameter shadow rel_l2=2.80408695e-05 max_abs=8.7916851e-06
+ANVIL equalized update rel_l2=0 max_abs=0
+ANVIL lane energy rel_l2=2.70510967e-08 max_abs=2.91038305e-11
+ANVIL parameter shadow rel_l2=0 max_abs=0
+ANVIL step=2
+ANVIL equalized update rel_l2=0.000354944 max_abs=0.00048828125
+ANVIL lane energy rel_l2=7.29807229e-05 max_abs=4.55795089e-07
+ANVIL parameter shadow rel_l2=8.84623229e-07 max_abs=1.95391476e-06
+ANVIL equalized update rel_l2=3.95125101e-05 max_abs=0.000122070312
+ANVIL lane energy rel_l2=3.18696482e-06 max_abs=2.86090653e-08
+ANVIL parameter shadow rel_l2=1.98715898e-07 max_abs=9.76026058e-07
+ANVIL PASS: independent numerical oracle, exact state update, task visits, staged/production/all-family replay
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb1ELb0EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 0, 'STL': 0}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb0EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 0, 'STL': 0}

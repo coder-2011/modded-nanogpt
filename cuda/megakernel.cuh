@@ -8,6 +8,7 @@
 #include "qkv.cuh"
 #include "bf16_gemm.cuh"
 #include "anvil.cuh"
+#include "attention_post.cuh"
 
 namespace nano {
 
@@ -73,6 +74,27 @@ struct Task {
     TaskKind kind = TaskKind::matmul;
 };
 
+struct AttentionLayerSetup {
+    const float *scalars;
+    Matmul *ops;
+    BF16Matmul *bf16_ops;
+    QKVTransform *qkv;
+    int forwards;
+};
+
+__device__ __forceinline__ void setup_attention_layer(const AttentionLayerSetup &op) {
+    if (threadIdx.x == 0) {
+        const float *s = op.scalars;
+        float scaled_weight = s[1] * s[3];
+        for (int i = 0; i < op.forwards; ++i) op.ops[i].scale = s[0] * scaled_weight;
+        op.ops[op.forwards].scale = s[2] * s[0];
+        op.ops[op.forwards + 1].scale = s[2] * scaled_weight;
+        op.bf16_ops[0].b_scale = s[4] * s[5];
+        op.bf16_ops[1].b_scale = s[4] * s[5];
+        op.qkv->grad_scale = s[2];
+    }
+}
+
 struct Group {
     int expected, begin, end;
 };
@@ -91,6 +113,9 @@ struct Graph {
     const QKVTransform *qkv = nullptr;
     const BF16Matmul *bf16_ops = nullptr;
     const Anvil *anvil = nullptr;
+    const AttentionLayerSetup *layer_setup = nullptr;
+    const AttentionPost *attention_post = nullptr;
+    const ProjectionGradient *projection_gradient = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -165,6 +190,19 @@ __device__ __forceinline__ void signal(Graph g, int id) {
 #endif
     }
 }
+
+#ifdef NANO_COOP_PUBLISH
+__device__ __forceinline__ void prepare_publication(Graph g, int id, int *range) {
+    range[1] = 0;
+    if (id < 0) return;
+    const Group group = g.groups[id];
+    if (add_acq_rel(g.counters + id, 1) + 1 == group.expected) {
+        range[0] = group.begin;
+        range[1] = group.end - group.begin;
+        range[2] = atomicAdd(g.state + 1, range[1]);
+    }
+}
+#endif
 
 __device__ __forceinline__ void mma(float *d, const uint32_t *a, const uint32_t *b,
                                     bool a_e5 = false, bool b_e5 = false) {
@@ -404,7 +442,7 @@ __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task,
 }
 
 template <bool Audited = false, bool Full = false, bool WithAttention = false, bool WithBF16 = false,
-          bool WithAnvil = false>
+          bool WithAnvil = false, bool WithProjection = false>
 __global__
 #ifdef NANO_MIN_BLOCKS
 __launch_bounds__(threads, NANO_MIN_BLOCKS)
@@ -413,8 +451,12 @@ __launch_bounds__(threads)
 #endif
     void megakernel(Graph g) {
     static_assert(!WithAnvil || WithBF16, "ANVIL requires BF16 matrix tasks");
+    static_assert(!WithProjection || (WithBF16 && WithAttention), "attention projections require BF16 and attention tasks");
     __shared__ __align__(1024) fp8 scratch[WithBF16 ? bf16_scratch_bytes : scratch_bytes];
     __shared__ int next, ticket;
+#ifdef NANO_COOP_PUBLISH
+    __shared__ int publication[6];
+#endif
     if (threadIdx.x == 0)
         ticket = -1;
     for (;;) {
@@ -434,11 +476,20 @@ __launch_bounds__(threads)
         const Task task = g.tasks[task_id];
         if (Audited && threadIdx.x == 0) {
             atomicAdd(g.audit + task_id, 1);
-            if (!WithAttention && !WithBF16 && !WithAnvil && task.op >= 4 &&
+            if (!WithAttention && !WithBF16 && !WithAnvil && !WithProjection && task.op >= 4 &&
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithAnvil && task.kind == TaskKind::anvil) {
+        if (WithProjection && task.kind == TaskKind::layer_setup) {
+            const AttentionLayerSetup op = g.layer_setup[task.op];
+            setup_attention_layer(op);
+        } else if (WithProjection && task.kind == TaskKind::attention_post) {
+            const AttentionPost op = g.attention_post[task.op];
+            execute_attention_post(op, AttentionPostStage(task.k_begin), task.row, task.col);
+        } else if (WithProjection && task.kind == TaskKind::projection_gradient) {
+            const ProjectionGradient op = g.projection_gradient[task.op];
+            projection_gradient_tile(op, task.col != 0, task.row, reinterpret_cast<float *>(scratch));
+        } else if (WithAnvil && task.kind == TaskKind::anvil) {
             const Anvil op = g.anvil[task.op];
             anvil_tile(op, AnvilStage(task.col), task.row, reinterpret_cast<float *>(scratch));
         } else if (WithBF16 && task.kind == TaskKind::bf16_matmul) {
@@ -463,16 +514,31 @@ __launch_bounds__(threads)
         __threadfence();
         __syncthreads();
         if (threadIdx.x == 0) {
-            if (Audited && !WithAttention && !WithBF16 && !WithAnvil && task.op == 0)
+            if (Audited && !WithAttention && !WithBF16 && !WithAnvil && !WithProjection && task.op == 0)
                 add_acq_rel(g.audit + g.task_count, 1);
             // Task descriptors are immutable. Reload only on the controller so
             // every worker lane need not retain both signals across the math.
             const volatile Task *finished = g.tasks + task_id;
+#ifdef NANO_COOP_PUBLISH
+            prepare_publication(g, finished->signal[0], publication);
+            prepare_publication(g, finished->signal[1], publication + 3);
+#else
             signal(g, finished->signal[0]);
             signal(g, finished->signal[1]);
+#endif
             add_acq_rel(g.state + 2, -1);
         }
         __syncthreads();
+#ifdef NANO_COOP_PUBLISH
+        // The controller acquires all producer stores; the block barrier passes
+        // that visibility to the threads publishing the reserved queue range.
+        for (int group = 0; group < 2; ++group) {
+            int *range = publication + group * 3;
+            for (int i = threadIdx.x; i < range[1]; i += threads)
+                release(g.queue + range[2] + i, range[0] + i + 1);
+        }
+        __syncthreads();
+#endif
     }
 }
 

@@ -105,7 +105,7 @@
       }
     ]
   },
-  "native_status": "MLP, attention/QKV, BF16 GEMM and rank-local ANVIL update components; full model routing, optimizer integration and Adam, loss and training loop remain incomplete",
+  "native_status": "MLP, connected training-attention layer with projections and gates, BF16 GEMM and rank-local ANVIL update components; BF16 evaluation, full model routing, optimizer integration and Adam, loss and training loop remain incomplete",
   "architecture": {
     "model_dim": 768,
     "mlp_width": 2816,

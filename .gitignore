@@ -32,3 +32,5 @@ cuda/bf16
 cuda/bf16_control
 cuda/anvil
 cuda/anvil_idle64
+cuda/layer
+cuda/layer_serial

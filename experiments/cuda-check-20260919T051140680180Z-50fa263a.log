@@ -1,0 +1,2831 @@
+sha256 19268173553074de214a7ac544ea56cec49185b8a59fba8955f4c097ba8d3513 Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 e812d0893018744a951d04067f35048daff4799b3f4404eb146ba669f81f4d45 attention.cuh
+sha256 dddedc9fe55b96a0e67e8a3b2f46adc55317e34af0d20278914fe0cd819566cf attention_layer.cu
+sha256 695c4567bd0491798eca2523d60012dfb9b59e3e22e925826af6260032b9e585 attention_layer.cuh
+sha256 d150c6816360a510f69d26627bd4efa712e46f182c78771f531ea1c9d6ab75ff attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 a1239425b438fa85c0628a25decee76f394162bc6c3aae2cfa03cc6e5fd1c3d9 bf16.cu
+sha256 538793c348108ea29c361401d86cd7855e8b16db9f441ec824bbd6b4f927e12b bf16_gemm.cuh
+sha256 6eb043b0deec41825720d6ba638468d9aec856a01cb2b9dec6c23a28ffe49a81 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 219c901e311706ae16a88ab0ee9d40e0f478ebbdef922c6046ed80f445bbf93f megakernel.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 05:12:19 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:8B:00.0 Off |                    0 |
+| N/A   28C    P0             69W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda layer
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 attention_layer.cu -lcublas -o layer
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32776 bytes smem
+ptxas info    : Compile time = 1523.153 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 1739.330 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 1566.140 ms
+ptxas info    : Compiling entry function '_Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE' for 'sm_90a'
+ptxas info    : Function properties for _Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 42 registers, used 0 barriers
+ptxas info    : Compile time = 40.389 ms
+ptxas info    : Compiling entry function '_Z12staged_layerN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_layerN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 153 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 904.287 ms
+ptxas info    : Compiling entry function '_Z11reset_layerN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z11reset_layerN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.986 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/layer
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=3.06923426e-09 max_abs=2.98023224e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=6.94432858e-07 max_abs=2.98023224e-07
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=0 max_abs=0
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=4.88203435e-08 max_abs=3.46274603e-08
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.29222483e-07 max_abs=4.17821667e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=-3.23335,0,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=6.539667e-09 max_abs=2.98023224e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=6.77155276e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=6.94364714e-07 max_abs=2.98023224e-07
+LAYER BF16 projection/product rel_l2=5.68507447e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.69481163e-08 max_abs=2.64909532e-08
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=1.01008134e-07 max_abs=5.55708211e-08
+LAYER post finite difference rel_l2=1.72712644e-10 max_abs=2.69082534e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.40356398e-08 max_abs=1.34513286e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=-1.13187,-6.09522,2.03174
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=6.79174326e-09 max_abs=1.49011612e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.41820413e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=6.93424098e-07 max_abs=3.27825546e-07
+LAYER BF16 projection/product rel_l2=7.2764157e-08 max_abs=8.94069672e-08
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.45899384e-08 max_abs=2.38418579e-08
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=6.8870776e-08 max_abs=1.96950379e-08
+LAYER post finite difference rel_l2=1.31273555e-08 max_abs=2.23990999e-09
+LAYER post Y rel_l2=3.78894041e-08 max_abs=4.83904765e-08
+LAYER post dY rel_l2=2.53509277e-08 max_abs=1.32815292e-08
+LAYER post dV side rel_l2=9.08764965e-08 max_abs=6.14286567e-09
+LAYER post dAlpha rel_l2=4.86954134e-08 max_abs=1.63622656e-08
+LAYER post dGate rel_l2=8.29228069e-08 max_abs=8.51047268e-08
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=6.37381712e-07 max_abs=3.31092323e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=-0.413031,0.3548,-0.118267
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=6.96046273e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.60353579e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=6.93388255e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=1.18387813e-07 max_abs=2.98023224e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.71338264e-08 max_abs=2.64909532e-08
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=1.07680383e-07 max_abs=8.55694409e-08
+LAYER post finite difference rel_l2=7.45278173e-08 max_abs=6.39860397e-09
+LAYER post Y rel_l2=2.95364934e-08 max_abs=6.5532169e-08
+LAYER post dY rel_l2=2.56656427e-08 max_abs=1.623576e-08
+LAYER post dV side rel_l2=7.77842075e-08 max_abs=1.3649372e-08
+LAYER post dAlpha rel_l2=7.30367812e-08 max_abs=3.67762823e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.88080407e-08 max_abs=7.90304924e-08
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=-0.935539,5.53436,-1.84479
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.22878565e-09 max_abs=2.98023224e-08
+LAYER FP8 projection/product rel_l2=8.65432741e-08 max_abs=3.7252903e-08
+LAYER BF16 projection/product rel_l2=8.14953908e-07 max_abs=5.06639481e-07
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.13960427e-08 max_abs=4.47034836e-08
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=7.04930939e-08 max_abs=9.85256088e-08
+LAYER attention dQ rel_l2=1.41071684e-07 max_abs=7.95711205e-09
+LAYER attention dK rel_l2=1.43556018e-07 max_abs=9.24984112e-09
+LAYER attention dV rel_l2=1.16910419e-07 max_abs=5.25622427e-08
+LAYER post finite difference rel_l2=6.2466632e-11 max_abs=8.19255774e-12
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=4.63552961e-08 max_abs=4.47034836e-08
+LAYER QKV backward rel_l2=3.43989202e-08 max_abs=2.05056753e-08
+LAYER gain gradients rel_l2=3.38072373e-07 max_abs=4.3522606e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=3339 gains=1.05594,0.779896,0.606586
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.13973724e-08 max_abs=8.94069672e-08
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.95203761e-08 max_abs=2.81447295e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.89028508e-07 max_abs=1.91527244e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=3339 gains=0,1.01322,0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=6.77539435e-09 max_abs=2.98023224e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=6.93424098e-07 max_abs=3.27825546e-07
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=0 max_abs=0
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=6.8727501e-08 max_abs=1.54058059e-08
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=9.69739694e-08 max_abs=5.73719277e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=3339 gains=-0.591622,0,-0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+LAYER BENCH tokens=16384 qk=64 v=128 paired=1 window=128 documents=19 workers=528 tasks=214131 stages=15
+LAYER main-shape bitwise replay PASS; caches supplied externally, setup and queue reset timed
+LAYER separate stages median_ms=17.712000 samples_ms= 17.761568 17.790880 17.712896 17.711136 17.712864 17.687328 17.714144 17.703424 17.707296 17.700289
+LAYER CUDA Graph median_ms=17.672688 samples_ms= 17.674463 17.670912 17.650368 17.662975 17.688128 17.686848 17.653055 17.669376 17.677536 17.682272
+LAYER persistent+reset workers=132 median_ms=89.039795 samples_ms= 88.795036 89.168930 88.870430 88.957283 88.683136 89.138435 89.353378 89.122307 89.402847 88.949059
+LAYER persistent+reset workers=264 median_ms=77.535137 samples_ms= 78.058563 77.590111 77.480164 77.358559 77.152863 78.340736 77.801857 77.450012 76.940994 77.672958
+LAYER persistent+reset workers=528 median_ms=77.496704 samples_ms= 77.321983 76.602303 78.486717 76.971199 77.876511 78.455772 77.686432 77.429443 77.371071 77.563965
+LAYER BENCH tokens=16384 qk=64 v=64 paired=0 window=128 documents=19 workers=528 tasks=210339 stages=15
+LAYER main-shape bitwise replay PASS; caches supplied externally, setup and queue reset timed
+LAYER separate stages median_ms=16.018400 samples_ms= 16.006720 16.023392 15.997888 16.013409 15.961824 16.032703 16.029600 16.023745 16.060961 15.993760
+LAYER CUDA Graph median_ms=16.005712 samples_ms= 16.010464 15.992192 16.000959 16.027489 15.934944 16.012224 15.861888 16.023008 16.030912 15.964640
+LAYER persistent+reset workers=132 median_ms=80.875599 samples_ms= 80.835487 80.620255 82.270691 81.599236 80.915710 81.466019 80.585182 80.712708 79.824547 81.907326
+LAYER persistent+reset workers=264 median_ms=75.866432 samples_ms= 75.917183 76.133057 75.902946 74.781311 75.971039 75.780830 75.829918 76.193085 75.496033 75.291168
+LAYER persistent+reset workers=528 median_ms=76.201057 samples_ms= 76.631104 76.820541 75.872765 76.693054 75.117500 76.200928 76.201187 75.744576 76.905602 75.172195
+LAYER BENCH tokens=16384 qk=128 v=128 paired=0 window=384 documents=19 workers=528 tasks=217923 stages=15
+LAYER main-shape bitwise replay PASS; caches supplied externally, setup and queue reset timed
+LAYER separate stages median_ms=36.714769 samples_ms= 36.695393 36.678272 36.746815 36.701794 36.705921 36.746624 36.721024 36.709633 36.719906 36.729633
+LAYER CUDA Graph median_ms=36.688368 samples_ms= 36.644768 36.687840 36.727711 36.653057 36.703938 36.685150 36.684704 36.691360 36.688896 36.707680
+LAYER persistent+reset workers=132 median_ms=138.261955 samples_ms= 137.620865 138.446854 138.363098 138.236160 138.336197 138.378311 138.147003 138.287750 137.849762 138.178940
+LAYER persistent+reset workers=264 median_ms=92.921200 samples_ms= 93.170685 92.805603 93.112671 92.896477 92.814270 93.383331 92.945923 92.868896 93.317825 91.989021
+LAYER persistent+reset workers=528 median_ms=80.487984 samples_ms= 81.601822 80.045921 81.076126 80.906754 80.049538 80.975296 79.950691 80.292892 80.683075 79.926460
+
+$ make -C /workspace/cuda layer_cooperative
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 -DNANO_COOP_PUBLISH=1 attention_layer.cu -lcublas -o layer_cooperative
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1328.945 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1566.878 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1535.534 ms
+ptxas info    : Compiling entry function '_Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE' for 'sm_90a'
+ptxas info    : Function properties for _Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 42 registers, used 0 barriers
+ptxas info    : Compile time = 40.513 ms
+ptxas info    : Compiling entry function '_Z12staged_layerN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_layerN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 153 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 865.267 ms
+ptxas info    : Compiling entry function '_Z11reset_layerN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z11reset_layerN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 2.009 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/layer_cooperative
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=3.06923426e-09 max_abs=2.98023224e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=6.94432858e-07 max_abs=2.98023224e-07
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=0 max_abs=0
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=4.88203435e-08 max_abs=3.46274603e-08
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.29222483e-07 max_abs=4.17821667e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=-3.23335,0,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=6.539667e-09 max_abs=2.98023224e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=6.77155276e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=6.94364714e-07 max_abs=2.98023224e-07
+LAYER BF16 projection/product rel_l2=5.68507447e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.69481163e-08 max_abs=2.64909532e-08
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=1.01008134e-07 max_abs=5.55708211e-08
+LAYER post finite difference rel_l2=1.72712644e-10 max_abs=2.69082534e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.40356398e-08 max_abs=1.34513286e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=-1.13187,-6.09522,2.03174
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=6.79174326e-09 max_abs=1.49011612e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.41820413e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=6.93424098e-07 max_abs=3.27825546e-07
+LAYER BF16 projection/product rel_l2=7.2764157e-08 max_abs=8.94069672e-08
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.45899384e-08 max_abs=2.38418579e-08
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=6.8870776e-08 max_abs=1.96950379e-08
+LAYER post finite difference rel_l2=1.31273555e-08 max_abs=2.23990999e-09
+LAYER post Y rel_l2=3.78894041e-08 max_abs=4.83904765e-08
+LAYER post dY rel_l2=2.53509277e-08 max_abs=1.32815292e-08
+LAYER post dV side rel_l2=9.08764965e-08 max_abs=6.14286567e-09
+LAYER post dAlpha rel_l2=4.86954134e-08 max_abs=1.63622656e-08
+LAYER post dGate rel_l2=8.29228069e-08 max_abs=8.51047268e-08
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=6.37381712e-07 max_abs=3.31092323e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=-0.413031,0.3548,-0.118267
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=6.96046273e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.60353579e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=6.93388255e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=1.18387813e-07 max_abs=2.98023224e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.71338264e-08 max_abs=2.64909532e-08
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=1.07680383e-07 max_abs=8.55694409e-08
+LAYER post finite difference rel_l2=7.45278173e-08 max_abs=6.39860397e-09
+LAYER post Y rel_l2=2.95364934e-08 max_abs=6.5532169e-08
+LAYER post dY rel_l2=2.56656427e-08 max_abs=1.623576e-08
+LAYER post dV side rel_l2=7.77842075e-08 max_abs=1.3649372e-08
+LAYER post dAlpha rel_l2=7.30367812e-08 max_abs=3.67762823e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.88080407e-08 max_abs=7.90304924e-08
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=-0.935539,5.53436,-1.84479
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.22878565e-09 max_abs=2.98023224e-08
+LAYER FP8 projection/product rel_l2=8.65432741e-08 max_abs=3.7252903e-08
+LAYER BF16 projection/product rel_l2=8.14953908e-07 max_abs=5.06639481e-07
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.13960427e-08 max_abs=4.47034836e-08
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=7.04930939e-08 max_abs=9.85256088e-08
+LAYER attention dQ rel_l2=1.41071684e-07 max_abs=7.95711205e-09
+LAYER attention dK rel_l2=1.43556018e-07 max_abs=9.24984112e-09
+LAYER attention dV rel_l2=1.16910419e-07 max_abs=5.25622427e-08
+LAYER post finite difference rel_l2=6.2466632e-11 max_abs=8.19255774e-12
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=4.63552961e-08 max_abs=4.47034836e-08
+LAYER QKV backward rel_l2=3.43989202e-08 max_abs=2.05056753e-08
+LAYER gain gradients rel_l2=3.38072373e-07 max_abs=4.3522606e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=3339 gains=1.05594,0.779896,0.606586
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.13973724e-08 max_abs=8.94069672e-08
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.95203761e-08 max_abs=2.81447295e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.89028508e-07 max_abs=1.91527244e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=3339 gains=0,1.01322,0
+LAYER step=2 grad_scale=0.00195312 qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=6.77539435e-09 max_abs=2.98023224e-08
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=6.93424098e-07 max_abs=3.27825546e-07
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=0 max_abs=0
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=6.8727501e-08 max_abs=1.54058059e-08
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=9.69739694e-08 max_abs=5.73719277e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=3339 gains=-0.591622,0,-0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+LAYER BENCH tokens=16384 qk=64 v=128 paired=1 window=128 documents=19 workers=528 tasks=214131 stages=15
+LAYER main-shape bitwise replay PASS; caches supplied externally, setup and queue reset timed
+LAYER separate stages median_ms=17.693280 samples_ms= 17.729248 17.677313 17.673697 17.714464 17.733248 17.712896 17.688543 17.695648 17.681215 17.690912
+LAYER CUDA Graph median_ms=17.672112 samples_ms= 17.671232 17.672993 17.670719 17.660160 17.654560 17.664320 17.686304 17.695168 17.679968 17.681696
+LAYER persistent+reset workers=132 median_ms=51.090591 samples_ms= 51.087360 51.002945 51.051041 51.093822 51.075455 51.031742 51.210655 51.163200 51.110432 51.110817
+LAYER persistent+reset workers=264 median_ms=25.905392 samples_ms= 25.923168 25.905600 25.913025 25.891457 25.935520 25.912704 25.901825 25.892799 25.905184 25.896929
+LAYER persistent+reset workers=528 median_ms=16.485744 samples_ms= 16.476320 16.501184 16.484928 16.490080 16.486561 16.493664 16.472383 16.483072 16.506336 16.484257
+LAYER BENCH tokens=16384 qk=64 v=64 paired=0 window=128 documents=19 workers=528 tasks=210339 stages=15
+LAYER main-shape bitwise replay PASS; caches supplied externally, setup and queue reset timed
+LAYER separate stages median_ms=16.071120 samples_ms= 16.179264 16.161760 16.187424 16.112192 16.056543 15.955136 16.021120 16.063969 16.042048 16.078272
+LAYER CUDA Graph median_ms=16.025344 samples_ms= 16.024864 16.025824 16.045313 15.961280 16.033632 16.034016 16.063616 15.985312 15.992320 15.911072
+LAYER persistent+reset workers=132 median_ms=42.430895 samples_ms= 42.473537 42.492126 42.458271 42.432095 42.424320 42.421631 42.402527 42.429695 42.434559 42.423744
+LAYER persistent+reset workers=264 median_ms=23.696544 samples_ms= 23.644545 23.591488 23.684736 23.730433 23.695328 23.686527 23.697760 23.733215 23.736160 23.709215
+LAYER persistent+reset workers=528 median_ms=15.173632 samples_ms= 15.226752 15.156640 15.187968 15.214912 15.213824 15.159296 15.151008 15.188768 15.151040 15.158304
+LAYER BENCH tokens=16384 qk=128 v=128 paired=0 window=384 documents=19 workers=528 tasks=217923 stages=15
+LAYER main-shape bitwise replay PASS; caches supplied externally, setup and queue reset timed
+LAYER separate stages median_ms=36.724913 samples_ms= 36.731998 36.690849 36.708065 36.731487 36.724480 36.725346 36.720322 36.778210 36.723202 36.727360
+LAYER CUDA Graph median_ms=36.696527 samples_ms= 36.699966 36.721535 36.858398 36.651489 36.693089 36.666721 36.721249 36.700226 36.680546 36.679134
+LAYER persistent+reset workers=132 median_ms=101.537697 samples_ms= 101.498398 101.543266 101.597473 101.673820 101.532127 101.478050 101.509987 101.477821 101.558014 101.612610
+LAYER persistent+reset workers=264 median_ms=51.580145 samples_ms= 51.560673 51.581409 51.578880 51.557152 51.539906 51.593086 51.603775 51.601631 51.651966 51.563774
+LAYER persistent+reset workers=528 median_ms=33.357344 samples_ms= 33.373631 33.367519 33.314495 33.356544 33.358143 33.330624 33.370850 33.325760 33.353184 33.372097
+
+$ make -C /workspace/cuda sanitize BIN=layer CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./layer --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./layer --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./layer --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./layer --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+$ make -C /workspace/cuda sanitize BIN=layer_cooperative CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./layer_cooperative --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./layer_cooperative --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./layer_cooperative --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./layer_cooperative --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.4093446e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=4.70215688e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=5.76665435e-08 max_abs=2.98023224e-08
+LAYER BF16 projection/product rel_l2=3.62269103e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.27792098e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=3.45282275e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.51718774e-08 max_abs=1.2290348e-07
+LAYER attention dQ rel_l2=1.40535736e-07 max_abs=1.36548369e-08
+LAYER attention dK rel_l2=1.43214968e-07 max_abs=1.67575466e-08
+LAYER attention dV rel_l2=8.26797795e-08 max_abs=6.38305552e-08
+LAYER post finite difference rel_l2=1.11374605e-10 max_abs=3.19460014e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=3.03500978e-08 max_abs=2.53485053e-08
+LAYER gain gradients rel_l2=1.35507136e-07 max_abs=6.68092014e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=3.5775,3.06184,2.38143
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.28008155e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=3.43593215e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.28857342e-08 max_abs=1.86018949e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=4.2334817e-08 max_abs=1.67840511e-07
+LAYER PASS tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=1683 gains=0,3.9646,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.1730639e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.34623631e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=6.33514308e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=7.09053124e-08 max_abs=8.94069672e-08
+LAYER BF16 projection/product rel_l2=7.4705293e-07 max_abs=1.66893005e-06
+LAYER BF16 projection/product rel_l2=7.27824221e-07 max_abs=3.87430191e-07
+LAYER BF16 projection/product rel_l2=5.70808966e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.89268062e-08 max_abs=2.2145326e-07
+LAYER attention dQ rel_l2=1.58155333e-07 max_abs=4.17302575e-08
+LAYER attention dK rel_l2=1.74671502e-07 max_abs=7.26893417e-08
+LAYER attention dV rel_l2=1.40849155e-07 max_abs=1.08551039e-07
+LAYER post finite difference rel_l2=1.71272211e-10 max_abs=2.93027824e-11
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.30403778e-08 max_abs=4.83995836e-08
+LAYER gain gradients rel_l2=5.61291217e-08 max_abs=4.68672049e-07
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0.925956,-7.49602,-5.83024
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.08543526e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=3.22285998e-08 max_abs=2.38418579e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=5.73781154e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.54259625e-08 max_abs=3.07167384e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=2.20469986e-07 max_abs=1.18481503e-06
+LAYER PASS tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=2607 gains=0,-5.37404,-0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.44855726e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=9.44478576e-09 max_abs=5.96046448e-08
+LAYER FP8 projection/product rel_l2=9.65925117e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=7.91676169e-07 max_abs=1.01327896e-06
+LAYER BF16 projection/product rel_l2=7.31660526e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=7.24097938e-08 max_abs=1.1920929e-07
+LAYER Q transform rel_l2=8.46468544e-11 max_abs=1.32713467e-08
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.99414694e-08 max_abs=1.84638636e-07
+LAYER attention dQ rel_l2=1.59669328e-07 max_abs=3.63943266e-08
+LAYER attention dK rel_l2=1.59571123e-07 max_abs=2.74852966e-08
+LAYER attention dV rel_l2=1.14505248e-07 max_abs=5.06381395e-08
+LAYER post finite difference rel_l2=4.27454703e-08 max_abs=3.04102199e-09
+LAYER post Y rel_l2=3.8315918e-08 max_abs=6.1550389e-08
+LAYER post dY rel_l2=2.58664899e-08 max_abs=1.46500708e-08
+LAYER post dV side rel_l2=8.67993825e-08 max_abs=7.99930241e-09
+LAYER post dAlpha rel_l2=6.33252993e-08 max_abs=3.28990931e-08
+LAYER post dGate rel_l2=7.37930098e-08 max_abs=8.86135235e-08
+LAYER QKV backward rel_l2=4.54348191e-08 max_abs=4.67452492e-08
+LAYER gain gradients rel_l2=1.79683155e-07 max_abs=1.52463247e-07
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0.766214,0.822864,0.640006
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.38515872e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.18842134e-08 max_abs=1.78813934e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.81619352e-08 max_abs=3.96143801e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=3.8708015e-08 max_abs=8.35817746e-08
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=7.22878768e-08 max_abs=6.62164847e-08
+LAYER PASS tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=3339 gains=0,0.916011,0
+LAYER step=0 grad_scale=0.00390625 qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER FP8 projection/product rel_l2=3.50377165e-08 max_abs=1.78813934e-07
+LAYER FP8 projection/product rel_l2=7.8388928e-09 max_abs=1.1920929e-07
+LAYER FP8 projection/product rel_l2=5.43573835e-08 max_abs=5.96046448e-08
+LAYER BF16 projection/product rel_l2=3.65332762e-07 max_abs=8.34465027e-07
+LAYER BF16 projection/product rel_l2=7.2872947e-07 max_abs=4.76837158e-07
+LAYER BF16 projection/product rel_l2=1.16246681e-07 max_abs=3.57627869e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=4.35245593e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.19356184e-08 max_abs=2.90415083e-07
+LAYER attention dQ rel_l2=1.59643964e-07 max_abs=4.34072163e-08
+LAYER attention dK rel_l2=1.78119669e-07 max_abs=4.03273816e-08
+LAYER attention dV rel_l2=1.52478476e-07 max_abs=1.12573146e-07
+LAYER post finite difference rel_l2=5.62671761e-08 max_abs=5.0572145e-09
+LAYER post Y rel_l2=2.84683329e-08 max_abs=1.03651572e-07
+LAYER post dY rel_l2=2.55341341e-08 max_abs=1.6043388e-08
+LAYER post dV side rel_l2=7.76309995e-08 max_abs=2.69782699e-08
+LAYER post dAlpha rel_l2=9.21731294e-08 max_abs=9.39028747e-08
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=4.35108466e-08 max_abs=9.31553853e-08
+LAYER gain gradients rel_l2=5.58743323e-08 max_abs=4.2521242e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=1.50645,6.10158,4.74567
+LAYER step=1 grad_scale=0.0078125 qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER FP8 projection/product rel_l2=3.36245264e-08 max_abs=3.57627869e-07
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER FP8 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=1.17099083e-07 max_abs=4.76837158e-07
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.50864268e-08 max_abs=3.17127291e-07
+LAYER attention dQ rel_l2=0 max_abs=0
+LAYER attention dK rel_l2=0 max_abs=0
+LAYER attention dV rel_l2=0 max_abs=0
+LAYER post finite difference rel_l2=0 max_abs=0
+LAYER post Y rel_l2=2.93118752e-08 max_abs=1.66041965e-07
+LAYER post dY rel_l2=0 max_abs=0
+LAYER post dV side rel_l2=0 max_abs=0
+LAYER post dAlpha rel_l2=0 max_abs=0
+LAYER post dGate rel_l2=0 max_abs=0
+LAYER QKV backward rel_l2=0 max_abs=0
+LAYER gain gradients rel_l2=1.37526438e-07 max_abs=7.4694497e-07
+LAYER PASS tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=2499 gains=0,5.43128,0
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=3.60833166e-08 max_abs=3.91155481e-08
+LAYER post finite difference rel_l2=1.85895639e-10 max_abs=8.0913054e-12
+POST FLOOR PASS width=64 magnitude=0
+LAYER post floor output rel_l2=2.99250672e-08 max_abs=1.01800282e-07
+LAYER post floor dy rel_l2=2.36107418e-08 max_abs=1.48746096e-08
+LAYER post floor dv rel_l2=6.56801412e-08 max_abs=5.58414104e-06
+LAYER post floor alpha rel_l2=8.63144635e-08 max_abs=2.8718971e-12
+LAYER post floor gate rel_l2=7.29149566e-08 max_abs=6.45066693e-08
+LAYER post finite difference rel_l2=5.78648031e-10 max_abs=4.29604707e-09
+POST FLOOR PASS width=64 magnitude=1e-07
+LAYER post floor output rel_l2=3.06891589e-08 max_abs=1.0314935e-07
+LAYER post floor dy rel_l2=2.2906938e-08 max_abs=1.61864218e-08
+LAYER post floor dv rel_l2=6.63425532e-08 max_abs=1.96870355e-05
+LAYER post floor alpha rel_l2=7.96221705e-08 max_abs=1.15766821e-08
+LAYER post floor gate rel_l2=7.02039541e-08 max_abs=8.38237441e-08
+LAYER post finite difference rel_l2=7.75261111e-11 max_abs=2.43123299e-09
+POST FLOOR PASS width=64 magnitude=0.0001
+LAYER post floor output rel_l2=0 max_abs=0
+LAYER post floor dy rel_l2=0 max_abs=0
+LAYER post floor dv rel_l2=0 max_abs=0
+LAYER post floor alpha rel_l2=0 max_abs=0
+LAYER post floor gate rel_l2=5.05347909e-08 max_abs=4.84287739e-08
+LAYER post finite difference rel_l2=3.58788573e-10 max_abs=2.40873987e-11
+POST FLOOR PASS width=128 magnitude=0
+LAYER post floor output rel_l2=3.0019841e-08 max_abs=1.25901957e-07
+LAYER post floor dy rel_l2=2.29663259e-08 max_abs=1.45209163e-08
+LAYER post floor dv rel_l2=6.62622887e-08 max_abs=6.89125616e-06
+LAYER post floor alpha rel_l2=1.19717018e-07 max_abs=4.51562212e-12
+LAYER post floor gate rel_l2=8.65931681e-08 max_abs=8.69950587e-08
+LAYER post finite difference rel_l2=5.6660528e-10 max_abs=4.32228831e-09
+POST FLOOR PASS width=128 magnitude=1e-07
+LAYER post floor output rel_l2=3.05602996e-08 max_abs=1.24438105e-07
+LAYER post floor dy rel_l2=2.3655224e-08 max_abs=1.52673232e-08
+LAYER post floor dv rel_l2=6.47493137e-08 max_abs=1.58353694e-05
+LAYER post floor alpha rel_l2=1.00940448e-07 max_abs=8.26714971e-09
+LAYER post floor gate rel_l2=9.33086573e-08 max_abs=8.99286673e-08
+LAYER post finite difference rel_l2=2.25150734e-10 max_abs=4.58210181e-09
+POST FLOOR PASS width=128 magnitude=0.0001
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 1, 'STL': 1}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 0, 'STL': 0}

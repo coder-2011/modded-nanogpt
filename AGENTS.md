@@ -43,15 +43,30 @@ different workloads against each other is not an optimization comparison.
 `--experiment=attention --sanitize` checks the mixed-operation persistent worker:
 Q/K RMS normalization and rotary transforms, causal variable-length attention,
 attention backward, and FP8 QKV gradient packing. `--experiment=attention
---profile` captures its current scalar attention baseline. It is not a complete
-attention layer: projection/gain gradients, XSA and head gating remain unwired.
+--profile` captures its current scalar attention baseline. This older component
+test does not include projection/gain gradients, XSA or head gating.
 The dependent GEMM in this test is a scheduler sentinel, not an output projection.
 FP64 mathematical checks do not establish parity with the pinned FA3 binary.
 
 `--experiment=bf16 --ablate --sanitize` compares the native BF16 GEMM's coalesced
 and original strided loaders on the same GPU. This primitive preserves the
 scaled-weight and split-product rounding needed by O projections and ANVIL,
-but the complete projection/gain path is not wired yet.
+and the connected training-attention layer uses it for O and projection gradients.
+
+`--experiment=layer --sanitize` checks the connected training-attention layer:
+cached FP8 QKV projections, QK normalization/RoPE, attention, XSA/head gates,
+O projection and backward through every component and gain. Independent CUDA/C++
+references check each materialized boundary; graph reuse changes device gains
+and scales, including zero gains. It still accepts normalized FP8 caches and an
+external output gradient. BF16 evaluation projections, the enclosing model graph,
+and exact pinned compiled-trainer/FA3 parity remain unimplemented or unverified.
+Its task graph uses 64x64 matrix tiles and four-token/head tasks with whole-stage
+dependencies. Cooperative queue publication is the layer default. Use
+`--experiment=layer --ablate --sanitize` to compare it with the single-thread
+publication control on the same GPU, including four sanitizers for each.
+`--experiment=layer --profile` captures the combined worker at 16384 tokens.
+The layer benchmark also checks a CUDA-Graph control with the same four-block
+occupancy target. Use the faster control when assessing persistent performance.
 
 `--experiment=anvil --ablate --sanitize` checks the rank-local optimizer update
 body, including velocity state, six matrix maps, lane-energy normalization and
