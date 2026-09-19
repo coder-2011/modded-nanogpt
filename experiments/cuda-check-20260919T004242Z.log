@@ -1,0 +1,25 @@
+sha256 c924fed04444f5205aece16a2d19304aa3f831fe9091dd6662586d91d83c9efd Makefile
+sha256 4113465180b81928ffc5f220c33b5553d9f62d9c8a353c2329b4af6eb86e25f2 bench.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 85a48816328b4330d2e63b18d711f198b93337cff64025ce59f447a18b8194d8 megakernel.cuh
+sha256 1e60e596259c398d6e79c820972a52cff81b4aff11fe69e7b09ed37d5bef8534 quantize.cu
+sha256 92d38abbe5577032b948499755bf4a169baaaa6bec7e411288e4a9676b7812d8 tokenizer.cpp
+sha256 8bb828361e7996398fbc73631ca172fa04d0d11e53f51e002067e5e81ea760a0 validate.cu
+$ git -C /opt/snaptokens rev-parse HEAD
+2d0f8695f21688a35dd79f3c38372c847c159a99
+
+$ curl -fL https://huggingface.co/openai-community/gpt2/resolve/607a30d783dfa663caf39e06633721c8d4cfcd7e/tokenizer.json -o /workspace/cuda/gpt2.json
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100   288  100   288    0     0   2051      0 --:--:-- --:--:-- --:--:--  2071
+
+100 1323k  100 1323k    0     0  8272k      0 --:--:-- --:--:-- --:--:-- 8272k
+
+$ sha256sum /workspace/cuda/gpt2.json
+8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6  /workspace/cuda/gpt2.json
+
+$ g++ -std=c++17 -O3 /workspace/cuda/tokenizer.cpp -I/usr/local/include/python3.12 /install/lib/libpython3.12.so -Wl,-rpath,/install/lib -o /workspace/cuda/tokenizer
+/usr/bin/ld: cannot find /install/lib/libpython3.12.so: No such file or directory
+collect2: error: ld returned 1 exit status

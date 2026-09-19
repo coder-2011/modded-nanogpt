@@ -1,0 +1,33 @@
+sha256 29c3709d1af844971813a226d6c9cb190e20f3f95729233518fc566f078fd6de Makefile
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 85a48816328b4330d2e63b18d711f198b93337cff64025ce59f447a18b8194d8 megakernel.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 9716a415e381593a50b27ac83ebe9415758ae3b957609c91ac04c0be54e4ab01 transport.cu
+sha256 8bb828361e7996398fbc73631ca172fa04d0d11e53f51e002067e5e81ea760a0 validate.cu
+$ git -C /opt/snaptokens rev-parse HEAD
+2d0f8695f21688a35dd79f3c38372c847c159a99
+
+$ curl -fL https://huggingface.co/openai-community/gpt2/resolve/607a30d783dfa663caf39e06633721c8d4cfcd7e/tokenizer.json -o /workspace/cuda/gpt2.json
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100   288  100   288    0     0   2083      0 --:--:-- --:--:-- --:--:--  2102
+
+100 1323k  100 1323k    0     0  8292k      0 --:--:-- --:--:-- --:--:-- 8292k
+
+$ sha256sum /workspace/cuda/gpt2.json
+8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6  /workspace/cuda/gpt2.json
+
+$ g++ -std=c++17 -O3 /workspace/cuda/tokenizer.cpp -I/usr/local/include/python3.12 /usr/local/lib/libpython3.12.so -Wl,-rpath,/usr/local/lib -o /workspace/cuda/tokenizer
+
+$ /workspace/cuda/tokenizer /usr/local/bin/python /workspace/cuda/gpt2.json
+exact GPT-2 parity: documents=2058 bytes=1436446 tokens=604224
+snaptokens_flat median_ms=9.06851 MB_per_s=158.399 samples_ms= 8.53607 9.06175 8.79944 8.97114 9.07527 9.10329 9.59595 8.36514 9.19349 9.20396
+tiktoken_batch median_ms=215.702 MB_per_s=6.65941 samples_ms= 213.047 213.747 200.328 217.657 253.111 267.846 235.261 204.646 209.898 217.659
+tiktoken_serial median_ms=175.034 MB_per_s=8.20666 samples_ms= 175.785 173.111 172.679 174.381 175.687 174.105 176.507 176.245 180.201 173.53
+preprocessing_speed_ratio=19.3013 against fastest tiktoken control; warm repeated synthetic corpus, includes C++ ID materialization, 4 allocated CPUs
+wrote /tmp/nanogpt-snaptokens-check.bin tokens=606282 documents=2058
+PASS: Snaptokens preprocessing; official pretokenized benchmark shards unchanged

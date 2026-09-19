@@ -1,7 +1,8 @@
 import os
 import sys
 
-def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gradient_chunk=4096):
+def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gradient_chunk=4096,
+               experiment=""):
     """Build and validate the native CUDA graph; Python only launches processes."""
     import subprocess
     import hashlib
@@ -9,10 +10,24 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
     from pathlib import Path
 
     root = Path("/workspace/cuda") if Path("/workspace/cuda").exists() else Path(__file__).parent / "cuda"
-    binary = "validate_wgmma" if wgmma else "validate"
-    flags = (["--main-shapes"] if main_shapes else []) + [f"--gradient-chunk={gradient_chunk}"]
+    binary = experiment or ("validate_wgmma" if wgmma else "validate")
+    flags = [] if experiment else (["--main-shapes"] if main_shapes else []) + [f"--gradient-chunk={gradient_chunk}"]
     run = [str(root / binary)] + flags
     commands = [["nvidia-smi"], ["nvcc", "--version"], ["make", "-C", str(root), binary], run]
+    if experiment == "transport":
+        commands.insert(1, ["nvidia-smi", "topo", "-m"])
+    if experiment == "tokenizer":
+        import sysconfig
+        library = next(path for path in (Path(sys.base_prefix) / "lib" / sysconfig.get_config_var("LDLIBRARY"),
+                                        Path(sysconfig.get_config_var("LIBDIR")) / sysconfig.get_config_var("LDLIBRARY"))
+                       if path.is_file())
+        commands = [["git", "-C", "/opt/snaptokens", "rev-parse", "HEAD"],
+                    ["curl", "-fL", "https://huggingface.co/openai-community/gpt2/resolve/607a30d783dfa663caf39e06633721c8d4cfcd7e/tokenizer.json", "-o", str(root / "gpt2.json")],
+                    ["sha256sum", str(root / "gpt2.json")],
+                    ["g++", "-std=c++17", "-O3", str(root / "tokenizer.cpp"),
+                     "-I" + sysconfig.get_path("include"), str(library),
+                     "-Wl,-rpath," + str(library.parent), "-o", str(root / binary)],
+                    [str(root / binary), sys.executable, str(root / "gpt2.json")]]
     if ablate:
         if wgmma:
             raise ValueError("--ablate compares the accepted MMA implementation only")
@@ -26,9 +41,9 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
                             [f"--gradient-chunk={1024 if gradient_chunk == 4096 else 4096}"])
     if sanitize:
         commands.append(["make", "-C", str(root), "sanitize", f"BIN={binary}",
-                         f"CHECK_FLAGS=--gradient-chunk={gradient_chunk}"])
+                         "CHECK_FLAGS=" if experiment else f"CHECK_FLAGS=--gradient-chunk={gradient_chunk}"])
     hashes = "\n".join(f"sha256 {hashlib.sha256(p.read_bytes()).hexdigest()} {p.name}"
-                       for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh"} or p.name == "Makefile")
+                       for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh", ".cpp"} or p.name == "Makefile")
     print(hashes, flush=True)
     output = [hashes]
     for command in commands:
@@ -38,14 +53,21 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
         print(text, flush=True)
         output.append(text)
         if result.returncode:
+            if command == ["nvidia-smi", "topo", "-m"]:
+                output.append("Topology diagnostic unavailable; native peer-access checks remain required.")
+                continue
             return result.returncode, "\n".join(output)
+    if experiment in {"tokenizer", "transport"}:
+        return 0, "\n".join(output)
     sass = subprocess.check_output(["cuobjdump", "--dump-sass", str(root / binary)], text=True)
-    kernel = next(section for section in sass.split("Function : ") if "nano10megakernelILb0" in section.splitlines()[0])
-    counts = {instruction: len(re.findall(r"\b" + instruction + r"\b", kernel))
-              for instruction in ("HMMA", "HGMMA", "LDGSTS", "LDL", "STL")}
-    summary = f"Static SASS instruction counts for megakernel: {counts}"
-    print(summary, flush=True)
-    output.append(summary)
+    tag = "scaled_gemm" if experiment == "quantize" else "nano10megakernelILb0"
+    for kernel in (section for section in sass.split("Function : ")
+                   if section.splitlines() and tag in section.splitlines()[0]):
+        counts = {instruction: len(re.findall(r"\b" + instruction + r"\b", kernel))
+                  for instruction in ("HMMA", "HGMMA", "LDGSTS", "LDL", "STL")}
+        summary = f"Static SASS instruction counts for {kernel.splitlines()[0]}: {counts}"
+        print(summary, flush=True)
+        output.append(summary)
     return 0, "\n".join(output)
 
 
@@ -58,15 +80,22 @@ if "--cuda-check" in sys.argv:
     wgmma = "--wgmma" in sys.argv
     main_shapes = "--main-shapes" in sys.argv
     ablate = "--ablate" in sys.argv
+    experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
+    if experiment not in {"", "quantize", "transport", "tokenizer"}:
+        raise SystemExit("Unknown native experiment")
+    if experiment and (ablate or wgmma):
+        raise SystemExit("Native experiments do not use --ablate or --wgmma")
+    if experiment == "tokenizer" and sanitize:
+        raise SystemExit("The tokenizer experiment is CPU-only")
     gradient_chunk = next((int(arg.split("=", 1)[1]) for arg in sys.argv
                            if arg.startswith("--gradient-chunk=")),
                           1024 if "--stream-gradients" in sys.argv else 0 if wgmma else 4096)
     folder = Path(__file__).parent / "experiments"
     folder.mkdir(exist_ok=True)
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     with tarfile.open(folder / f"cuda-check-{stamp}-source.tar.gz", "w:gz") as archive:
         for source in sorted((Path(__file__).parent / "cuda").iterdir()):
-            if source.suffix in {".cu", ".cuh"} or source.name == "Makefile":
+            if source.suffix in {".cu", ".cuh", ".cpp"} or source.name == "Makefile":
                 archive.add(source, arcname=f"cuda/{source.name}")
         archive.add(__file__, arcname="train_gpt.py")
     if "--modal" in sys.argv:
@@ -76,15 +105,25 @@ if "--cuda-check" in sys.argv:
             raise SystemExit("Use uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal")
 
         image = (modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu24.04", add_python="3.12")
-                 .entrypoint([]).apt_install("make", "g++")
-                 .add_local_dir(Path(__file__).parent / "cuda", "/workspace/cuda"))
+                 .entrypoint([]).apt_install("make", "g++"))
+        if experiment == "tokenizer":
+            image = (image.apt_install("git", "curl", "pkg-config")
+                     .run_commands("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.91.1")
+                     .run_commands("git clone https://github.com/coder-2011/snaptokens.git /opt/snaptokens",
+                                   "git -C /opt/snaptokens checkout 2d0f8695f21688a35dd79f3c38372c847c159a99",
+                                   "PATH=/root/.cargo/bin:$PATH python -m pip install /opt/snaptokens tiktoken==0.12.0")
+                     .env({"RAYON_NUM_THREADS": "4"}))
+        if experiment == "transport":
+            image = image.apt_install("libnccl-dev=2.25.1-1+cuda12.8")
+        image = image.add_local_dir(Path(__file__).parent / "cuda", "/workspace/cuda")
         app = modal.App("nanogpt-cuda-megakernel")
-        remote_check = app.function(image=image, gpu="H100", cpu=4, timeout=1800,
+        gpu = None if experiment == "tokenizer" else "H100:2" if experiment == "transport" else "H100"
+        remote_check = app.function(image=image, gpu=gpu, cpu=4, timeout=1800,
                                     serialized=True)(cuda_check)
         with modal.enable_output(), app.run():
-            status, output = remote_check.remote(sanitize, wgmma, main_shapes, ablate, gradient_chunk)
+            status, output = remote_check.remote(sanitize, wgmma, main_shapes, ablate, gradient_chunk, experiment)
     else:
-        status, output = cuda_check(sanitize, wgmma, main_shapes, ablate, gradient_chunk)
+        status, output = cuda_check(sanitize, wgmma, main_shapes, ablate, gradient_chunk, experiment)
     log = folder / f"cuda-check-{stamp}.log"
     log.write_text(output)
     print(f"Saved {log}")

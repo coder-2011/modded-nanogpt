@@ -1,0 +1,62 @@
+✓ Initialized. View run at 
+https://modal.com/apps/naman-chetwani/main/ap-f1JY0K97seKZNUw8LZgoIM
+Building image im-wdGIosoqbQGEodiyGCVT0v
+
+=> Step 0: FROM base
+
+=> Step 1: RUN apt-get update
+Hit:1 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64  InRelease
+Hit:2 http://archive.ubuntu.com/ubuntu noble InRelease
+Hit:3 http://security.ubuntu.com/ubuntu noble-security InRelease
+Hit:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease
+Hit:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease
+Reading package lists...
+W: https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+
+=> Step 2: RUN apt-get install -y libnccl-dev
+Reading package lists...
+Building dependency tree...
+Reading state information...
+Some packages could not be installed. This may mean that you have
+requested an impossible situation or if you are using the unstable
+distribution that some required packages have not yet been created
+or been moved out of Incoming.
+The following information may help to resolve the situation:
+
+The following packages have unmet dependencies:
+ libnccl-dev : Depends: libnccl2 (= 2.31.2-1+cuda13.4) but 2.25.1-1+cuda12.8 is to be installed
+E: Unable to correct problems, you have held broken packages.
+Terminating task due to error: failed to run builder command "apt-get install -y libnccl-dev": container exit status: 100
+Runner failed with exit code: -1
+Stopping app - uncaught exception raised locally: RemoteError('Image build for im-wdGIosoqbQGEodiyGCVT0v failed. See build logs for more details.').
+Traceback (most recent call last):
+  File "/Users/namanchetwani/Projects/modded-nanogpt/train_gpt.py", line 115, in <module>
+    with modal.enable_output(), app.run():
+                                ^^^^^^^^^
+  File "/Users/namanchetwani/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/namanchetwani/.cache/uv/archive-v0/D7-crFee2MwhSD1E/lib/python3.12/site-packages/modal/app.py", line 419, in run
+    async with _run_app(
+               ^^^^^^^^^
+  File "/Users/namanchetwani/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/namanchetwani/.cache/uv/archive-v0/D7-crFee2MwhSD1E/lib/python3.12/site-packages/modal/runner.py", line 342, in _run_app
+    await _create_all_objects(running_app, local_app_state, load_context)
+  File "/Users/namanchetwani/.cache/uv/archive-v0/D7-crFee2MwhSD1E/lib/python3.12/site-packages/modal/runner.py", line 175, in _create_all_objects
+    await TaskContext.gather(*(_load(tag, obj) for tag, obj in indexed_objects.items()))
+  File "/Users/namanchetwani/.cache/uv/archive-v0/D7-crFee2MwhSD1E/lib/python3.12/site-packages/modal/_utils/async_utils.py", line 276, in gather
+    results = await asyncio.gather(*(tc.create_task(coro) for coro in coros))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/namanchetwani/.cache/uv/archive-v0/D7-crFee2MwhSD1E/lib/python3.12/site-packages/modal/runner.py", line 167, in _load
+    await resolver.load(obj, load_context, existing_object_id=existing_object_id)
+  File "/Users/namanchetwani/.cache/uv/archive-v0/D7-crFee2MwhSD1E/lib/python3.12/site-packages/modal/_utils/async_utils.py", line 276, in gather
+    results = await asyncio.gather(*(tc.create_task(coro) for coro in coros))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/namanchetwani/.cache/uv/archive-v0/D7-crFee2MwhSD1E/lib/python3.12/site-packages/modal/_utils/async_utils.py", line 276, in gather
+    results = await asyncio.gather(*(tc.create_task(coro) for coro in coros))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/namanchetwani/.cache/uv/archive-v0/D7-crFee2MwhSD1E/lib/python3.12/site-packages/modal/image.py", line 670, in _load
+    raise RemoteError(msg)
+modal.exception.RemoteError: Image build for im-wdGIosoqbQGEodiyGCVT0v failed. See build logs for more details.

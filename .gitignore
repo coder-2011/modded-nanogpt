@@ -10,3 +10,7 @@ cuda/validate_serial
 cuda/validate_baseline
 cuda/validate_k32
 cuda/validate_k64
+cuda/quantize
+cuda/transport
+cuda/tokenizer
+cuda/gpt2.json

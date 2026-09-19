@@ -324,6 +324,169 @@ Promotion requires:
 4. A complete training step with matching state transitions, then unchanged
    FineWeb validation and same-node multi-run 8-H100 comparisons.
 
+## Quantization, transport, IPC and tokenizer experiments
+
+These experiments are opt-in components, with computation and checks in
+CUDA/C++. `train_gpt.py` remains the only new Python entry point. None is enabled
+in the canonical trainer, and none establishes a training-time speedup.
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=quantize --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=transport --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=tokenizer
+```
+
+### FP8 scale granularity and inline quantization
+
+`cuda/quantize.cu` measures a BF16-input up-projection with M=16384, N=3072,
+K=768 on H100 HBM3. GPU min/max reductions choose symmetric E4M3 scales from
+`max(abs(min), abs(max))/448`. The five modes use one scale per operand
+(`layer`), per row, per 1x128 segment, per 64x128 tile, or per 64 whole rows.
+The inline 64x128 version loads BF16 into shared memory, reduces the range,
+quantizes into the existing swizzled FP8 layout, executes PTX MMA, and applies
+the scale before adding the next K partial, all in one launch. It recomputes
+an operand's scale in every output tile that consumes it.
+
+The unchanged arithmetic gate is relative L2 <=0.0002 against pedantic FP32
+cuBLAS on dequantized inputs. Separately, the synthetic quantization screen
+requires worst 64x128 input-tile relative L2 <=0.04 and original-BF16-output
+relative L2 <=0.06. These new screens do not weaken the arithmetic gate or
+replace validation loss. Min/max alone cannot establish output error for
+arbitrary dot products: cancellation depends on values, not just their range.
+This experiment selects scale granularity, not FP4/FP8/BF16 per-tile precision.
+
+Final evidence: `experiments/cuda-check-20260919T005618491600Z.log` and its source
+archive. Times include statistics, quantization and GEMM, with five warmups and
+ten CUDA-event samples over the same buffers. Clocks were not locked. Uniform
+inputs are normal(0,1); the stress distribution scales each input tile by
+`2^(((row/64)*7 + column/128)%25 - 12)`.
+
+| Method | Uniform total (ms) | Different tile ranges total (ms) | Stress screen |
+| --- | ---: | ---: | --- |
+| One scale per operand | 1.302192 | 1.301696 | Fail: some tiles become all zero |
+| One scale per row | 1.424752 | 1.402128 | Fail |
+| One scale per 1x128 segment | 4.493424 | 4.558720 | Pass |
+| One scale per 64x128 tile | 4.208240 | 4.216416 | Pass |
+| One scale per 64 rows | 1.305536 | 1.305872 | Fail |
+| Inline 64x128 quantization + MMA | 6.111824 | 6.092976 | Pass |
+| BF16 cuBLAS GEMM control | 0.120992 | 0.121008 | No quantization |
+
+All custom MMA arithmetic checks pass. Inline quantization produces bit-identical
+BF16 outputs to the separate tile path, including 65x97x160 ragged shapes and
+zero inputs. Memcheck, initcheck, racecheck and synccheck pass those small cases.
+The inline kernel uses 153 registers/thread, 16,432 static plus 32,768 dynamic
+shared bytes, three blocks/SM and zero spills; SASS contains HMMA. These custom
+kernels are much slower than the vendor BF16 control. No variant is promoted.
+
+### ZipServ-inspired lossless two-GPU transport
+
+The [ZipServ paper](https://arxiv.org/html/2603.17435v1) and
+[author implementation](https://github.com/HPMLL/ZipServ_ASPLOS26/tree/6f8a209bfe46b0905f90d61b0796e352147ff041)
+are the references; the checkout is `../ZipServ`. Its TCA-TBE method stores
+common BF16 exponents using three code bitmaps and retains full values for
+exceptions. The paper targets inference weight compression and fused decode/GEMM.
+It does not supply a drop-in training collective.
+
+`cuda/transport.cu` adapts that representation for transport. A GPU histogram
+chooses seven consecutive exponents. Every 64-value tile has three 64-bit
+bitmaps, byte payloads for common values, two-byte exceptions and a prefix-summed
+payload offset. The receiving GPU decodes directly into a BF16 two-rank sum.
+This is an independent transport experiment, not a reproduction of ZipGEMM.
+All 65,536 BF16 bit patterns round-trip exactly, including NaNs and signed zero;
+ragged lengths 1/63/64/65/65543 are covered by all four CUDA sanitizers.
+Cross-GPU reductions are also compared bit-for-bit with dense and NCCL controls,
+but the sanitizer runs cover the local codec, not NCCL or cross-process IPC.
+
+The initial successful two-H100 run is
+`experiments/cuda-check-20260919T004805Z.log`. For 28,311,552 BF16 values (56.6 MB),
+normal-distributed data compressed to 73% of original bytes, including metadata.
+Dense peer-copy plus sum took 0.249 ms, NCCL reduce 0.206 ms, precompressed
+transfer plus decode/sum 0.298 ms, and recompress plus transfer plus decode/sum
+0.916 ms. Broad exponent inputs expanded to 120% of the original bytes. The
+timing includes metadata copies, payload-size readback, launches and synchronization
+on both GPUs. Buffers are reused, with five warmups and ten host-clock samples.
+The smaller 4.7 MB case also loses to both dense controls. Compression is rejected
+for this path; reduced wire bytes alone do not establish a speedup.
+
+The final source check is `experiments/cuda-check-20260919T005726550234Z.log`,
+with NCCL 2.25.1 and an explicit producer synchronization for initial IPC
+population timing. It again passes correctness and all four codec sanitizers.
+The 56.6 MB normal-data case measured 0.251/0.215/0.315/0.923 ms for dense peer,
+NCCL, precompressed, and recompressed paths respectively, preserving the result.
+
+### CUDA IPC and the fast weight-loading reference
+
+The closest match to the user's description is SGLang's
+[Weight Cache Daemon](https://www.lmsys.org/blog/2026-08-21-sglang-fast-recovery).
+It keeps post-processed weights alive in a separate GPU process and supplies
+CUDA IPC mappings to replacement engines. The article reports roughly 495 s
+to 0.63 s for one model's weight-loading phase. The exact 80x claim was not
+located. Populating the cache still incurs the initial load.
+
+The native IPC experiment actually starts a separate executable with
+`posix_spawn`, passes CUDA memory/event handles over a Unix socket, waits for
+producer readiness and verifies every value on the GPU. The owner retains its
+allocation until the consumer unmaps and acknowledges completion. It compares
+first mapping, repeated mapping, retained mapping, and pinned H2D copies, with
+the same full-buffer verification included in each timed path.
+
+In the initial successful transport log, a synthetic 248 MB weight buffer took
+4.702 ms for pinned H2D plus read, 2.982 ms for remap plus read, and 0.221 ms for
+reading an already mapped allocation. First mapping plus read took 4.979 ms.
+For a 98 KB token batch, remapping cost 0.202 ms versus only 0.028 ms for pinned
+H2D. Mapping a whole resident shard once is the useful candidate; mapping each
+batch is rejected. These are GPU-resident synthetic buffer tests, not disk I/O,
+checkpoint restoration or measured trainer data-pipeline improvements. Training
+weights change each step and require an ownership/update protocol before sharing.
+
+In the final source check, retained-map reads were similar at 0.223 ms for
+248 MB, but pinned H2D took 9.186 ms and repeated remapping 3.414 ms, with several
+large remapping outliers. Initial population including synchronization took
+32.540 ms. Host transfer performance varies across Modal placements, and the
+topology diagnostic did not resolve that variation. Both complete sample sets
+are retained; a fixed 80x or end-to-end loader improvement is not claimed.
+
+### Snaptokens preprocessing
+
+`cuda/tokenizer.cpp` invokes the existing Rust extension through the CPython C
+API; it adds no Python files. Modal builds
+[Snaptokens 2d0f8695](https://github.com/coder-2011/snaptokens/tree/2d0f8695f21688a35dd79f3c38372c847c159a99)
+using Rust 1.91.1. The GPT-2 tokenizer JSON is pinned to Hugging Face revision
+`607a30d783dfa663caf39e06633721c8d4cfcd7e`, SHA256
+`8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6`.
+The control is tiktoken 0.12.0, testing both four-thread batch and serial APIs.
+
+Final evidence: `experiments/cuda-check-20260919T005618491592Z.log`. Exact token
+IDs and document offsets match for all 2058 documents / 604224 tokens, including
+empty strings, whitespace, contractions, numbers, Unicode and the end-of-text
+token. Five warmups precede ten measured calls, including C++ output
+materialization. On this deliberately repeated synthetic 1.44 MB corpus,
+Snaptokens took 9.069 ms, tiktoken serial 175.034 ms, and tiktoken batch 215.702 ms.
+The 19.3x ratio is against the faster tiktoken control and reflects warm caches
+and these API/output representations. It is not a general text-throughput claim.
+
+The binary can also preprocess JSONL `text` records:
+`tokenizer PYTHON_EXECUTABLE TOKENIZER_JSON INPUT_JSONL OUTPUT_BIN`. It emits the
+NanoGPT shard header and uint16 tokens with document-start 50256, then verifies
+a disk round-trip. The test shard contains 606282 tokens including document
+starts. Official FineWeb shards are already GPT-2-tokenized and remain unchanged;
+the main loop has no raw-text tokenization to accelerate. Existing vocabulary
+tables also remain unchanged.
+
+### Artifact handling and failed attempts
+
+Initial tokenizer linking failed because standalone Python reported a nonexistent
+`/install/lib`; the wrapper now resolves the actual libpython location. The first
+transport image could not mix CUDA 13 NCCL headers with its pinned CUDA 12 runtime;
+both now use NCCL 2.25.1. Failure logs are retained. Concurrent experiments also
+exposed second-resolution artifact name collisions at `20260919T005444Z`; the
+wrapper now uses microseconds, and both experiments were rerun into unique final
+archives. The two original full outputs are retained as
+`quant-inline-before-control.log` and `tokenizer-serial-control-first.log`; the
+shared timestamp archive is not used as final evidence. Modal's topology-matrix
+diagnostic is unavailable; this is recorded separately from mandatory native
+peer-access checks.
+
 ## Work still required
 
 - Finish the Hopper compute pipeline: validated WGMMA/TMA, independent load/compute/

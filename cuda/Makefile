@@ -1,6 +1,13 @@
 NVCC ?= nvcc
 NVFLAGS := -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills
 BIN ?= validate
+.DEFAULT_GOAL := validate
+
+quantize: quantize.cu bench.cuh megakernel.cuh hopper.cuh
+	$(NVCC) $(NVFLAGS) quantize.cu -lcublas -o $@
+
+transport: transport.cu bench.cuh
+	$(NVCC) $(NVFLAGS) transport.cu -lnccl -o $@
 
 validate: validate.cu megakernel.cuh hopper.cuh
 	$(NVCC) $(NVFLAGS) validate.cu -lcublas -o $@
@@ -34,4 +41,4 @@ sanitize: $(BIN)
 	compute-sanitizer --tool synccheck --error-exitcode 1 ./$(BIN) --quick $(CHECK_FLAGS)
 
 clean:
-	rm -f validate validate_wgmma validate_fifo validate_serial validate_baseline validate_k32 validate_k64
+	rm -f validate validate_wgmma validate_fifo validate_serial validate_baseline validate_k32 validate_k64 quantize transport tokenizer
