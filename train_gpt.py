@@ -1,7 +1,7 @@
 import os
 import sys
 
-def cuda_check(sanitize=False, wgmma=False, main_shapes=False):
+def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gradient_chunk=4096):
     """Build and validate the native CUDA graph; Python only launches processes."""
     import subprocess
     import hashlib
@@ -10,10 +10,23 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False):
 
     root = Path("/workspace/cuda") if Path("/workspace/cuda").exists() else Path(__file__).parent / "cuda"
     binary = "validate_wgmma" if wgmma else "validate"
-    run = [str(root / binary)] + (["--main-shapes"] if main_shapes else [])
+    flags = (["--main-shapes"] if main_shapes else []) + [f"--gradient-chunk={gradient_chunk}"]
+    run = [str(root / binary)] + flags
     commands = [["nvidia-smi"], ["nvcc", "--version"], ["make", "-C", str(root), binary], run]
+    if ablate:
+        if wgmma:
+            raise ValueError("--ablate compares the accepted MMA implementation only")
+        for variant in ("validate_k32", "validate_k64", "validate_fifo"):
+            commands.extend([["make", "-C", str(root), variant],
+                             [str(root / variant)] + flags])
+        if gradient_chunk:
+            commands.append([str(root / binary)] + (["--main-shapes"] if main_shapes else []) +
+                            ["--gradient-chunk=0"])
+            commands.append([str(root / binary)] + (["--main-shapes"] if main_shapes else []) +
+                            [f"--gradient-chunk={1024 if gradient_chunk == 4096 else 4096}"])
     if sanitize:
-        commands.append(["make", "-C", str(root), "sanitize", f"BIN={binary}"])
+        commands.append(["make", "-C", str(root), "sanitize", f"BIN={binary}",
+                         f"CHECK_FLAGS=--gradient-chunk={gradient_chunk}"])
     hashes = "\n".join(f"sha256 {hashlib.sha256(p.read_bytes()).hexdigest()} {p.name}"
                        for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh"} or p.name == "Makefile")
     print(hashes, flush=True)
@@ -27,7 +40,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False):
         if result.returncode:
             return result.returncode, "\n".join(output)
     sass = subprocess.check_output(["cuobjdump", "--dump-sass", str(root / binary)], text=True)
-    kernel = next(section for section in sass.split("Function : ") if "nano10megakernel" in section.splitlines()[0])
+    kernel = next(section for section in sass.split("Function : ") if "nano10megakernelILb0" in section.splitlines()[0])
     counts = {instruction: len(re.findall(r"\b" + instruction + r"\b", kernel))
               for instruction in ("HMMA", "HGMMA", "LDGSTS", "LDL", "STL")}
     summary = f"Static SASS instruction counts for megakernel: {counts}"
@@ -44,6 +57,10 @@ if "--cuda-check" in sys.argv:
     sanitize = "--sanitize" in sys.argv
     wgmma = "--wgmma" in sys.argv
     main_shapes = "--main-shapes" in sys.argv
+    ablate = "--ablate" in sys.argv
+    gradient_chunk = next((int(arg.split("=", 1)[1]) for arg in sys.argv
+                           if arg.startswith("--gradient-chunk=")),
+                          1024 if "--stream-gradients" in sys.argv else 0 if wgmma else 4096)
     folder = Path(__file__).parent / "experiments"
     folder.mkdir(exist_ok=True)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -65,9 +82,9 @@ if "--cuda-check" in sys.argv:
         remote_check = app.function(image=image, gpu="H100", cpu=4, timeout=1800,
                                     serialized=True)(cuda_check)
         with modal.enable_output(), app.run():
-            status, output = remote_check.remote(sanitize, wgmma, main_shapes)
+            status, output = remote_check.remote(sanitize, wgmma, main_shapes, ablate, gradient_chunk)
     else:
-        status, output = cuda_check(sanitize, wgmma, main_shapes)
+        status, output = cuda_check(sanitize, wgmma, main_shapes, ablate, gradient_chunk)
     log = folder / f"cuda-check-{stamp}.log"
     log.write_text(output)
     print(f"Saved {log}")

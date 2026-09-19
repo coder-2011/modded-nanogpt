@@ -5,3 +5,8 @@ logs/
 .DS_Store
 cuda/validate
 cuda/validate_wgmma
+cuda/validate_fifo
+cuda/validate_serial
+cuda/validate_baseline
+cuda/validate_k32
+cuda/validate_k64

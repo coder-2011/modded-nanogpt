@@ -30,3 +30,13 @@ checks merely to admit a faster candidate.
 A full-model result requires forward, loss, backward, optimizer, scale updates and
 distributed communication. The initial six-GEMM MLP graph is a component only; it
 accepts prequantized inputs/scales and an externally supplied output gradient.
+
+Use `--main-shapes --gradient-chunk=1024 --ablate --sanitize` with the command
+above to check ordered gradient chunks and compare operand-stage sizes, FIFO,
+unsplit gradients, and 4096-token chunks on the same GPU. Preserve the exact
+chunked-versus-unsplit gradient check. Audit task visits outside timing and
+validate the production specialization too.
+
+Keep training data, canonical held-out evaluation, validation target and timing
+accounting intact. No validation leakage, cached answers, selective reporting,
+or relaxed correctness gates to improve a benchmark number.

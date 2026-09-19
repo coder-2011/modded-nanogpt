@@ -9,6 +9,14 @@ namespace nano {
 
 constexpr int tile = 64;
 constexpr int threads = 128;
+#ifndef NANO_K_TILE
+#define NANO_K_TILE 128
+#endif
+constexpr int k_tile = NANO_K_TILE;
+constexpr int operand_bytes = tile * k_tile;
+constexpr int stage_bytes = 2 * operand_bytes;
+constexpr int scratch_bytes = 2 * stage_bytes;
+static_assert(k_tile == 32 || k_tile == 64 || k_tile == 128);
 using fp8 = __nv_fp8_e4m3;
 using bf16 = __nv_bfloat16;
 
@@ -24,11 +32,13 @@ struct Matmul {
     Epilogue epilogue;
     fp8 *quantized_t = nullptr;
     float *raw = nullptr;
+    float *accumulation = nullptr;
 };
 
 struct Task {
     int op, row, col;
     int signal[2];
+    int k_begin = 0, k_end = 0;
 };
 
 struct Group {
@@ -41,8 +51,10 @@ struct Graph {
     const Group *groups;
     int *counters;
     int *queue;
-    int *state; // head, tail, unfinished
+    int *state; // ready head, ready tail, unfinished, root head
     int task_count;
+    int root_count;
+    int *audit = nullptr; // task visits, completed roots, gradients started before all roots
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -69,15 +81,36 @@ __device__ __forceinline__ void push(Graph g, int task) {
     release(g.queue + slot, task + 1);
 }
 
-__device__ __forceinline__ int pop(Graph g) {
+__device__ __forceinline__ int pop(Graph g, int &ticket) {
+#ifdef NANO_FIFO
     const int head = atomicAdd(g.state, 1);
     if (head >= g.task_count)
         return -2;
+#else
+    // Keep one ready-work reservation while executing independent roots. No CAS retry loop.
+    if (ticket < 0)
+        ticket = atomicAdd(g.state, 1);
+    if (ticket < g.task_count) {
+        int value = acquire(g.queue + ticket);
+        if (value) {
+            ticket = -1;
+            return value - 1;
+        }
+    }
+    if (acquire(g.state + 3) < g.root_count) {
+        int root = atomicAdd(g.state + 3, 1);
+        if (root < g.root_count)
+            return g.queue[root] - 1;
+    }
+    return ticket >= g.task_count ? -2 : -1;
+#endif
+#ifdef NANO_FIFO
     int value;
     // A producer reserves a slot before publishing it; it never waits for a consumer.
     while (!(value = acquire(g.queue + head)))
         __nanosleep(32);
     return value - 1;
+#endif
 }
 
 __device__ __forceinline__ void signal(Graph g, int id) {
@@ -85,9 +118,16 @@ __device__ __forceinline__ void signal(Graph g, int id) {
         return;
     const Group group = g.groups[id];
     // Acq_rel chains every producer's stores through the final arrival.
-    if (add_acq_rel(g.counters + id, 1) + 1 == group.expected)
+    if (add_acq_rel(g.counters + id, 1) + 1 == group.expected) {
+#ifdef NANO_FIFO
         for (int task = group.begin; task < group.end; ++task)
             push(g, task);
+#else
+        int slot = atomicAdd(g.state + 1, group.end - group.begin);
+        for (int task = group.begin; task < group.end; ++task)
+            release(g.queue + slot++, task + 1);
+#endif
+    }
 }
 
 __device__ __forceinline__ void mma(float *d, const uint32_t *a, const uint32_t *b) {
@@ -101,53 +141,104 @@ __device__ __forceinline__ float round_bf16(float x) {
     return __bfloat162float(__float2bfloat16_rn(x));
 }
 
-__device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, fp8 *sa, fp8 *sb) {
-    const int lane = threadIdx.x % 32, warp = threadIdx.x / 32;
-    const int wm = (warp / 2) * 32, wn = (warp % 2) * 32;
-    const int row0 = task.row * tile, col0 = task.col * tile;
-    float acc[2][4][4] = {};
-    for (int k0 = 0; k0 < op.k; k0 += 32) {
-        if (op.ak == 1 && op.bk == 1 && op.k % 32 == 0 && op.ar % 16 == 0 && op.br % 16 == 0) {
-            int r = threadIdx.x / 2, k = k0 + threadIdx.x % 2 * 16;
-            const fp8 *ap = op.a + (row0 + r < op.m ? row0 + r : 0) * op.ar + k;
-            const fp8 *bp = op.b + (col0 + r < op.n ? col0 + r : 0) * op.br + k;
-            unsigned as = __cvta_generic_to_shared(sa + r * 32 + threadIdx.x % 2 * 16);
-            unsigned bs = __cvta_generic_to_shared(sb + r * 32 + threadIdx.x % 2 * 16);
-            int av = row0 + r < op.m ? 16 : 0, bv = col0 + r < op.n ? 16 : 0;
+__device__ __forceinline__ int operand_index(int row, int k) {
+    // Consecutive lane quartets access distinct shared-memory banks, with 16-byte copy alignment.
+    return row * k_tile + (k ^ ((row / (128 / k_tile) & (k_tile / 16 - 1)) * 16));
+}
+
+__device__ __forceinline__ void load_operands(const Matmul &op, int row0, int col0, int k0,
+                                              int k_end, fp8 *sa, fp8 *sb) {
+    if (op.ak == 1 && op.bk == 1 && op.k % 32 == 0 && op.ar % 16 == 0 && op.br % 16 == 0) {
+#pragma unroll
+        for (int i = threadIdx.x; i < operand_bytes / 16; i += threads) {
+            int r = i / (k_tile / 16), k = k0 + i % (k_tile / 16) * 16;
+            const fp8 *ap = op.a + (row0 + r < op.m ? row0 + r : 0) * op.ar + (k < k_end ? k : 0);
+            const fp8 *bp = op.b + (col0 + r < op.n ? col0 + r : 0) * op.br + (k < k_end ? k : 0);
+            unsigned as = __cvta_generic_to_shared(sa + operand_index(r, k - k0));
+            unsigned bs = __cvta_generic_to_shared(sb + operand_index(r, k - k0));
+            int av = row0 + r < op.m && k < k_end ? 16 : 0;
+            int bv = col0 + r < op.n && k < k_end ? 16 : 0;
             asm volatile("cp.async.ca.shared.global [%0], [%1], 16, %2;" ::"r"(as), "l"(ap), "r"(av)
                          : "memory");
             asm volatile("cp.async.ca.shared.global [%0], [%1], 16, %2;" ::"r"(bs), "l"(bp), "r"(bv)
                          : "memory");
-            asm volatile("cp.async.commit_group; cp.async.wait_group 0;" ::: "memory");
-        } else {
-            for (int i = threadIdx.x; i < tile * 32; i += threads) {
-                const int r = i / 32, k = k0 + i % 32;
-                sa[i].__x =
-                    row0 + r < op.m && k < op.k ? op.a[(row0 + r) * op.ar + k * op.ak].__x : 0;
-                sb[i].__x =
-                    col0 + r < op.n && k < op.k ? op.b[(col0 + r) * op.br + k * op.bk].__x : 0;
-            }
         }
-        __syncthreads();
+        asm volatile("cp.async.commit_group;" ::: "memory");
+    } else {
+        for (int i = threadIdx.x; i < operand_bytes; i += threads) {
+            const int r = i / k_tile, k = k0 + i % k_tile;
+            int index = operand_index(r, i % k_tile);
+            sa[index].__x =
+                row0 + r < op.m && k < k_end ? op.a[(row0 + r) * op.ar + k * op.ak].__x : 0;
+            sb[index].__x =
+                col0 + r < op.n && k < k_end ? op.b[(col0 + r) * op.br + k * op.bk].__x : 0;
+        }
+    }
+}
+
+__device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, fp8 *scratch) {
+    const int lane = threadIdx.x % 32, warp = threadIdx.x / 32;
+    const int wm = (warp / 2) * 32, wn = (warp % 2) * 32;
+    const int row0 = task.row * tile, col0 = task.col * tile;
+    float acc[2][4][4] = {};
+    const int k_end = task.k_end ? task.k_end : op.k;
+    if (task.k_begin) {
 #pragma unroll
-        for (int mi = 0; mi < 2; ++mi) {
-            uint32_t a[4];
+        for (int mi = 0; mi < 2; ++mi)
 #pragma unroll
-            for (int j = 0; j < 4; ++j) {
-                int r = wm + mi * 16 + lane / 4 + (j % 2) * 8;
-                int k = lane % 4 * 4 + (j / 2) * 16;
-                a[j] = *reinterpret_cast<const uint32_t *>(sa + r * 32 + k);
-            }
+            for (int ni = 0; ni < 4; ++ni)
 #pragma unroll
-            for (int ni = 0; ni < 4; ++ni) {
-                uint32_t b[2];
-#pragma unroll
-                for (int j = 0; j < 2; ++j) {
-                    int r = wn + ni * 8 + lane / 4;
-                    int k = lane % 4 * 4 + j * 16;
-                    b[j] = *reinterpret_cast<const uint32_t *>(sb + r * 32 + k);
+                for (int j = 0; j < 4; ++j) {
+                    int r = row0 + wm + mi * 16 + lane / 4 + j / 2 * 8;
+                    int c = col0 + wn + ni * 8 + lane % 4 * 2 + j % 2;
+                    if (r < op.m && c < op.n)
+                        acc[mi][ni][j] = op.accumulation[r * op.n + c];
                 }
-                mma(acc[mi][ni], a, b);
+    }
+#ifndef NANO_SERIAL
+    load_operands(op, row0, col0, task.k_begin, k_end, scratch, scratch + operand_bytes);
+#endif
+    for (int k0 = task.k_begin; k0 < k_end; k0 += k_tile) {
+#ifdef NANO_SERIAL
+        fp8 *sa = scratch;
+        load_operands(op, row0, col0, k0, k_end, sa, sa + operand_bytes);
+#else
+        fp8 *sa = scratch + ((k0 - task.k_begin) / k_tile % 2) * stage_bytes;
+#endif
+        fp8 *sb = sa + operand_bytes;
+        asm volatile("cp.async.wait_group 0;" ::: "memory");
+        __syncthreads();
+#ifndef NANO_SERIAL
+        // The previous iteration's reader barrier released the other stage.
+        if (k0 + k_tile < k_end) {
+            fp8 *next = scratch + (((k0 - task.k_begin) / k_tile + 1) % 2) * stage_bytes;
+            load_operands(op, row0, col0, k0 + k_tile, k_end, next, next + operand_bytes);
+        }
+#endif
+#pragma unroll
+        for (int ki = 0; ki < k_tile; ki += 32) {
+            if (k0 + ki >= k_end)
+                break;
+#pragma unroll
+            for (int mi = 0; mi < 2; ++mi) {
+                uint32_t a[4];
+#pragma unroll
+                for (int j = 0; j < 4; ++j) {
+                    int r = wm + mi * 16 + lane / 4 + (j % 2) * 8;
+                    int k = ki + lane % 4 * 4 + (j / 2) * 16;
+                    a[j] = *reinterpret_cast<const uint32_t *>(sa + operand_index(r, k));
+                }
+#pragma unroll
+                for (int ni = 0; ni < 4; ++ni) {
+                    uint32_t b[2];
+#pragma unroll
+                    for (int j = 0; j < 2; ++j) {
+                        int r = wn + ni * 8 + lane / 4;
+                        int k = ki + lane % 4 * 4 + j * 16;
+                        b[j] = *reinterpret_cast<const uint32_t *>(sb + operand_index(r, k));
+                    }
+                    mma(acc[mi][ni], a, b);
+                }
             }
         }
         __syncthreads();
@@ -162,6 +253,10 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                 const int c = col0 + wn + ni * 8 + lane % 4 * 2 + j % 2;
                 if (r < op.m && c < op.n) {
                     const int index = r * op.n + c;
+                    if (k_end < op.k) {
+                        op.accumulation[index] = acc[mi][ni][j];
+                        continue;
+                    }
                     float x = acc[mi][ni][j] * op.scale;
                     if (op.raw)
                         op.raw[index] = x;
@@ -177,7 +272,7 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                     if (op.quantized)
                         op.quantized[index] = fp8(x / op.output_scale);
                     if (op.quantized_t)
-                        sa[(r - row0) * tile + c - col0] = fp8(x / op.output_scale);
+                        scratch[(r - row0) * tile + c - col0] = fp8(x / op.output_scale);
                 }
             }
         }
@@ -187,7 +282,7 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
         for (int i = threadIdx.x; i < tile * tile; i += threads) {
             int r = row0 + i % tile, c = col0 + i / tile;
             if (r < op.m && c < op.n)
-                op.quantized_t[c * op.m + r] = sa[i % tile * tile + i / tile];
+                op.quantized_t[c * op.m + r] = scratch[i % tile * tile + i / tile];
         }
         __syncthreads();
     }
@@ -203,16 +298,18 @@ __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task,
 #ifdef NANO_WGMMA
     hopper_tile(op, task, scratch);
 #else
-    matmul_tile(op, task, scratch, scratch + tile * 32);
+    matmul_tile(op, task, scratch);
 #endif
 }
 
-__global__ __launch_bounds__(threads) void megakernel(Graph g) {
-    __shared__ __align__(1024) fp8 scratch[8192];
-    __shared__ int next;
+template <bool Audited = false> __global__ __launch_bounds__(threads) void megakernel(Graph g) {
+    __shared__ __align__(1024) fp8 scratch[scratch_bytes];
+    __shared__ int next, ticket;
+    if (threadIdx.x == 0)
+        ticket = -1;
     for (;;) {
         if (threadIdx.x == 0) {
-            next = pop(g);
+            next = pop(g, ticket);
         }
         __syncthreads();
         const int task_id = next;
@@ -220,13 +317,24 @@ __global__ __launch_bounds__(threads) void megakernel(Graph g) {
         __syncthreads();
         if (task_id == -2)
             return;
+        if (task_id == -1) {
+            __nanosleep(1024);
+            continue;
+        }
         const Task task = g.tasks[task_id];
         const Matmul op = g.ops[task.op];
+        if (Audited && threadIdx.x == 0) {
+            atomicAdd(g.audit + task_id, 1);
+            if (task.op >= 4 && acquire(g.audit + g.task_count) < g.root_count)
+                atomicAdd(g.audit + g.task_count + 1, 1);
+        }
         execute_tile(op, task, scratch);
         // All output-writing threads publish before the controller signals readiness.
         __threadfence();
         __syncthreads();
         if (threadIdx.x == 0) {
+            if (Audited && task.op == 0)
+                add_acq_rel(g.audit + g.task_count, 1);
             signal(g, task.signal[0]);
             signal(g, task.signal[1]);
             add_acq_rel(g.state + 2, -1);

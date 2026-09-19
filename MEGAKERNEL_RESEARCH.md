@@ -117,8 +117,13 @@ calling it a complete replacement for `FusedFP8MLPFunction`.
 
 `cuda/megakernel.cuh` implements a ready queue of matrix-tile tasks. An up-projection
 row group publishes its down-projection and derivative tasks. A derivative row
-group publishes its input-gradient tasks. Weight-gradient tasks wait for all
-their producer rows. There is no grid-wide barrier between these operations.
+group publishes its input-gradient tasks. With `--gradient-chunk=1024`, each
+weight-gradient tile advances through 1024-token chunks. A chunk waits for its
+own producer tiles and the preceding chunk's accumulator owners, rather than
+every token in the layer. Each element retains its FP32 accumulator in global
+memory, and only the final chunk applies dequantization and BF16 rounding. The
+order of the K=32 MMA instructions is unchanged. The unsplit graph remains a
+control selected by `--gradient-chunk=0`.
 
 Each output-writing thread fences before its block signals completion. Dependency
 counters use PTX `atom.acq_rel.gpu.global.add`; the last arrival therefore gathers
@@ -126,19 +131,29 @@ the prior producers' writes before it publishes children. Queue slots use releas
 stores and acquire loads. A reserved queue slot is always published without
 waiting for a consumer, avoiding a circular queue dependency.
 
-The revised queue allocates unique consumer tickets with atomic addition. A
-consumer may wait for its slot to be published, but a producer never waits for a
-consumer and only publishes children after finishing its own tile. Roots are
-published before launch. Thus an empty queue with unfinished work has a producer
-already executing, rather than depending on a block that has not obtained work.
+The queue allocates unique consumer tickets with atomic addition. Each worker
+keeps one reservation for ready work. While that slot is unpublished, it claims
+independent roots with another atomic ticket, allowing newly ready children to
+run before roots are exhausted. Completed groups reserve their entire child
+range with one atomic operation, then publish each slot with a release store.
+Producers never wait for consumers. For this acyclic graph, an unpublished slot
+with unfinished work has an earlier producer either executing or ready to run.
 Tickets past the known total task count exit without accessing the queue.
 Tests include one worker, seven workers, 132 workers, and grids larger than the
 occupancy limit. The final queue head must equal task count plus worker count,
-the tail must equal task count, and every dependency count is checked.
+the tail must equal task count, and every dependency count is checked. A separate
+audited specialization counts every task visit and gradients started before all
+roots finish. Small cases shuffle roots to stress out-of-order dependency
+arrivals. The production specialization is checked independently after reset;
+audit atomics are excluded from timings.
 
 The accepted compute instruction uses FP8 `mma.sync.m16n8k32` with FP32
-accumulators and 64-by-64 output tiles. It does not yet have HazyResearch-style
-independent loader/consumer/storer warps, TMA, or cross-instruction prefetch.
+accumulators and 64-by-64 output tiles. It double-buffers operands using PTX
+`cp.async`: wait for the current stage, prefetch the next, compute, and release
+the old stage after a block reader barrier. A 16-byte-aligned XOR layout maps MMA
+lane quartets to distinct shared-memory banks. Compile-time K=32/64/128 stage
+sizes are measured separately. It does not yet have HazyResearch-style independent
+loader/consumer/storer warps, TMA, or cross-task prefetch.
 `cuda/hopper.cuh` is a separate experimental WGMMA path with two shared-memory
 stages and overlap of operand copies with tensor computation. It is not promoted:
 see the numerical rejection below.
@@ -201,7 +216,7 @@ default check selects the validated MMA implementation. Use `--main-shapes` to
 check the actual training token counts. Recent runs save source archives beside
 their logs and print source SHA-256 digests before compiling.
 
-### Latest accepted-code validation
+### Previous accepted-code validation
 
 `experiments/cuda-check-20260918T234040Z.log` and its matching source archive pin
 the tested implementation. Modal supplied **H100 NVL**, not the H100 HBM3 device
@@ -226,6 +241,78 @@ stress cases including oversized grids. This candidate is **not a performance
 win** at the real shapes: including queue reset, it is about 16–18% slower than
 the six-node CUDA Graph control. It remains an isolated native validation path.
 
+### Continuing fine-grained work
+
+The 2026-09-19 UTC experiments preserve rejected candidates as well as passing
+ones. `cuda-check-20260919T000823Z.log` measured the first ready-first CAS queue
+against FIFO on the same H100 HBM3. It passed correctness and all four sanitizers
+but took roughly 19.6/40.1/60.3 ms at the three main shapes, versus
+3.49/6.90/10.23 ms for the double-buffered FIFO implementation. Replacing root
+CAS with atomic tickets alone did not fix it (`...T001025Z.log`). Keeping a ready
+reservation per worker eliminated the ready-head CAS retry loop as well.
+
+`cuda-check-20260919T001350Z.log` first validated chunked weight gradients. Both
+weight gradients matched the unsplit MMA computation with zero differing values
+at all tested shapes. On the largest main shape, 54,261 gradient tasks started
+before all up-projection roots had completed. These are real dependency-driven
+tasks within one kernel, not separate per-operation launches. The run still had
+an 8-byte register spill and remained slower than its CUDA Graph control.
+
+To reproduce the current stage-size, scheduler and chunk-size comparisons:
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --main-shapes --gradient-chunk=1024 --ablate --sanitize
+```
+
+The native default uses K=128 stages and 4096-token gradient chunks.
+`--ablate` runs K=32 and K=64 controls, a FIFO control, an unsplit control, and the
+other 1024/4096-token chunk size in the same container/GPU. These are fixed-order,
+warm-cache component experiments. Every variant computes the same six GEMMs;
+the staged and CUDA Graph controls use an unsplit weight-gradient reduction.
+Queue reset and partial-accumulator traffic are included in `fused_with_reset`;
+input quantization, scale estimation, and full-model work are still absent.
+
+### Latest checkpoint
+
+`experiments/cuda-check-20260919T002026Z.log` compares the choices on one H100
+80GB HBM3 with CUDA 12.8.93 and driver 580.95.05. The K=128 and K=64 persistent
+kernels were essentially tied at 1024-token chunks, while K=128 made the staged
+control faster. K=128 remains selected. Increasing gradient chunks to 4096
+reduced the persistent kernel's overhead:
+
+| Tokens per GPU | K=32 / chunk=1024 | K=64 / chunk=1024 | K=128 / chunk=1024 | K=128 / chunk=4096 |
+| ---: | ---: | ---: | ---: | ---: |
+| 16,384 | 4.164528 | 3.470352 | 3.455184 | 3.285088 |
+| 32,768 | 8.190928 | 6.800480 | 6.774752 | 6.386384 |
+| 49,152 | 12.230384 | 10.124512 | 10.170656 | 9.529823 |
+
+Values are milliseconds including queue reset, with ten retained samples and
+five warmups. This stage-size comparison is not a comparison against the stock
+trainer. The faster K=128 CUDA Graph control still beats the megakernel.
+
+`experiments/cuda-check-20260919T002535Z.log` and its source archive validate the
+final checkpoint. The audited and production specializations are independently
+run with outputs and FP32 partial accumulators poisoned with NaNs. Both pass the
+fixed 0.0002 relative-L2 limit. Chunked weight-gradient outputs have zero differing
+values against the unsplit MMA computation. Tests include shuffled roots,
+oversubscribed grids, and M=8209/C=96/H=160, which exercises three real-sized
+chunks and a 17-token tail.
+Memcheck, initcheck, racecheck, and synccheck all pass, including that larger
+ragged case. Maximum observed relative L2 error is 0.000047122752. Static SASS
+inspection reports 64 HMMA and 28 LDGSTS instructions, with no LDL/STL spills.
+
+| Tokens per GPU | Fused compute (ms) | Fused with reset (ms) | CUDA Graph, same tiles (ms) |
+| ---: | ---: | ---: | ---: |
+| 16,384 | 3.261344 | 3.297744 | 2.722240 |
+| 32,768 | 6.330592 | 6.376512 | 5.240544 |
+| 49,152 | 9.475231 | 9.538016 | 7.818128 |
+
+The production kernel uses 162 registers/thread and 32,776 shared bytes, with
+three resident blocks/SM and zero spills. At the largest shape, 12,672 of 13,824
+weight-gradient tasks started before all up-projection roots finished. The total
+graph has 105,984 tasks. This verifies fine-grained execution, but its reset-
+inclusive runtime remains about 21–22% slower than the same-tile CUDA Graph.
+
 Promotion requires:
 
 1. Native output/gradient correctness, including small/ragged/zero inputs and
@@ -239,10 +326,10 @@ Promotion requires:
 
 ## Work still required
 
-- Finish the Hopper compute pipeline: WGMMA/TMA, double buffering, load/compute/
-  store overlap and measured tile/worker choices.
-- Split weight-gradient reductions into independently schedulable token ranges
-  without changing BF16 rounding/accumulation semantics accidentally.
+- Finish the Hopper compute pipeline: validated WGMMA/TMA, independent load/compute/
+  store roles, and further measured tile/worker choices.
+- Reduce scheduler, register, and partial-accumulator overhead while preserving
+  the ordered weight-gradient reductions.
 - Move FP8 scale reduction/quantization and dynamic scale statistics into the DAG.
 - Port and validate attention forward/backward, head/loss and optimizer nodes.
 - Port schedule/data ownership and device communication; CUDA graph launch of

@@ -53,20 +53,48 @@ struct Schedule {
             tasks.push_back({op, row, c, {g0, g1}});
         return begin;
     }
-    Schedule(int m, int c, int h) {
+    Schedule(int m, int c, int h, int chunk) {
         const int mr = (m + tile - 1) / tile, cr = (c + tile - 1) / tile;
         const int hr = (h + tile - 1) / tile;
-        groups.resize(2 * mr + 2);
+        const int chunks = chunk ? (m + chunk - 1) / chunk : 0;
+        groups.resize(2 * mr + (chunk ? 2 * chunks * hr : 2));
         const int all_up = 2 * mr, all_dpre = all_up + 1;
+        auto gradient_group = [=](int op, int part, int row) {
+            return 2 * mr + ((op - 4) * chunks + part) * hr + row;
+        };
         for (int r = 0; r < mr; ++r) {
-            int start = range(0, r, hr, 2 * r, all_up);
-            for (int i = start; i < int(tasks.size()); ++i)
+            int start = range(0, r, hr, 2 * r, chunk ? -1 : all_up);
+            for (int i = start; i < int(tasks.size()); ++i) {
                 roots.push_back(i);
+                if (chunk)
+                    tasks[i].signal[1] = gradient_group(5, r * tile / chunk, i - start);
+            }
             int begin = range(1, r, cr, -1, -1);
-            range(2, r, hr, 2 * r + 1, all_dpre);
+            start = range(2, r, hr, 2 * r + 1, chunk ? -1 : all_dpre);
+            if (chunk)
+                for (int i = start; i < int(tasks.size()); ++i)
+                    tasks[i].signal[1] = gradient_group(4, r * tile / chunk, i - start);
             groups[2 * r] = {hr, begin, int(tasks.size())};
             begin = range(3, r, cr, -1, -1);
             groups[2 * r + 1] = {hr, begin, int(tasks.size())};
+        }
+        if (chunk) {
+            for (int op : {4, 5})
+                for (int part = 0; part < chunks; ++part)
+                    for (int r = 0; r < hr; ++r) {
+                        int next = part + 1 < chunks ? gradient_group(op, part + 1, r) : -1;
+                        int begin = range(op, r, cr, next, -1);
+                        const int k_begin = part * chunk, k_end = std::min(k_begin + chunk, m);
+                        for (int i = begin; i < int(tasks.size()); ++i) {
+                            tasks[i].k_begin = k_begin;
+                            tasks[i].k_end = k_end;
+                        }
+                        // Input producers and the preceding accumulator owners must all finish.
+                        groups[gradient_group(op, part, r)] = {(k_end - k_begin + tile - 1) / tile +
+                                                                   (part ? cr : 0),
+                                                               begin, int(tasks.size())};
+                    }
+            return;
         }
         int begin = int(tasks.size());
         for (int r = 0; r < hr; ++r)
@@ -88,7 +116,7 @@ struct DeviceSchedule {
     int root_count;
     DeviceSchedule(const Schedule &schedule, const std::vector<Matmul> &descriptors)
         : tasks(schedule.tasks.size()), groups(schedule.groups.size()), counters(groups.size),
-          queue(tasks.size), state(3), ops(descriptors.size()), initial_queue(tasks.size),
+          queue(tasks.size), state(4), ops(descriptors.size()), initial_queue(tasks.size),
           root_count(int(schedule.roots.size())) {
         tasks.put(schedule.tasks);
         groups.put(schedule.groups);
@@ -99,10 +127,15 @@ struct DeviceSchedule {
     void reset() {
         CUDA(cudaMemset(counters.p, 0, counters.size * sizeof(int)));
         queue.put(initial_queue);
-        state.put({0, root_count, int(tasks.size)});
+#ifdef NANO_FIFO
+        state.put({0, root_count, int(tasks.size), 0});
+#else
+        state.put({root_count, root_count, int(tasks.size), 0});
+#endif
     }
     Graph graph() {
-        return {ops.p, tasks.p, groups.p, counters.p, queue.p, state.p, int(tasks.size)};
+        return {ops.p,   tasks.p, groups.p,        counters.p,
+                queue.p, state.p, int(tasks.size), root_count};
     }
 };
 
@@ -172,14 +205,16 @@ void compare(const char *name, const Buffer<T> &actual, const Buffer<T> &expecte
 }
 
 __global__ void staged_kernel(Matmul op) {
-    __shared__ __align__(1024) fp8 scratch[8192];
+    __shared__ __align__(1024) fp8 scratch[scratch_bytes];
     Task task{0, int(blockIdx.y), int(blockIdx.x), {-1, -1}};
     execute_tile(op, task, scratch);
 }
 
-void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
-              bool zeros = false) {
-    printf("shape M=%d C=%d H=%d workers=%d seed=%u zeros=%d\n", m, c, h, workers, seed, zeros);
+void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42, bool zeros = false,
+              int gradient_chunk = 0) {
+    const int chunk = gradient_chunk ? (m < 256 ? 64 : gradient_chunk) : 0;
+    printf("shape M=%d C=%d H=%d workers=%d seed=%u zeros=%d gradient_chunk=%d\n", m, c, h, workers,
+           seed, zeros, chunk);
     Buffer<fp8> x(size_t(m) * c), w1(size_t(h) * c), w2(size_t(h) * c), dy(size_t(m) * c);
     Buffer<fp8> xt(x.size), w1t(w1.size), w2t(w2.size), dyt(dy.size);
     Buffer<fp8> post(size_t(m) * h), dpre(size_t(m) * h), rpost(post.size), rdpre(dpre.size);
@@ -187,6 +222,7 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
     Buffer<float> raw(m < 256 ? post.size : 1), rraw(raw.size);
     Buffer<bf16> y(x.size), dx(x.size), dw1(w1.size), dw2(w2.size);
     Buffer<bf16> ry(y.size), rdx(dx.size), rdw1(dw1.size), rdw2(dw2.size);
+    Buffer<float> accum1(chunk ? dw1.size : 1), accum2(chunk ? dw2.size : 1);
     std::mt19937 rng(seed);
     std::normal_distribution<float> normal(0, 1);
     for (auto *buffer : {&x, &w1, &w2, &dy}) {
@@ -223,6 +259,10 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
                                 ps * gs, 0, 0, Epilogue::linear}};
     ops[0].quantized_t = postt.p;
     ops[2].quantized_t = dpret.p;
+    if (chunk) {
+        ops[4].accumulation = accum1.p;
+        ops[5].accumulation = accum2.p;
+    }
     if (m < 256)
         ops[0].raw = raw.p;
     auto ref = ops;
@@ -247,19 +287,41 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
     for (const auto &op : ref)
         reference(handle, op);
     BLAS(cublasDestroy(handle));
-    Schedule schedule(m, c, h);
+    Schedule schedule(m, c, h, chunk);
+    if (m < 256)
+        std::shuffle(schedule.roots.begin(), schedule.roots.end(), rng);
     DeviceSchedule device(schedule, ops);
-    for (auto *buffer : {&post, &dpre, &postt, &dpret})
-        CUDA(cudaMemset(buffer->p, 0xff, buffer->size * sizeof(fp8)));
-    for (auto *buffer : {&y, &dx, &dw1, &dw2})
-        CUDA(cudaMemset(buffer->p, 0xff, buffer->size * sizeof(bf16)));
+    Buffer<int> audit(schedule.tasks.size() + 2);
+    CUDA(cudaMemset(audit.p, 0, audit.size * sizeof(int)));
+    auto poison = [&] {
+        for (auto *buffer : {&post, &dpre, &postt, &dpret})
+            CUDA(cudaMemset(buffer->p, 0xff, buffer->size * sizeof(fp8)));
+        for (auto *buffer : {&y, &dx, &dw1, &dw2})
+            CUDA(cudaMemset(buffer->p, 0xff, buffer->size * sizeof(bf16)));
+        for (auto *buffer : {&raw, &accum1, &accum2})
+            CUDA(cudaMemset(buffer->p, 0xff, buffer->size * sizeof(float)));
+    };
+    poison();
     device.reset();
-    megakernel<<<workers, threads>>>(device.graph());
+    auto checked_graph = device.graph();
+    checked_graph.audit = audit.p;
+    megakernel<true><<<workers, threads>>>(checked_graph);
     CUDA(cudaGetLastError());
     CUDA(cudaDeviceSynchronize());
+    auto visits = audit.get();
+    for (size_t i = 0; i < schedule.tasks.size(); ++i)
+        if (visits[i] != 1)
+            throw std::runtime_error("task visit count is not exactly one");
+    if (visits[schedule.tasks.size()] != int(schedule.roots.size()))
+        throw std::runtime_error("bad completed root count");
+    printf("audit: every task executed once; gradient_tasks_before_all_roots=%d\n", visits.back());
     auto state = device.state.get();
-    if (state[0] != int(schedule.tasks.size()) + workers ||
-        state[1] != int(schedule.tasks.size()) || state[2] != 0)
+    const int expected_head = int(schedule.tasks.size()) + workers;
+#ifndef NANO_FIFO
+    if (state[3] < int(schedule.roots.size()) || state[3] >= int(schedule.roots.size()) + workers)
+        throw std::runtime_error("bad root ticket count");
+#endif
+    if (state[0] != expected_head || state[1] != int(schedule.tasks.size()) || state[2] != 0)
         throw std::runtime_error("scheduler did not execute every task exactly once");
     auto counters = device.counters.get();
     for (size_t i = 0; i < counters.size(); ++i)
@@ -275,14 +337,37 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
                 ++count;
             }
     }
-    compare("post", post, rpost, 0.0002f);
-    compare("dpre", dpre, rdpre, 0.0002f);
-    compare("post.T", postt, rpostt, 0.0002f);
-    compare("dpre.T", dpret, rdpret, 0.0002f);
-    compare("y", y, ry, 0.0002f);
-    compare("dx", dx, rdx, 0.0002f);
-    compare("dw1", dw1, rdw1, 0.0002f);
-    compare("dw2", dw2, rdw2, 0.0002f);
+    auto compare_outputs = [&] {
+        if (m < 256)
+            compare("raw", raw, rraw, 0.0002f);
+        compare("post", post, rpost, 0.0002f);
+        compare("dpre", dpre, rdpre, 0.0002f);
+        compare("post.T", postt, rpostt, 0.0002f);
+        compare("dpre.T", dpret, rdpret, 0.0002f);
+        compare("y", y, ry, 0.0002f);
+        compare("dx", dx, rdx, 0.0002f);
+        compare("dw1", dw1, rdw1, 0.0002f);
+        compare("dw2", dw2, rdw2, 0.0002f);
+    };
+    compare_outputs();
+    if (chunk) {
+        Buffer<bf16> saved1(dw1.size), saved2(dw2.size);
+        CUDA(cudaMemcpy(saved1.p, dw1.p, dw1.size * sizeof(bf16), cudaMemcpyDeviceToDevice));
+        CUDA(cudaMemcpy(saved2.p, dw2.p, dw2.size * sizeof(bf16), cudaMemcpyDeviceToDevice));
+        for (int op : {4, 5})
+            staged_kernel<<<dim3((c + tile - 1) / tile, (h + tile - 1) / tile), threads>>>(ops[op]);
+        CUDA(cudaGetLastError());
+        compare("dw1.chunk", saved1, dw1, 0.0f);
+        compare("dw2.chunk", saved2, dw2, 0.0f);
+    }
+    // The measured specialization omits audit atomics; validate it independently after reuse.
+    poison();
+    device.reset();
+    megakernel<><<<workers, threads>>>(device.graph());
+    CUDA(cudaGetLastError());
+    CUDA(cudaDeviceSynchronize());
+    puts("production specialization after reset:");
+    compare_outputs();
     if (!timing)
         return;
     cudaEvent_t begin, end;
@@ -302,7 +387,7 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
     for (int i = 0; i < 15; ++i) {
         device.reset();
         CUDA(cudaEventRecord(begin, stream));
-        megakernel<<<workers, threads, 0, stream>>>(device.graph());
+        megakernel<><<<workers, threads, 0, stream>>>(device.graph());
         CUDA(cudaEventRecord(end, stream));
         CUDA(cudaEventSynchronize(end));
         float ms;
@@ -327,7 +412,7 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
             graph_times.push_back(ms);
         CUDA(cudaEventRecord(begin, stream));
         device.reset();
-        megakernel<<<workers, threads, 0, stream>>>(device.graph());
+        megakernel<><<<workers, threads, 0, stream>>>(device.graph());
         CUDA(cudaEventRecord(end, stream));
         CUDA(cudaEventSynchronize(end));
         CUDA(cudaEventElapsedTime(&ms, begin, end));
@@ -364,28 +449,67 @@ int main(int argc, char **argv) {
         printf("GPU=%s SMs=%d CUDA_runtime=%d\n", prop.name, prop.multiProcessorCount,
                CUDART_VERSION);
         cudaFuncAttributes attr;
-        CUDA(cudaFuncGetAttributes(&attr, megakernel));
+        CUDA(cudaFuncGetAttributes(&attr, megakernel<>));
         int resident_blocks;
-        CUDA(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&resident_blocks, megakernel, threads,
+        CUDA(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&resident_blocks, megakernel<>, threads,
                                                            0));
         printf("megakernel registers=%d static_shared=%zu local_bytes=%zu\n", attr.numRegs,
                attr.sharedSizeBytes, attr.localSizeBytes);
         printf("resident_blocks_per_SM=%d\n", resident_blocks);
-        const bool quick = argc > 1 && std::string(argv[1]) == "--quick";
-        const bool main_shapes = argc > 1 && std::string(argv[1]) == "--main-shapes";
+        printf("operand_K=%d\n", k_tile);
+#ifdef NANO_FIFO
+        puts("scheduler=FIFO");
+#else
+        puts("scheduler=ready_first");
+#endif
+#ifdef NANO_SERIAL
+        puts("operand_stages=1");
+#else
+        puts("operand_stages=2");
+#endif
+        bool quick = false, main_shapes = false;
+#ifdef NANO_WGMMA
+        int gradient_chunk = 0;
+#else
+        int gradient_chunk = 4096;
+#endif
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+            if (arg == "--quick")
+                quick = true;
+            else if (arg == "--main-shapes")
+                main_shapes = true;
+            else if (arg == "--stream-gradients")
+                gradient_chunk = 1024;
+            else if (arg.rfind("--gradient-chunk=", 0) == 0)
+                gradient_chunk = std::stoi(arg.substr(17));
+            else
+                throw std::runtime_error("unknown argument: " + arg);
+        }
+#ifdef NANO_WGMMA
+        if (gradient_chunk)
+            throw std::runtime_error("chunked accumulation is implemented for MMA only");
+#endif
+        if (gradient_chunk < 0 || gradient_chunk % tile != 0)
+            throw std::runtime_error("gradient chunk must be a nonnegative multiple of 64");
         for (int workers :
              {1, 7, prop.multiProcessorCount, (resident_blocks + 1) * prop.multiProcessorCount}) {
-            validate(7, 17, 33, workers, false);
-            validate(129, 96, 160, workers, false, 1337);
-            validate(65, 32, 64, workers, false, 2, true);
+            validate(7, 17, 33, workers, false, 42, false, gradient_chunk);
+            validate(129, 96, 160, workers, false, 1337, false, gradient_chunk);
+            validate(65, 32, 64, workers, false, 2, true, gradient_chunk);
         }
+        if (gradient_chunk)
+            validate(2 * gradient_chunk + 17, 96, 160, 7, false, 1337, false, gradient_chunk);
         if (main_shapes) {
             for (int m : {16384, 32768, 49152})
-                validate(m, 768, 3072, resident_blocks * prop.multiProcessorCount, true);
+                validate(m, 768, 3072, resident_blocks * prop.multiProcessorCount, true, 42, false,
+                         gradient_chunk);
         } else if (!quick) {
             for (int blocks_per_sm : {1, 2, 4, resident_blocks}) {
-                validate(256, 768, 3072, blocks_per_sm * prop.multiProcessorCount, true);
-                validate(8192, 768, 3072, blocks_per_sm * prop.multiProcessorCount, true);
+                validate(256, 768, 3072, blocks_per_sm * prop.multiProcessorCount, true, 42, false,
+                         gradient_chunk);
+                validate(8192, 768, 3072, blocks_per_sm * prop.multiProcessorCount, true, 42, false,
+                         gradient_chunk);
             }
         }
         puts("PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.");
