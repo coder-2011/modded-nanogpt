@@ -1,8 +1,39 @@
 import os
 import sys
 
+def inspect_profile(data):
+    import subprocess
+    from pathlib import Path
+    report = Path("/tmp/inspect.ncu-rep")
+    report.write_bytes(data)
+    views = {"details.txt": ["--page", "details", "--print-details", "all"],
+             "metrics.csv": ["--page", "raw", "--csv"],
+             "session.txt": ["--page", "session"],
+             "source.csv": ["--page", "source", "--print-source", "sass", "--csv"]}
+    results = {name: subprocess.check_output(["ncu", "--import", str(report)] + flags)
+               for name, flags in views.items()}
+    results["tool.txt"] = subprocess.check_output(["ncu", "--version"])
+    return results
+
+
+if "--inspect-profile" in sys.argv:
+    from pathlib import Path
+    import modal
+    report = Path(sys.argv[sys.argv.index("--inspect-profile") + 1])
+    image = (modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu24.04", add_python="3.12")
+             .entrypoint([]).apt_install("make", "g++").apt_install("cuda-nsight-compute-12-8"))
+    app = modal.App("nanogpt-profile-inspect")
+    remote = app.function(image=image, cpu=2, timeout=300, serialized=True)(inspect_profile)
+    with modal.enable_output(), app.run():
+        artifacts = remote.remote(report.read_bytes())
+    for name, data in artifacts.items():
+        (report.parent / name).write_bytes(data)
+    print(f"Saved profiler text in {report.parent}")
+    raise SystemExit(0)
+
+
 def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gradient_chunk=4096,
-               experiment=""):
+               experiment="", profile=False, variant="", kernel_compare=False):
     """Build and validate the native CUDA graph; Python only launches processes."""
     import subprocess
     import hashlib
@@ -11,8 +42,12 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
 
     root = Path("/workspace/cuda") if Path("/workspace/cuda").exists() else Path(__file__).parent / "cuda"
     binary = experiment or ("validate_wgmma" if wgmma else "validate")
+    if variant:
+        binary = "validate_" + variant
     flags = [] if experiment else (["--main-shapes"] if main_shapes else []) + [f"--gradient-chunk={gradient_chunk}"]
     run = [str(root / binary)] + flags
+    if profile:
+        run = [str(root / binary), "--profile", f"--gradient-chunk={gradient_chunk}"]
     commands = [["nvidia-smi"], ["nvcc", "--version"], ["make", "-C", str(root), binary], run]
     if experiment == "transport":
         commands.insert(1, ["nvidia-smi", "topo", "-m"])
@@ -39,6 +74,11 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
                             ["--gradient-chunk=0"])
             commands.append([str(root / binary)] + (["--main-shapes"] if main_shapes else []) +
                             [f"--gradient-chunk={1024 if gradient_chunk == 4096 else 4096}"])
+    if kernel_compare:
+        candidates = ("validate",) if variant == "control" else ("validate_control",)
+        for candidate in candidates:
+            commands.extend([["make", "-C", str(root), candidate],
+                             [str(root / candidate)] + flags])
     if sanitize:
         commands.append(["make", "-C", str(root), "sanitize", f"BIN={binary}",
                          "CHECK_FLAGS=" if experiment else f"CHECK_FLAGS=--gradient-chunk={gradient_chunk}"])
@@ -56,9 +96,9 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
             if command == ["nvidia-smi", "topo", "-m"]:
                 output.append("Topology diagnostic unavailable; native peer-access checks remain required.")
                 continue
-            return result.returncode, "\n".join(output)
+            return result.returncode, "\n".join(output), {}
     if experiment in {"tokenizer", "transport"}:
-        return 0, "\n".join(output)
+        return 0, "\n".join(output), {}
     sass = subprocess.check_output(["cuobjdump", "--dump-sass", str(root / binary)], text=True)
     tag = "scaled_gemm" if experiment == "quantize" else "nano10megakernelILb0"
     for kernel in (section for section in sass.split("Function : ")
@@ -68,18 +108,48 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
         summary = f"Static SASS instruction counts for {kernel.splitlines()[0]}: {counts}"
         print(summary, flush=True)
         output.append(summary)
-    return 0, "\n".join(output)
+    artifacts = {}
+    if profile:
+        artifacts[binary + ".sass"] = sass.encode()
+        ptx = root / (binary + ".ptx")
+        import shlex
+        build_flags = shlex.split(subprocess.check_output(
+            ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
+        subprocess.run(["nvcc"] + build_flags + ["--ptx",
+                        str(root / "validate.cu"), "-o", str(ptx)], check=True)
+        artifacts[ptx.name] = ptx.read_bytes()
+        command = ["ncu", "--set", "full", "--clock-control", "none", "--cache-control", "none",
+                   "--profile-from-start", "off", "--launch-count", "1", "--export",
+                   str(root / "profile"), "--force-overwrite"] + run
+        result = subprocess.run(command, text=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, timeout=600)
+        report = "$ " + " ".join(command) + f"\nexit_status={result.returncode}\n" + result.stdout
+        print(report, flush=True)
+        output.append(report)
+        artifacts["ncu.txt"] = report.encode()
+        if result.returncode:
+            return result.returncode, "\n".join(output), artifacts
+        if result.returncode == 0 and (root / "profile.ncu-rep").exists():
+            artifacts["profile.ncu-rep"] = (root / "profile.ncu-rep").read_bytes()
+            artifacts.update(inspect_profile(artifacts["profile.ncu-rep"]))
+    return 0, "\n".join(output), artifacts
 
 
 if "--cuda-check" in sys.argv:
     from pathlib import Path
     import datetime
     import tarfile
+    import uuid
 
     sanitize = "--sanitize" in sys.argv
     wgmma = "--wgmma" in sys.argv
     main_shapes = "--main-shapes" in sys.argv
     ablate = "--ablate" in sys.argv
+    profile = "--profile" in sys.argv
+    kernel_compare = "--kernel-compare" in sys.argv
+    variant = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--variant=")), "")
+    if variant not in {"", "control", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
+        raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
     if experiment not in {"", "quantize", "transport", "tokenizer"}:
         raise SystemExit("Unknown native experiment")
@@ -87,12 +157,18 @@ if "--cuda-check" in sys.argv:
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")
+    if profile and (experiment or wgmma or ablate):
+        raise SystemExit("--profile currently targets the native MMA megakernel")
+    if (variant or kernel_compare) and (experiment or wgmma or ablate):
+        raise SystemExit("Kernel variants require the native MMA path")
+    if kernel_compare and profile:
+        raise SystemExit("--kernel-compare runs the timed variants")
     gradient_chunk = next((int(arg.split("=", 1)[1]) for arg in sys.argv
                            if arg.startswith("--gradient-chunk=")),
                           1024 if "--stream-gradients" in sys.argv else 0 if wgmma else 4096)
     folder = Path(__file__).parent / "experiments"
     folder.mkdir(exist_ok=True)
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid.uuid4().hex[:8]
     with tarfile.open(folder / f"cuda-check-{stamp}-source.tar.gz", "w:gz") as archive:
         for source in sorted((Path(__file__).parent / "cuda").iterdir()):
             if source.suffix in {".cu", ".cuh", ".cpp"} or source.name == "Makefile":
@@ -115,17 +191,28 @@ if "--cuda-check" in sys.argv:
                      .env({"RAYON_NUM_THREADS": "4"}))
         if experiment == "transport":
             image = image.apt_install("libnccl-dev=2.25.1-1+cuda12.8")
+        if profile:
+            image = image.apt_install("cuda-nsight-compute-12-8")
         image = image.add_local_dir(Path(__file__).parent / "cuda", "/workspace/cuda")
         app = modal.App("nanogpt-cuda-megakernel")
         gpu = None if experiment == "tokenizer" else "H100:2" if experiment == "transport" else "H100"
         remote_check = app.function(image=image, gpu=gpu, cpu=4, timeout=1800,
                                     serialized=True)(cuda_check)
         with modal.enable_output(), app.run():
-            status, output = remote_check.remote(sanitize, wgmma, main_shapes, ablate, gradient_chunk, experiment)
+            status, output, artifacts = remote_check.remote(sanitize, wgmma, main_shapes, ablate, gradient_chunk, experiment, profile, variant, kernel_compare)
     else:
-        status, output = cuda_check(sanitize, wgmma, main_shapes, ablate, gradient_chunk, experiment)
+        status, output, artifacts = cuda_check(sanitize, wgmma, main_shapes, ablate, gradient_chunk, experiment, profile, variant, kernel_compare)
     log = folder / f"cuda-check-{stamp}.log"
     log.write_text(output)
+    if artifacts:
+        artifact_dir = folder / f"profile-{stamp}"
+        artifact_dir.mkdir()
+        for name, data in artifacts.items():
+            (artifact_dir / name).write_bytes(data)
+        with tarfile.open(artifact_dir.with_suffix(".tar.gz"), "w:gz") as archive:
+            for source in sorted(artifact_dir.iterdir()):
+                archive.add(source, arcname=source.name)
+        print(f"Saved {artifact_dir}")
     print(f"Saved {log}")
     raise SystemExit(status)
 

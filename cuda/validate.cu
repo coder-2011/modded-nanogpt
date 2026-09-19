@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cublas_v2.h>
+#include <cuda_profiler_api.h>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -204,14 +205,41 @@ void compare(const char *name, const Buffer<T> &actual, const Buffer<T> &expecte
         throw std::runtime_error(std::string(name) + " numerical mismatch");
 }
 
-__global__ void staged_kernel(Matmul op) {
+template <bool Full = false> __global__ void staged_kernel(Matmul op) {
     __shared__ __align__(1024) fp8 scratch[scratch_bytes];
     Task task{0, int(blockIdx.y), int(blockIdx.x), {-1, -1}};
-    execute_tile(op, task, scratch);
+    execute_tile<Full>(op, task, scratch);
+}
+
+bool aligned(const Matmul &op) {
+    return op.m % tile == 0 && op.n % tile == 0 && op.k % k_tile == 0 && op.ak == 1 && op.bk == 1 &&
+           op.ar % 16 == 0 && op.br % 16 == 0;
+}
+
+template <bool Audited = false>
+void launch_megakernel(Graph graph, int workers, bool full, cudaStream_t stream = nullptr) {
+#ifdef NANO_ALIGNED
+    if (full) {
+        megakernel<Audited, true><<<workers, threads, 0, stream>>>(graph);
+        return;
+    }
+#endif
+    megakernel<Audited><<<workers, threads, 0, stream>>>(graph);
+}
+
+void launch_staged(Matmul op, cudaStream_t stream = nullptr) {
+    dim3 grid((op.n + tile - 1) / tile, (op.m + tile - 1) / tile);
+#ifdef NANO_ALIGNED
+    if (aligned(op)) {
+        staged_kernel<true><<<grid, threads, 0, stream>>>(op);
+        return;
+    }
+#endif
+    staged_kernel<><<<grid, threads, 0, stream>>>(op);
 }
 
 void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42, bool zeros = false,
-              int gradient_chunk = 0) {
+              int gradient_chunk = 0, bool profile = false) {
     const int chunk = gradient_chunk ? (m < 256 ? 64 : gradient_chunk) : 0;
     printf("shape M=%d C=%d H=%d workers=%d seed=%u zeros=%d gradient_chunk=%d\n", m, c, h, workers,
            seed, zeros, chunk);
@@ -265,6 +293,7 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
     }
     if (m < 256)
         ops[0].raw = raw.p;
+    const bool full = chunk % k_tile == 0 && std::all_of(ops.begin(), ops.end(), aligned);
     auto ref = ops;
     ref[0].quantized = rpost.p;
     ref[0].quantized_t = rpostt.p;
@@ -305,7 +334,7 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
     device.reset();
     auto checked_graph = device.graph();
     checked_graph.audit = audit.p;
-    megakernel<true><<<workers, threads>>>(checked_graph);
+    launch_megakernel<true>(checked_graph, workers, full);
     CUDA(cudaGetLastError());
     CUDA(cudaDeviceSynchronize());
     auto visits = audit.get();
@@ -355,7 +384,7 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
         CUDA(cudaMemcpy(saved1.p, dw1.p, dw1.size * sizeof(bf16), cudaMemcpyDeviceToDevice));
         CUDA(cudaMemcpy(saved2.p, dw2.p, dw2.size * sizeof(bf16), cudaMemcpyDeviceToDevice));
         for (int op : {4, 5})
-            staged_kernel<<<dim3((c + tile - 1) / tile, (h + tile - 1) / tile), threads>>>(ops[op]);
+            launch_staged(ops[op]);
         CUDA(cudaGetLastError());
         compare("dw1.chunk", saved1, dw1, 0.0f);
         compare("dw2.chunk", saved2, dw2, 0.0f);
@@ -363,11 +392,24 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
     // The measured specialization omits audit atomics; validate it independently after reuse.
     poison();
     device.reset();
-    megakernel<><<<workers, threads>>>(device.graph());
+    launch_megakernel(device.graph(), workers, full);
     CUDA(cudaGetLastError());
     CUDA(cudaDeviceSynchronize());
     puts("production specialization after reset:");
     compare_outputs();
+    if (profile) {
+        for (int i = 0; i < 5; ++i) {
+            device.reset();
+            launch_megakernel(device.graph(), workers, full);
+        }
+        CUDA(cudaDeviceSynchronize());
+        device.reset();
+        CUDA(cudaProfilerStart());
+        launch_megakernel(device.graph(), workers, full);
+        CUDA(cudaDeviceSynchronize());
+        CUDA(cudaProfilerStop());
+        compare_outputs();
+    }
     if (!timing)
         return;
     cudaEvent_t begin, end;
@@ -379,15 +421,14 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
     CUDA(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
     CUDA(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal));
     for (auto op : ops)
-        staged_kernel<<<dim3((op.n + tile - 1) / tile, (op.m + tile - 1) / tile), threads, 0,
-                        stream>>>(op);
+        launch_staged(op, stream);
     CUDA(cudaStreamEndCapture(stream, &graph));
     CUDA(cudaGraphInstantiate(&graph_exec, graph, nullptr, nullptr, 0));
     std::vector<float> fused_times, staged_times, graph_times, reset_times;
     for (int i = 0; i < 15; ++i) {
         device.reset();
         CUDA(cudaEventRecord(begin, stream));
-        megakernel<><<<workers, threads, 0, stream>>>(device.graph());
+        launch_megakernel(device.graph(), workers, full, stream);
         CUDA(cudaEventRecord(end, stream));
         CUDA(cudaEventSynchronize(end));
         float ms;
@@ -396,8 +437,7 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
             fused_times.push_back(ms);
         CUDA(cudaEventRecord(begin, stream));
         for (auto op : ops)
-            staged_kernel<<<dim3((op.n + tile - 1) / tile, (op.m + tile - 1) / tile), threads, 0,
-                            stream>>>(op);
+            launch_staged(op, stream);
         CUDA(cudaEventRecord(end, stream));
         CUDA(cudaEventSynchronize(end));
         CUDA(cudaEventElapsedTime(&ms, begin, end));
@@ -412,7 +452,7 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
             graph_times.push_back(ms);
         CUDA(cudaEventRecord(begin, stream));
         device.reset();
-        megakernel<><<<workers, threads, 0, stream>>>(device.graph());
+        launch_megakernel(device.graph(), workers, full, stream);
         CUDA(cudaEventRecord(end, stream));
         CUDA(cudaEventSynchronize(end));
         CUDA(cudaEventElapsedTime(&ms, begin, end));
@@ -448,11 +488,30 @@ int main(int argc, char **argv) {
             throw std::runtime_error("this build targets Hopper sm_90a");
         printf("GPU=%s SMs=%d CUDA_runtime=%d\n", prop.name, prop.multiProcessorCount,
                CUDART_VERSION);
+#ifdef NANO_MIN_BLOCKS
+        CUDA(cudaFuncSetAttribute(megakernel<>, cudaFuncAttributePreferredSharedMemoryCarveout,
+                                  cudaSharedmemCarveoutMaxShared));
+        CUDA(cudaFuncSetAttribute(megakernel<true>, cudaFuncAttributePreferredSharedMemoryCarveout,
+                                  cudaSharedmemCarveoutMaxShared));
+#ifdef NANO_ALIGNED
+        CUDA(cudaFuncSetAttribute(megakernel<false, true>,
+                                  cudaFuncAttributePreferredSharedMemoryCarveout,
+                                  cudaSharedmemCarveoutMaxShared));
+        CUDA(cudaFuncSetAttribute(megakernel<true, true>,
+                                  cudaFuncAttributePreferredSharedMemoryCarveout,
+                                  cudaSharedmemCarveoutMaxShared));
+#endif
+#endif
         cudaFuncAttributes attr;
-        CUDA(cudaFuncGetAttributes(&attr, megakernel<>));
+#ifdef NANO_ALIGNED
+        const auto measured_kernel = megakernel<false, true>;
+#else
+        const auto measured_kernel = megakernel<>;
+#endif
+        CUDA(cudaFuncGetAttributes(&attr, measured_kernel));
         int resident_blocks;
-        CUDA(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&resident_blocks, megakernel<>, threads,
-                                                           0));
+        CUDA(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&resident_blocks, measured_kernel,
+                                                           threads, 0));
         printf("megakernel registers=%d static_shared=%zu local_bytes=%zu\n", attr.numRegs,
                attr.sharedSizeBytes, attr.localSizeBytes);
         printf("resident_blocks_per_SM=%d\n", resident_blocks);
@@ -467,7 +526,7 @@ int main(int argc, char **argv) {
 #else
         puts("operand_stages=2");
 #endif
-        bool quick = false, main_shapes = false;
+        bool quick = false, main_shapes = false, profile = false;
 #ifdef NANO_WGMMA
         int gradient_chunk = 0;
 #else
@@ -479,6 +538,8 @@ int main(int argc, char **argv) {
                 quick = true;
             else if (arg == "--main-shapes")
                 main_shapes = true;
+            else if (arg == "--profile")
+                profile = true;
             else if (arg == "--stream-gradients")
                 gradient_chunk = 1024;
             else if (arg.rfind("--gradient-chunk=", 0) == 0)
@@ -492,14 +553,27 @@ int main(int argc, char **argv) {
 #endif
         if (gradient_chunk < 0 || gradient_chunk % tile != 0)
             throw std::runtime_error("gradient chunk must be a nonnegative multiple of 64");
+        if (profile) {
+            validate(16384, 768, 3072, resident_blocks * prop.multiProcessorCount, true, 42, false,
+                     gradient_chunk, true);
+            puts("PASS: profile-region output validation");
+            return 0;
+        }
         for (int workers :
              {1, 7, prop.multiProcessorCount, (resident_blocks + 1) * prop.multiProcessorCount}) {
             validate(7, 17, 33, workers, false, 42, false, gradient_chunk);
             validate(129, 96, 160, workers, false, 1337, false, gradient_chunk);
             validate(65, 32, 64, workers, false, 2, true, gradient_chunk);
+#ifdef NANO_ALIGNED
+            validate(256, 128, 256, workers, false, 1337, false, gradient_chunk);
+#endif
         }
         if (gradient_chunk)
             validate(2 * gradient_chunk + 17, 96, 160, 7, false, 1337, false, gradient_chunk);
+#ifdef NANO_ALIGNED
+        if (gradient_chunk)
+            validate(2 * gradient_chunk, 128, 256, 7, false, 1337, false, gradient_chunk);
+#endif
         if (main_shapes) {
             for (int m : {16384, 32768, 49152})
                 validate(m, 768, 3072, resident_blocks * prop.multiProcessorCount, true, 42, false,

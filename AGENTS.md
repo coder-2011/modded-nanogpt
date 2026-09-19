@@ -21,6 +21,11 @@ Validate on Modal with:
 uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --sanitize
 ```
 
+Use `--main-shapes --kernel-compare --sanitize` for the optimized default versus
+the original control on one GPU. Use `--profile` to capture PTX, SASS and a full
+Nsight Compute report. Profile timings are diagnostic; use the separate ordinary
+CUDA-event run for speed comparisons.
+
 Record the GPU actually supplied, compiler resources, numerical errors and raw
 timings. Modal may supply H200 for an H100 request. Compare candidates on the same
 device, include initialization/quantization/layout costs for promotion, and keep

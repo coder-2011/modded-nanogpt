@@ -16,6 +16,11 @@ constexpr int k_tile = NANO_K_TILE;
 constexpr int operand_bytes = tile * k_tile;
 constexpr int stage_bytes = 2 * operand_bytes;
 constexpr int scratch_bytes = 2 * stage_bytes;
+#ifndef NANO_TRANSPOSE_PAD
+#define NANO_TRANSPOSE_PAD 0
+#endif
+constexpr int transpose_stride = tile + NANO_TRANSPOSE_PAD;
+static_assert(tile * transpose_stride <= scratch_bytes);
 static_assert(k_tile == 32 || k_tile == 64 || k_tile == 128);
 using fp8 = __nv_fp8_e4m3;
 using bf16 = __nv_bfloat16;
@@ -131,10 +136,34 @@ __device__ __forceinline__ void signal(Graph g, int id) {
 }
 
 __device__ __forceinline__ void mma(float *d, const uint32_t *a, const uint32_t *b) {
+#ifdef NANO_DIRECT_ACCUM
+    uint32_t ah[8], bh[4];
+#pragma unroll
+    for (int j = 0; j < 4; ++j) {
+        uint16_t lo = uint16_t(a[j]), hi = uint16_t(a[j] >> 16);
+        asm("cvt.rn.f16x2.e4m3x2 %0, %1;" : "=r"(ah[j * 2]) : "h"(lo));
+        asm("cvt.rn.f16x2.e4m3x2 %0, %1;" : "=r"(ah[j * 2 + 1]) : "h"(hi));
+    }
+#pragma unroll
+    for (int j = 0; j < 2; ++j) {
+        uint16_t lo = uint16_t(b[j]), hi = uint16_t(b[j] >> 16);
+        asm("cvt.rn.f16x2.e4m3x2 %0, %1;" : "=r"(bh[j * 2]) : "h"(lo));
+        asm("cvt.rn.f16x2.e4m3x2 %0, %1;" : "=r"(bh[j * 2 + 1]) : "h"(hi));
+    }
+    // Match the compiler's low-pair/high-pair decomposition while accumulating in HMMA.
+#pragma unroll
+    for (int part = 0; part < 2; ++part)
+        asm volatile("mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 "
+                     "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};"
+                     : "+f"(d[0]), "+f"(d[1]), "+f"(d[2]), "+f"(d[3])
+                     : "r"(ah[part]), "r"(ah[part + 2]), "r"(ah[part + 4]), "r"(ah[part + 6]),
+                       "r"(bh[part]), "r"(bh[part + 2]));
+#else
     asm volatile("mma.sync.aligned.m16n8k32.row.col.f32.e4m3.e4m3.f32 "
                  "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};"
                  : "+f"(d[0]), "+f"(d[1]), "+f"(d[2]), "+f"(d[3])
                  : "r"(a[0]), "r"(a[1]), "r"(a[2]), "r"(a[3]), "r"(b[0]), "r"(b[1]));
+#endif
 }
 
 __device__ __forceinline__ float round_bf16(float x) {
@@ -146,18 +175,22 @@ __device__ __forceinline__ int operand_index(int row, int k) {
     return row * k_tile + (k ^ ((row / (128 / k_tile) & (k_tile / 16 - 1)) * 16));
 }
 
+template <bool Full = false>
 __device__ __forceinline__ void load_operands(const Matmul &op, int row0, int col0, int k0,
                                               int k_end, fp8 *sa, fp8 *sb) {
-    if (op.ak == 1 && op.bk == 1 && op.k % 32 == 0 && op.ar % 16 == 0 && op.br % 16 == 0) {
+    if (Full ||
+        (op.ak == 1 && op.bk == 1 && op.k % 32 == 0 && op.ar % 16 == 0 && op.br % 16 == 0)) {
 #pragma unroll
         for (int i = threadIdx.x; i < operand_bytes / 16; i += threads) {
             int r = i / (k_tile / 16), k = k0 + i % (k_tile / 16) * 16;
-            const fp8 *ap = op.a + (row0 + r < op.m ? row0 + r : 0) * op.ar + (k < k_end ? k : 0);
-            const fp8 *bp = op.b + (col0 + r < op.n ? col0 + r : 0) * op.br + (k < k_end ? k : 0);
+            const fp8 *ap = op.a + (Full || row0 + r < op.m ? row0 + r : 0) * op.ar +
+                            (Full || k < k_end ? k : 0);
+            const fp8 *bp = op.b + (Full || col0 + r < op.n ? col0 + r : 0) * op.br +
+                            (Full || k < k_end ? k : 0);
             unsigned as = __cvta_generic_to_shared(sa + operand_index(r, k - k0));
             unsigned bs = __cvta_generic_to_shared(sb + operand_index(r, k - k0));
-            int av = row0 + r < op.m && k < k_end ? 16 : 0;
-            int bv = col0 + r < op.n && k < k_end ? 16 : 0;
+            int av = Full || (row0 + r < op.m && k < k_end) ? 16 : 0;
+            int bv = Full || (col0 + r < op.n && k < k_end) ? 16 : 0;
             asm volatile("cp.async.ca.shared.global [%0], [%1], 16, %2;" ::"r"(as), "l"(ap), "r"(av)
                          : "memory");
             asm volatile("cp.async.ca.shared.global [%0], [%1], 16, %2;" ::"r"(bs), "l"(bp), "r"(bv)
@@ -176,6 +209,7 @@ __device__ __forceinline__ void load_operands(const Matmul &op, int row0, int co
     }
 }
 
+template <bool Full = false>
 __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, fp8 *scratch) {
     const int lane = threadIdx.x % 32, warp = threadIdx.x / 32;
     const int wm = (warp / 2) * 32, wn = (warp % 2) * 32;
@@ -191,17 +225,17 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                 for (int j = 0; j < 4; ++j) {
                     int r = row0 + wm + mi * 16 + lane / 4 + j / 2 * 8;
                     int c = col0 + wn + ni * 8 + lane % 4 * 2 + j % 2;
-                    if (r < op.m && c < op.n)
+                    if (Full || (r < op.m && c < op.n))
                         acc[mi][ni][j] = op.accumulation[r * op.n + c];
                 }
     }
 #ifndef NANO_SERIAL
-    load_operands(op, row0, col0, task.k_begin, k_end, scratch, scratch + operand_bytes);
+    load_operands<Full>(op, row0, col0, task.k_begin, k_end, scratch, scratch + operand_bytes);
 #endif
     for (int k0 = task.k_begin; k0 < k_end; k0 += k_tile) {
 #ifdef NANO_SERIAL
         fp8 *sa = scratch;
-        load_operands(op, row0, col0, k0, k_end, sa, sa + operand_bytes);
+        load_operands<Full>(op, row0, col0, k0, k_end, sa, sa + operand_bytes);
 #else
         fp8 *sa = scratch + ((k0 - task.k_begin) / k_tile % 2) * stage_bytes;
 #endif
@@ -212,12 +246,16 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
         // The previous iteration's reader barrier released the other stage.
         if (k0 + k_tile < k_end) {
             fp8 *next = scratch + (((k0 - task.k_begin) / k_tile + 1) % 2) * stage_bytes;
-            load_operands(op, row0, col0, k0 + k_tile, k_end, next, next + operand_bytes);
+            load_operands<Full>(op, row0, col0, k0 + k_tile, k_end, next, next + operand_bytes);
         }
 #endif
+#ifdef NANO_K_LOOP
+#pragma unroll 1
+#else
 #pragma unroll
+#endif
         for (int ki = 0; ki < k_tile; ki += 32) {
-            if (k0 + ki >= k_end)
+            if (!Full && k0 + ki >= k_end)
                 break;
 #pragma unroll
             for (int mi = 0; mi < 2; ++mi) {
@@ -251,7 +289,7 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
             for (int j = 0; j < 4; ++j) {
                 const int r = row0 + wm + mi * 16 + lane / 4 + j / 2 * 8;
                 const int c = col0 + wn + ni * 8 + lane % 4 * 2 + j % 2;
-                if (r < op.m && c < op.n) {
+                if (Full || (r < op.m && c < op.n)) {
                     const int index = r * op.n + c;
                     if (k_end < op.k) {
                         op.accumulation[index] = acc[mi][ni][j];
@@ -269,10 +307,21 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                     }
                     if (op.output)
                         op.output[index] = __float2bfloat16_rn(x);
+#ifdef NANO_REUSE_QUANT
+                    if (op.quantized || op.quantized_t) {
+                        const fp8 q(x / op.output_scale);
+                        if (op.quantized)
+                            op.quantized[index] = q;
+                        if (op.quantized_t)
+                            scratch[(r - row0) * transpose_stride + c - col0] = q;
+                    }
+#else
                     if (op.quantized)
                         op.quantized[index] = fp8(x / op.output_scale);
                     if (op.quantized_t)
-                        scratch[(r - row0) * tile + c - col0] = fp8(x / op.output_scale);
+                        scratch[(r - row0) * transpose_stride + c - col0] =
+                            fp8(x / op.output_scale);
+#endif
                 }
             }
         }
@@ -281,8 +330,8 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
         __syncthreads();
         for (int i = threadIdx.x; i < tile * tile; i += threads) {
             int r = row0 + i % tile, c = col0 + i / tile;
-            if (r < op.m && c < op.n)
-                op.quantized_t[c * op.m + r] = scratch[i % tile * tile + i / tile];
+            if (Full || (r < op.m && c < op.n))
+                op.quantized_t[c * op.m + r] = scratch[i % tile * transpose_stride + i / tile];
         }
         __syncthreads();
     }
@@ -294,15 +343,23 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
 
 namespace nano {
 
+template <bool Full = false>
 __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task, fp8 *scratch) {
 #ifdef NANO_WGMMA
     hopper_tile(op, task, scratch);
 #else
-    matmul_tile(op, task, scratch);
+    matmul_tile<Full>(op, task, scratch);
 #endif
 }
 
-template <bool Audited = false> __global__ __launch_bounds__(threads) void megakernel(Graph g) {
+template <bool Audited = false, bool Full = false>
+__global__
+#ifdef NANO_MIN_BLOCKS
+__launch_bounds__(threads, NANO_MIN_BLOCKS)
+#else
+__launch_bounds__(threads)
+#endif
+    void megakernel(Graph g) {
     __shared__ __align__(1024) fp8 scratch[scratch_bytes];
     __shared__ int next, ticket;
     if (threadIdx.x == 0)
@@ -328,7 +385,7 @@ template <bool Audited = false> __global__ __launch_bounds__(threads) void megak
             if (task.op >= 4 && acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        execute_tile(op, task, scratch);
+        execute_tile<Full>(op, task, scratch);
         // All output-writing threads publish before the controller signals readiness.
         __threadfence();
         __syncthreads();

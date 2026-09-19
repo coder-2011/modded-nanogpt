@@ -14,3 +14,14 @@ cuda/quantize
 cuda/transport
 cuda/tokenizer
 cuda/gpt2.json
+cuda/validate_pad
+cuda/validate_direct
+cuda/validate_resident
+cuda/validate_reuse
+cuda/validate_aligned
+cuda/validate_aligned_k64
+cuda/validate_aligned_loop
+cuda/validate_control
+cuda/*.ptx
+cuda/*.ncu-rep
+experiments/profile-*/

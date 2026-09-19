@@ -487,6 +487,136 @@ shared timestamp archive is not used as final evidence. Modal's topology-matrix
 diagnostic is unavailable; this is recorded separately from mandatory native
 peer-access checks.
 
+## SASS/PTX and Nsight Compute optimization (2026-09-19 UTC)
+
+The accepted default now pads the activation-transpose scratch pitch from 64 to
+68 bytes, reuses each FP8 quantization for both output layouts, specializes fully
+aligned graphs at host dispatch, requests four resident CTAs per SM, and keeps
+the inner 128-wide K-stage loop rolled. The general bounds-checked specialization
+remains available for ragged shapes. Host dispatch checks every matrix dimension,
+operand stride and gradient chunk boundary before selecting the aligned kernel.
+Arithmetic and gradient reduction order are unchanged.
+
+### What the machine code and counters showed
+
+Nsight Compute 2025.1.1.0 works on this Modal H100 allocation. The image installs
+`cuda-nsight-compute-12-8`; CUDA is 12.8.93 and the driver is 580.95.05. The
+wrapper captures PTX using the binary's exact Makefile flags, dumps SASS, and
+exports the binary NCU report plus source, metrics, session and details views.
+The profile region contains one production megakernel launch after five warmups;
+queue reset is outside that region. NCU uses `--set full --clock-control none
+--cache-control none --profile-from-start off --launch-count 1`. Ordinary event
+timings are collected in a separate invocation before profiling. Timings printed
+inside the NCU invocation are retained but are not used for performance claims.
+See NVIDIA's [CLI reference](https://docs.nvidia.com/nsight-compute/NsightComputeCli/index.html)
+and [profiling guide](https://docs.nvidia.com/nsight-compute/ProfilingGuide/).
+
+The PTX FP8 `mma.sync` instruction lowers to FP8-to-FP16 conversions, FP16 HMMA,
+and separate FP32 additions on this target/compiler. The baseline executes about
+228 million conversion instructions and 228 million FADD instructions, alongside
+113 million HMMA instructions. This is not native FP8 WGMMA throughput. DRAM
+throughput is only 5.59% of peak in the baseline profile; instruction issue,
+register pressure and shared-memory accesses are more useful targets here.
+
+| Counter, M=16384 | Original control | Accepted default |
+| --- | ---: | ---: |
+| Registers per thread | 162 | 128 |
+| Resident CTAs per SM | 3 | 4 |
+| Achieved occupancy | 18.69% | 24.86% |
+| Tensor pipe active | 21.84% | 26.36% |
+| Cycles with no eligible warp | 51.03% | 45.62% |
+| Eligible warps per scheduler | 0.75 | 0.95 |
+| Source-attributed executed instructions | 1,523,438,320 | 1,403,368,258 |
+| Source-attributed excess shared wavefronts | 56,623,104 | 0 |
+| Profiled kernel duration | 3.28 ms | 2.74 ms |
+
+These profiles are from separate allocations and explain the mechanism; the
+same-device, unprofiled comparison below establishes the timing improvement.
+Four transpose `LDS.U8` sites account for 47,185,920 baseline excess shared
+wavefronts. Padding eliminates all reported excess shared wavefronts, but alone
+saves only about 1% of time. It does not establish that bank conflicts were the
+only bottleneck.
+
+The first aligned, unrolled candidate had a 40-byte stack frame and substantial
+spill instructions. Rolling the inner K loop reduces its production frame to
+8 bytes, with 8 bytes each of static spill stores and loads. Source-attributed
+local-memory sectors fall from 18,213,888 to 16,896. The production SASS has
+16 static HMMA sites, two LDL sites and two STL sites; it is not spill-free.
+Dynamic shared/local counts here are sums of NCU's source-attributed counters,
+not inferred byte traffic from static assembly counts.
+
+### Paired final timings and correctness
+
+`experiments/cuda-check-20260919T012837893690Z.log` runs the accepted default and
+original control consecutively on the same H100 80GB HBM3. Each uses five warmups
+and ten retained CUDA-event samples with reused, warm buffers and unlocked
+clocks. The original control retains its prior three-CTA worker count; the
+candidate uses four. These are medians, not confidence intervals.
+
+| Tokens | Original megakernel + reset | Default megakernel + reset | Time reduction | Original graph control | Optimized graph control |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 16,384 | 3.268544 ms | 2.701136 ms | 17.36% | 2.700304 ms | 2.452128 ms |
+| 32,768 | 6.367920 ms | 5.300800 ms | 16.76% | 5.230480 ms | 4.747728 ms |
+| 49,152 | 9.510384 ms | 7.922160 ms | 16.70% | 7.795968 ms | 7.069808 ms |
+
+Both graph controls use the same tile arithmetic as their corresponding fused
+kernel. The optimized graph remains faster than the megakernel. Inputs are
+prequantized, and this benchmark does not include full-model training or input
+scale/quantization costs. No leaderboard improvement is established.
+
+All eight output/layout checks pass against the existing reference with the
+unchanged relative-L2 limit of 0.0002; the maximum reported error is 0.000047123.
+Chunked weight gradients exactly match unsplit MMA results. Production and
+audited specializations pass independently. Memcheck, initcheck, racecheck and
+synccheck report zero errors/hazards on both aligned and ragged quick cases,
+including one-worker and oversubscribed grids and multiple gradient chunks.
+The canonical Python trainer, token stream and evaluation remain unchanged.
+
+The separate quantization experiment also passes its arithmetic checks and all
+four sanitizers with the current shared CUDA headers. Its regression log is
+`experiments/cuda-check-20260919T013303716271Z-92873cbe.log`.
+
+### Rejected candidates and retained evidence
+
+- Replacing the compiler's FP8 lowering with converted FP16 MMA that directly
+  accumulates into the running sum changes rounding. At M=49152, dW2 relative-L2
+  is 0.00022324526, above 0.0002. It is rejected, remains opt-in as
+  `--variant=direct`, and is never enabled by the default build. Its first two
+  main shapes pass, which is why all three shapes are required.
+- The aligned K64 unrolled candidate takes 3.328816 ms including reset at
+  M=16384, versus 2.732992 ms for the rolled K128 candidate on another allocation.
+  This is exploratory evidence, not a same-device speed ratio; K64 is not promoted.
+- The aligned unrolled version is faster than the original but spills heavily;
+  its staged control is also slower. Final reporting retains both the original
+  and optimized graph controls instead of claiming a win against that weaker
+  intermediate control.
+
+Compressed profile artifacts contain PTX, SASS, the NCU report and decoded views:
+
+- Baseline: `experiments/profile-20260919T010434440014Z.tar.gz`.
+- Padding only: `experiments/profile-20260919T011439303866Z.tar.gz`.
+- Aligned/unrolled: `experiments/profile-20260919T012248560690Z.tar.gz`.
+- Final default: `experiments/profile-20260919T012948492643Z-de08ee7d.tar.gz`.
+
+Each `cuda-check-*` log has a corresponding exact source archive. A concurrent
+loop/K64 experiment still collided at timestamp `20260919T012456992498Z` despite
+microsecond timestamps. That profile archive contains the loop variant; the
+shared `cuda-check` log contains K64, whose artifact-directory creation then
+failed. Complete original outputs are preserved as `profile-loop-initial.log`
+and `profile-k64-initial.log`. The final default was rerun into the unique archive
+above. Artifact names now also contain a random UUID suffix.
+
+Reproduce the accepted comparison and capture a profile:
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --main-shapes --kernel-compare --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --profile
+```
+
+Use `--variant=control --kernel-compare --main-shapes` to reverse candidate order.
+Use `--inspect-profile PATH_TO_NCU_REPORT` to regenerate decoded views on a CPU
+Modal container. This requires extracting the compressed profile archive first.
+
 ## Work still required
 
 - Finish the Hopper compute pipeline: validated WGMMA/TMA, independent load/compute/
