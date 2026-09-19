@@ -1139,3 +1139,103 @@ The refined large comparison completed successfully: both load policies also
 pass memcheck, initcheck, racecheck and synccheck on the quick case in
 `cuda-check-20260919T072852535444Z-94ae7d5b`. All eight sanitizer summaries report
 zero errors; both race checks report zero warnings.
+
+## Training loss and logit gradients
+
+`cuda/training_loss.cuh` adds three task types to the persistent worker: partial
+softmax sums, row loss/log-sum-exp reduction and E5M2 logit gradients. A task owns
+four rows and up to 512 vocabulary columns. Each four-row group has independent
+dependencies: its reduction waits for all vocabulary partials, then publishes
+its gradient tasks. No full-grid barrier or floating-point atomic reduction is
+used. Every gradient pair has one writing lane, including repeated MTP/prefix
+target columns.
+
+Inputs are resident raw E4M3 logit codes, valid target positions, prefix positions
+(-1 means absent), one to three MTP weights and device-resident gradient/loss/
+prefix scales. Full vocabulary uses 50304 columns; sampled training uses the same
+operations with candidate positions and the recipe's 10240, 14336 and 24576
+widths. Candidate selection, weight gathering and dense gradient reconstruction
+are still external/unimplemented. This component does not yet include the head's
+forward product, hidden-state gradient product or weight-gradient product.
+
+Training deliberately differs from BF16 evaluation: it applies
+`23 * sigmoid((logit + 5) / 7.5)`, rounds the sigmoid to FP16, computes weighted
+MTP/prefix losses and converts logit gradients to E5M2 through inline PTX. The
+fixed exponent shift is 23. The sigmoid is recomputed from the raw code for the
+gradient pass, avoiding a full global sigmoid cache. The reference's final-row
+behavior is preserved: all MTP weights enter the probability term even when
+some future targets lie beyond the final row; only valid future targets enter
+the correction/loss. Changing that behavior would change the pinned recipe.
+
+`cuda/training_loss_reference.cu` contains the pinned `CE_KERNEL_SOURCE` from
+`triton_kernels.py`. Only its `extern "C"` declaration becomes a vocabulary
+template; the kernel arithmetic is unchanged. A source comparison verifies that
+entire substituted string. The separate translation unit uses `--use_fast_math`,
+as the reference does. This tests the actual pinned CUDA source compiled with
+NVCC 12.8, not binary identity with the trainer's NVRTC build or its surrounding
+Torch program.
+
+The finalized candidate-width test is
+`cuda-check-20260919T075523175264Z-422ffdc9`, on H100 80GB HBM3:
+
+- Full-vocabulary and sampled-width losses/gradients agree with the pinned CUDA
+  source across random logits, every finite E4M3 code, saturated softcaps,
+  duplicate targets, coinciding/distinct/absent prefixes, final-row truncation,
+  one/two/three predictions, changing device parameters and zero loss scale.
+- All tested E5M2 gradient bytes match exactly, including the 51511296-element
+  1024-row full-vocabulary case. Maximum pinned loss difference is
+  `5.7220459e-6`. The fixed gate permits at most one adjacent E5M2 code for at most
+  0.1% of elements, relative L2 <= 0.002 and loss difference <= `2e-5`; no such
+  differing codes occurred. These are component checks, not convergence proof.
+- Independent FP64 checks cover the first and last row of each fixture, and an
+  exact conversion check covers every stored raw-gradient/E5M2 pair. Graph and
+  persistent replays must be bitwise identical. Removing diagnostic gradient
+  stores must preserve partials, log-sum-exp, loss and FP8 output bitwise.
+- Every task is visited exactly once and every dependency count is checked.
+  Memcheck, initcheck, racecheck and synccheck pass the 2048/full-vocabulary quick
+  cases, with zero errors and zero racecheck warnings.
+
+Ordinary event medians at 1024 rows, 50304 columns and 528 workers, with raw
+gradient diagnostics disabled, are:
+
+| Implementation | ms |
+| --- | ---: |
+| Pinned standalone CUDA loss | 0.076576 |
+| Tiled loss CUDA Graph | 0.377424 |
+| Tiled persistent loss + reset | 1.268496 |
+
+This is a correctness baseline and is substantially slower than the pinned
+kernel. No faster training path is selected from this result. The first test
+`cuda-check-20260919T075418912709Z-638f2792` also passed, but used an additional
+12288-column synthetic case instead of the actual early sampled widths; its
+raw timings and source are retained.
+
+The profile is `profile-20260919T075524054604Z-0bcaec55.tar.gz`: 1.25 ms diagnostic
+duration, 24.88% occupancy, 0.23 eligible warps per scheduler, 10.34 long-scoreboard
+and 3.41 barrier cycles out of 20.23 warp cycles per issued instruction. Two
+E4M3 conversion consumers account for 33454 long-scoreboard samples; target-load
+consumers also rank among the hottest instructions. DRAM throughput is only
+2.55% of peak. These observations point to operand/target load latency and
+scheduling overhead, not saturated bandwidth. Hoisting row metadata and fusing
+the partial-sum producer into the head product are subsequent optimization
+candidates, not measured wins.
+
+The production worker uses 128 registers, 32800 shared bytes and no spills.
+Tensor-pipe activity is zero for this loss-only fixture. The worker's static
+HMMA/LDGSTS instructions belong to its unused matrix branches and are not evidence
+that the loss runs on tensor cores.
+
+Reproduce with:
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=loss --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=loss --profile
+```
+
+The final test/profile archives contain 37 source files. Their only differences
+from this checkpoint are the loss descriptor's contract comments and Makefile
+header prerequisites; kernel arithmetic, launch flags and tests are identical.
+The evaluation body's specialization leaves the new loss dispatch disabled.
+Its regression run `cuda-check-20260919T075525349231Z-06553dfb` passes the 16/80-row
+arithmetic/replay cases and all four sanitizers on the 16-row quick case. Its
+source archive has the same two comment/prerequisite-only differences above.

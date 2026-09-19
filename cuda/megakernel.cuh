@@ -12,6 +12,7 @@
 #include "routing.cuh"
 #include "gates.cuh"
 #include "embeddings.cuh"
+#include "training_loss.cuh"
 
 namespace nano {
 
@@ -130,6 +131,7 @@ struct Graph {
     const GateTransform *gates = nullptr;
     const EmbeddingRead *embeddings = nullptr;
     const EvaluationHead *evaluation_heads = nullptr;
+    const TrainingLoss *training_losses = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -456,7 +458,7 @@ __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task,
 }
 
 template <bool Audited = false, bool Full = false, bool WithAttention = false, bool WithBF16 = false,
-          bool WithAnvil = false, bool WithProjection = false, bool WithRouting = false>
+          bool WithAnvil = false, bool WithProjection = false, bool WithRouting = false, bool WithLoss = false>
 __global__
 #ifdef NANO_MIN_BLOCKS
 __launch_bounds__(threads, NANO_MIN_BLOCKS)
@@ -494,7 +496,13 @@ __launch_bounds__(threads)
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithRouting && task.kind == TaskKind::evaluation_loss) {
+        if (WithLoss && task.kind == TaskKind::loss_partial) {
+            training_loss_partial(g.training_losses[task.op], task.row, task.col);
+        } else if (WithLoss && task.kind == TaskKind::loss_reduce) {
+            training_loss_reduce(g.training_losses[task.op], task.row);
+        } else if (WithLoss && task.kind == TaskKind::loss_gradient) {
+            training_loss_gradient(g.training_losses[task.op], task.row, task.col);
+        } else if (WithRouting && task.kind == TaskKind::evaluation_loss) {
             evaluation_loss(g.evaluation_heads[task.op], task.row);
         } else if (WithRouting && task.kind == TaskKind::embedding_read) {
             embedding_read(g.embeddings[task.op], task.row);

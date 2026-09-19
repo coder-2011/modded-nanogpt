@@ -39,3 +39,5 @@ cuda/routing
 cuda/body
 cuda/body_control
 cuda/bf16_async
+cuda/loss
+cuda/training_loss_reference.o

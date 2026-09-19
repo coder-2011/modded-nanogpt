@@ -99,6 +99,19 @@ A full-model result requires forward, loss, backward, optimizer, scale updates a
 distributed communication. The six-GEMM MLP and attention graphs are components;
 both still accept externally supplied output gradients.
 
+`--experiment=loss --sanitize` checks tiled training cross entropy and E5M2
+logit gradients against the pinned CUDA loss source. It starts from resident raw
+E4M3 logit codes and valid target/candidate positions. It preserves FP16 sigmoid
+rounding, MTP and prefix corrections, and the reference's full MTP weight sum at
+the last rows. Its three task types have row-group dependencies and unique
+gradient-byte ownership. Tests cover full vocabulary and the actual sampled
+widths 10240, 14336 and 24576, graph reuse and zero loss scale.
+`--experiment=loss --profile` captures its PTX/SASS/NCU report. This correctness
+baseline is slower than the pinned standalone loss; no training speedup is
+claimed. Logit/gradient GEMMs, candidate selection/gather/densification and full
+model training integration remain. The numerical reference is CUDA/C++, and
+`train_gpt.py` still only launches the new implementation.
+
 `--experiment=body --sanitize` runs the connected eleven-layer BF16 evaluation
 body: seven attention calls, eleven MLP calls, residual/skip routing, shared
 layer-8/10 normalization, parallel layer-8 MLPs and post-loop MUDD mixing. It

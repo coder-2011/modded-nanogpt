@@ -12,6 +12,7 @@ layer_FLAGS := $(bf16_FLAGS) -DNANO_COOP_PUBLISH=1
 layer_serial_FLAGS := $(bf16_FLAGS)
 evaluation_FLAGS := $(layer_FLAGS) -DNANO_EVALUATION_ONLY=1
 routing_FLAGS := $(layer_FLAGS)
+loss_FLAGS := $(layer_FLAGS)
 body_control_FLAGS := $(evaluation_FLAGS) -DNANO_EVALUATION_BODY=1
 body_FLAGS := $(body_control_FLAGS) -DNANO_BF16_INDEPENDENT_LOAD=1
 bf16_async_FLAGS := $(bf16_FLAGS) -DNANO_BF16_INDEPENDENT_LOAD=1
@@ -64,6 +65,12 @@ $(VARIANTS) attention bf16 bf16_control bf16_async anvil anvil_idle64 layer laye
 routing: routing.cu routing.cuh bench.cuh megakernel.cuh attention.cuh qkv.cuh bf16_gemm.cuh anvil.cuh attention_post.cuh hopper.cuh Makefile
 	$(NVCC) $(NVFLAGS) $(routing_FLAGS) routing.cu -o $@
 
+loss: loss.cu training_loss_reference.cu $(wildcard *.cuh) Makefile
+	$(NVCC) $(NVFLAGS) --use_fast_math -c training_loss_reference.cu -o training_loss_reference.o
+	$(NVCC) $(NVFLAGS) $(loss_FLAGS) loss.cu training_loss_reference.o -o $@
+
+$(VARIANTS) attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation body body_control routing quantize loss: training_loss.cuh
+
 print-flags:
 	@echo $(NVFLAGS) $($(BIN)_FLAGS)
 
@@ -77,4 +84,4 @@ sanitize: $(BIN)
 	compute-sanitizer --tool synccheck --error-exitcode 1 ./$(BIN) --quick $(CHECK_FLAGS)
 
 clean:
-	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation routing body body_control
+	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation routing body body_control loss training_loss_reference.o
