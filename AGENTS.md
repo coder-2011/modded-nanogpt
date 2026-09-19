@@ -144,6 +144,22 @@ initcheck under both CUDA 12.8 and 13.1 tools. `--experiment=tail_reference_prob
 Do not claim the reference sanitizer failure has been fixed or all-library
 sanitizer coverage has passed.
 
+`--experiment=suffix --sanitize` connects the final layer's 2816-wide FP8 MLP
+to that tail and loss, including RMS, activation/gradient packing, both layouts,
+six products, per-token residual coefficients and both MLP parameter gradients.
+The final mixing stage reuses the normalized MLP input. Its adjoint and the MLP's
+input adjoint are summed before RMS backward. FP32 normalized values feed E4M3
+packing without an extra BF16 cast, while the reused MUDD source stays BF16.
+Post-activation and dpre maxima are collected before FP8 conversion. Delayed
+scale refresh and weight-cache updates remain external. The last MLP uses
+per-token coefficients, so it does not use the scalar post-lambda fold required
+by earlier MLPs. Head and MLP weight-gradient work can run concurrently with
+their input-gradient paths in both the persistent graph and Graph controls.
+The input residual, last-layer coefficients and other source states remain
+external. Earlier body backward, full-model integration and compiled-Torch
+parity are still missing. Sanitizers use the same explicit `--native-only`
+scope as the tail. `--experiment=suffix --profile` uses 256 tokens/full vocabulary.
+
 `--experiment=body --sanitize` runs the connected eleven-layer BF16 evaluation
 body: seven attention calls, eleven MLP calls, residual/skip routing, shared
 layer-8/10 normalization, parallel layer-8 MLPs and post-loop MUDD mixing. It

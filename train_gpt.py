@@ -76,7 +76,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
     from pathlib import Path
 
     root = Path("/workspace/cuda") if Path("/workspace/cuda").exists() else Path(__file__).parent / "cuda"
-    if experiment in {"tail", "tail_reference_probe"}:
+    if experiment in {"tail", "tail_reference_probe", "suffix"}:
         import torch
         os.environ["NANO_TORCH_ROOT"] = str(Path(torch.__file__).parent)
         os.environ["NANO_TORCH_ABI"] = str(int(torch._C._GLIBCXX_USE_CXX11_ABI))
@@ -145,7 +145,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
         if ablate and experiment == "body":
             sanitized.append("body_control")
         check_flags = [] if experiment else [f"--gradient-chunk={gradient_chunk}"]
-        if experiment == "tail":
+        if experiment in {"tail", "suffix"}:
             check_flags.append("--native-only")
         for checked_binary in sanitized:
             for tool in ("memcheck", "initcheck", "racecheck", "synccheck"):
@@ -195,7 +195,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
             ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
         subprocess.run(["nvcc"] + build_flags + ["--ptx",
                         str(root / ("attention_layer.cu" if experiment in {"layer", "evaluation", "body"} else
-                                    experiment + ".cu" if experiment in {"attention", "anvil", "routing", "loss", "head", "tail"} else "validate.cu")),
+                                    experiment + ".cu" if experiment in {"attention", "anvil", "routing", "loss", "head", "tail", "suffix"} else "validate.cu")),
                         "-o", str(ptx)], check=True)
         artifacts[ptx.name] = ptx.read_bytes()
         command = ["ncu", "--set", "full", "--clock-control", "none", "--cache-control", "none",
@@ -231,13 +231,13 @@ if "--cuda-check" in sys.argv:
     if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
         raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
-    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation", "routing", "body", "loss", "head", "tail", "tail_reference_probe"}:
+    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation", "routing", "body", "loss", "head", "tail", "tail_reference_probe", "suffix"}:
         raise SystemExit("Unknown native experiment")
     if experiment and (wgmma or (ablate and experiment not in {"bf16", "anvil", "layer", "body"})):
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")
-    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation", "routing", "body", "loss", "head", "tail"} or wgmma or ablate):
+    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation", "routing", "body", "loss", "head", "tail", "suffix"} or wgmma or ablate):
         raise SystemExit("--profile targets the native MLP, attention, attention layer or ANVIL megakernel")
     if (variant or kernel_compare) and (experiment or wgmma or ablate):
         raise SystemExit("Kernel variants require the native MMA path")
@@ -265,7 +265,7 @@ if "--cuda-check" in sys.argv:
 
         image = (modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu24.04", add_python="3.12")
                  .entrypoint([]).apt_install("make", "g++"))
-        if experiment in {"tail", "tail_reference_probe"}:
+        if experiment in {"tail", "tail_reference_probe", "suffix"}:
             image = image.pip_install("torch==2.10.0", index_url="https://download.pytorch.org/whl/cu128")
         if experiment == "tokenizer":
             image = (image.apt_install("git", "curl", "pkg-config")

@@ -53,7 +53,7 @@ constants and schedule constructor produce the values below.
 | Surface | PR #360 contract | Native status |
 | --- | --- | --- |
 | Residual stream | Width 768, eleven numbered layers, six heads | Eleven-layer BF16 evaluation body connected; full training routing remains |
-| MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | FP8 training component; BF16 branches connected in the evaluation body, including parallel layer 8 |
+| MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | Final FP8 MLP connected to loss/backward; earlier training MLPs remain components; BF16 evaluation branches connected, including parallel layer 8 |
 | Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | FP8 training component; BF16 attention connected through the evaluation body; FA3/compiled-trainer parity unverified |
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Implemented in the BF16 evaluation body; training remains |
 | MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Four coefficient networks and evaluation routing connected; post-loop MUDD backward connected to the training head, enclosing body backward remains |
@@ -1458,3 +1458,100 @@ from 2.572160 to 2.982272 ms, so this is a noisy component measurement, not an
 end-to-end performance claim. The earlier event run in
 `cuda-check-20260919T084209491950Z-d1a9a144` measured 2.727088 ms versus 2.339056 ms
 before its ATen initcheck failed. Both runs are retained; neither is a fusion win.
+
+## Final FP8 MLP connected to loss and backward
+
+`--experiment=suffix` prepends the final layer's 768-to-2816-to-768 FP8 MLP to
+the post-loop MUDD/head graph. It consumes the residual after layer-10 attention,
+its two per-token MUDD coefficients, resident FP8 weight caches/scales and the
+other post-loop source states. The MLP output feeds the actual head loss and
+receives its gradient through the post-loop network. Input, up-weight,
+down-weight and per-token coefficient gradients are produced in the same
+persistent launch. This is a connected section of the target model, not an
+external-gradient MLP benchmark or a complete trainer.
+
+The normalized MLP input is also post-loop MUDD source 8. Its MUDD adjoint and
+MLP input adjoint are added before RMS backward, then the direct residual
+adjoint is added. The implementation preserves that shared use instead of
+normalizing or differentiating two independent copies. FP32 RMS values feed
+E4M3 packing without first rounding through BF16, as described by the pinned
+`quantize_dual_layout_fused` producer path. Its BF16 output remains available to
+MUDD. The incoming MLP gradient currently packs from its materialized BF16
+residual adjoint. Exact compiled-Torch fusion across these boundaries remains
+unverified, including the existing post-loop eager/compiled rounding questions.
+
+`mlp_training.cuh` describes the six training matrix products, both layouts of
+E4M3 activations and E5M2 gradients, and precise FP32 cross-instruction sums for
+the three scaled-mm gradient products. The final MLP has per-token coefficients
+and does not use the scalar post-lambda fold required by earlier layers.
+Post-activation and dpre absolute maxima are collected before FP8 conversion,
+using warp reductions and positive-float atomic maxima. Setup resets them on
+each replay and reads current device scales. Delayed scale refresh, weight-cache
+updates and the earlier folded MLPs still require integration.
+
+The graph has 45 phases and 28830 tasks at 256 tokens/full vocabulary. Once the
+incoming gradient is packed, dW2 can run alongside dpre. Once dpre finishes,
+dX and dW1 can run together, and normalization backward can begin after dX
+without waiting for either weight gradient. Both Graph controls preserve this
+concurrency, as well as the head's existing dX/dW concurrency. An earlier serial
+MLP-gradient schedule is retained in `cuda-check-20260919T090140921267Z-ea967e7b`.
+Its weaker control is not the comparison used below.
+
+The final ordinary checks cover 16/80/256 tokens, one and seventeen workers,
+full vocabulary and repeated execution after changing inputs/scales. Fixtures
+include zero down weights, zero input and zero per-token output coefficients.
+They check all six products against decoded cuBLAS, epilogue casts, FP8 packing
+and transposes, activation maxima, FP64 residual/RMS equations and shared-use
+adjoints. Maximum observed MLP product relative L2 error is 1.31094356e-7 and
+maximum absolute error is 9.53674316e-7. Both Graph controls and persistent
+variants replay BF16/FP8 outputs, loss, head gradients and maxima bit-for-bit,
+including execution without optional diagnostic stores. The FP32 normalization
+buffer is a live packing input and remains enabled in that mode.
+
+Final ordinary event medians on one H100 80GB HBM3:
+
+| Final MLP + MUDD/RMS/head, T=256 / V=50304 | ms |
+| --- | ---: |
+| CUDA Graph with concurrent gradients | 2.762016 |
+| CUDA Graph, four-block occupancy target | 2.752688 |
+| Persistent worker + reset | 3.181328 |
+
+Persistent execution is 15.6% slower than the faster Graph. The profile
+`profile-20260919T090421557020Z-befee140.tar.gz` shows 3.23 ms diagnostic duration,
+24.79% occupancy, 0.23 eligible warps per scheduler, 2.78% tensor-pipe activity
+and 3.47% DRAM throughput. Long-scoreboard and barrier stalls contribute 3.34
+and 3.30 cycles per issued instruction. The worker uses 128 registers and 32800
+shared bytes, with no stack/spills in this build. Both Graph dispatchers use 96
+registers without spills. Static SASS has 104 HMMA, 84 LDGSTS and no LDL/STL or
+HGMMA instructions. FP8 storage still lowers to FP16 HMMA, not native FP8 WGMMA.
+
+The final MLP connection passes ordinary checks and all four native-only
+sanitizers in `cuda-check-20260919T090421557034Z-61df962f`. The diagnostic ATen
+comparison remains enabled in ordinary runs. The independently reproduced ATen
+initcheck failure described above is not fixed or covered by that native-only
+claim. Reproduce with:
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=suffix --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=suffix --profile
+```
+
+The earlier attention/residual body, its shared-source gradients, last-layer
+coefficient-network backward, embeddings, cache/scale refresh, optimizer and
+distributed training remain outside this graph. This run does not establish
+canonical convergence, whole-model performance or a leaderboard rank.
+
+The original MLP, head and evaluation-body regressions also pass all four
+sanitizers in `cuda-check-20260919T090421557020Z-5f151ab3`,
+`cuda-check-20260919T090421557117Z-61e117bb` and
+`cuda-check-20260919T090421557116Z-3dd47b45`. All 43 CUDA/C++/header/Makefile hashes
+in these runs, the final connected run and the profile match their archives and
+the current source. The unchanged pinned PR #360 head was rechecked as open at
+`c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7` after these runs.
+
+The next model connection is layer-10 attention and its preceding MUDD network.
+Its residual site must consume this section's input gradient, while coefficient
+slots 12/13 receive `dcoeff`. Slot gradients from the earlier layer-10 residual
+and value mixes must join them before the shared coefficient-network backward.
+The shared `norm(cache[7])` adjoints from attention and post-loop source 9 must
+also reach their original producer, alongside the earlier layer-8 use.

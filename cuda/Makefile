@@ -15,6 +15,7 @@ routing_FLAGS := $(layer_FLAGS)
 loss_FLAGS := $(layer_FLAGS)
 head_FLAGS := $(loss_FLAGS)
 tail_FLAGS := $(head_FLAGS)
+suffix_FLAGS := $(tail_FLAGS)
 body_control_FLAGS := $(evaluation_FLAGS) -DNANO_EVALUATION_BODY=1
 body_FLAGS := $(body_control_FLAGS) -DNANO_BF16_INDEPENDENT_LOAD=1
 bf16_async_FLAGS := $(bf16_FLAGS) -DNANO_BF16_INDEPENDENT_LOAD=1
@@ -86,7 +87,10 @@ tail_reference_probe: tail_reference.cpp tail_reference.h Makefile
 tail: tail.cu head.cu loss.cu tail_reference.h tail_reference.o training_loss_reference.o $(wildcard *.cuh) Makefile
 	$(NVCC) $(NVFLAGS) $(tail_FLAGS) tail.cu tail_reference.o training_loss_reference.o -lcublas $(TORCH_LIBS) -o $@
 
-$(VARIANTS) attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation body body_control routing quantize loss head: tail_backward.cuh
+suffix: suffix.cu tail.cu head.cu loss.cu tail_reference.h tail_reference.o training_loss_reference.o $(wildcard *.cuh) Makefile
+	$(NVCC) $(NVFLAGS) $(suffix_FLAGS) suffix.cu tail_reference.o training_loss_reference.o -lcublas $(TORCH_LIBS) -o $@
+
+$(VARIANTS) attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation body body_control routing quantize loss head: tail_backward.cuh training_pack.cuh
 
 $(VARIANTS) attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation body body_control routing quantize loss: training_loss.cuh
 
@@ -96,7 +100,7 @@ print-flags:
 check: validate
 	./validate
 
-SANITIZER_FLAGS = $(CHECK_FLAGS) $(if $(filter tail,$(BIN)),--native-only)
+SANITIZER_FLAGS = $(CHECK_FLAGS) $(if $(filter tail suffix,$(BIN)),--native-only)
 sanitize: $(BIN)
 	compute-sanitizer --tool memcheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
 	compute-sanitizer --tool initcheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
@@ -104,4 +108,4 @@ sanitize: $(BIN)
 	compute-sanitizer --tool synccheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
 
 clean:
-	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation routing body body_control loss head tail tail_reference_probe training_loss_reference.o tail_reference.o
+	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation routing body body_control loss head tail suffix tail_reference_probe training_loss_reference.o tail_reference.o

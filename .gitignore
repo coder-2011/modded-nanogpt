@@ -44,4 +44,5 @@ cuda/head
 cuda/tail
 cuda/tail_reference.o
 cuda/tail_reference_probe
+cuda/suffix
 cuda/training_loss_reference.o

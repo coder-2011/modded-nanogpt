@@ -14,6 +14,7 @@
 #include "embeddings.cuh"
 #include "training_loss.cuh"
 #include "tail_backward.cuh"
+#include "training_pack.cuh"
 
 namespace nano {
 
@@ -71,7 +72,25 @@ struct Matmul {
     float *accumulation = nullptr;
     bool a_e5 = false, b_e5 = false, quantized_e5 = false;
     bool precise = false;
+    float *amax = nullptr;
 };
+
+struct MLPSetup {
+    Matmul *ops;
+    const float *scales; // input, up weight, down weight, incoming gradient, post, dpre
+    float *amax;
+};
+
+__device__ __forceinline__ void mlp_setup(const MLPSetup &op) {
+    if (threadIdx.x) return;
+    const float *s = op.scales;
+    op.ops[0].scale = s[0] * s[1]; op.ops[0].output_scale = s[4];
+    op.ops[1].scale = s[4] * s[2];
+    op.ops[2].scale = s[3] * s[2]; op.ops[2].output_scale = s[5]; op.ops[2].post_scale = s[4];
+    op.ops[3].scale = s[5] * s[1];
+    op.ops[4].scale = s[5] * s[0]; op.ops[5].scale = s[4] * s[3];
+    op.amax[0] = op.amax[1] = 0;
+}
 
 struct HeadSetup {
     Matmul *ops;
@@ -150,6 +169,9 @@ struct Graph {
     const HeadInput *head_inputs = nullptr;
     const HeadSetup *head_setups = nullptr;
     const TailBackward *tail_backward_ops = nullptr;
+    const ActivationPack *activation_packs = nullptr;
+    const MLPSetup *mlp_setups = nullptr;
+    const GradientCast *gradient_casts = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -396,7 +418,7 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                         b[j] = *reinterpret_cast<const uint32_t *>(sb + operand_index(r, k));
                     }
                     if constexpr (Precise) {
-                        // Keep cross-instruction accumulation in FP32 for head backward.
+                        // Scaled-mm gradient products retain cross-instruction accumulation in FP32.
                         float product[4] = {};
                         mma(product, a, b, op.a_e5, op.b_e5);
 #pragma unroll
@@ -407,6 +429,7 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
         }
         __syncthreads();
     }
+    float maximum = 0;
 #pragma unroll
     for (int mi = 0; mi < 2; ++mi) {
 #pragma unroll
@@ -436,6 +459,7 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                     }
                     if (op.output)
                         op.output[index] = __float2bfloat16_rn(x);
+                    if (op.amax) maximum = fmaxf(maximum, fabsf(x));
 #ifdef NANO_REUSE_QUANT
                     if (op.quantized || op.quantized_t) {
                         const fp8 q = encode_fp8(x / op.output_scale, op.quantized_e5);
@@ -454,6 +478,11 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                 }
             }
         }
+    }
+    if (op.amax) {
+#pragma unroll
+        for (int offset = 16; offset; offset >>= 1) maximum = fmaxf(maximum, __shfl_xor_sync(0xffffffff, maximum, offset));
+        if (!lane) atomicMax(reinterpret_cast<int *>(op.amax), __float_as_int(maximum));
     }
     if (op.quantized_t) {
         __syncthreads();
@@ -523,7 +552,13 @@ __launch_bounds__(threads)
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithLoss && WithRouting && task.kind == TaskKind::tail_backward) {
+        if (WithLoss && WithRouting && task.kind == TaskKind::activation_pack) {
+            activation_pack(g.activation_packs[task.op], task.row, task.col, scratch);
+        } else if (WithLoss && WithRouting && task.kind == TaskKind::mlp_setup) {
+            mlp_setup(g.mlp_setups[task.op]);
+        } else if (WithLoss && WithRouting && task.kind == TaskKind::gradient_cast) {
+            gradient_cast(g.gradient_casts[task.op], task.row);
+        } else if (WithLoss && WithRouting && task.kind == TaskKind::tail_backward) {
             tail_backward(g.tail_backward_ops[task.op], task.row, TailStep(task.col));
         } else if (WithLoss && task.kind == TaskKind::head_setup) {
             head_setup(g.head_setups[task.op]);

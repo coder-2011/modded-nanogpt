@@ -338,6 +338,7 @@ void check_tail(int tokens, int vocabulary, int workers, int steps, bool timing 
     }
 }
 
+#ifndef NANO_TRAINING_SUFFIX
 int main(int argc, char **argv) {
     try {
         device_info(); bool quick = false, profile = false, aten = true;
@@ -365,3 +366,4 @@ int main(int argc, char **argv) {
         puts("PASS: connected post-loop MUDD, normalization and head backward; eager ATen comparisons are diagnostic, compiled parity and full training remain"); return 0;
     } catch (const std::exception &e) { fprintf(stderr, "FAIL: %s\n", e.what()); return 1; }
 }
+#endif
