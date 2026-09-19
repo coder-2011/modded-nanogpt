@@ -125,19 +125,32 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
             commands.extend([["make", "-C", str(root), candidate],
                              [str(root / candidate)] + flags])
     if sanitize:
-        commands.append(["make", "-C", str(root), "sanitize", f"BIN={binary}",
-                         "CHECK_FLAGS=" if experiment else f"CHECK_FLAGS=--gradient-chunk={gradient_chunk}"])
+        sanitized = [binary]
         if ablate and experiment == "anvil":
-            commands.append(["make", "-C", str(root), "sanitize", "BIN=anvil_idle64", "CHECK_FLAGS="])
+            sanitized.append("anvil_idle64")
         if ablate and experiment == "layer":
-            commands.append(["make", "-C", str(root), "sanitize", "BIN=layer_serial", "CHECK_FLAGS="])
+            sanitized.append("layer_serial")
+        check_flags = [] if experiment else [f"--gradient-chunk={gradient_chunk}"]
+        for checked_binary in sanitized:
+            for tool in ("memcheck", "initcheck", "racecheck", "synccheck"):
+                commands.append(["compute-sanitizer", "--tool", tool, "--error-exitcode", "1",
+                                 str(root / checked_binary), "--quick", *check_flags])
     hashes = "\n".join(f"sha256 {hashlib.sha256(p.read_bytes()).hexdigest()} {p.name}"
                        for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh", ".cpp"} or p.name == "Makefile")
     print(hashes, flush=True)
     output = [hashes]
     for command in commands:
-        result = subprocess.run(command, text=True, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, timeout=600)
+        try:
+            result = subprocess.run(command, text=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, timeout=600)
+        except subprocess.TimeoutExpired as error:
+            captured = error.stdout or ""
+            if isinstance(captured, bytes):
+                captured = captured.decode(errors="replace")
+            text = "$ " + " ".join(command) + "\n" + captured + "\nTIMEOUT after 600 seconds\n"
+            print(text, flush=True)
+            output.append(text)
+            return 124, "\n".join(output), {}
         text = "$ " + " ".join(command) + "\n" + result.stdout
         print(text, flush=True)
         output.append(text)

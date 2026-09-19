@@ -60,7 +60,7 @@ constants and schedule constructor produce the values below.
 | Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Token/value gathers, signed resident-cache combination and smear connected; sparse row resolution/transport and backward remain |
 | Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | Rank-local update body implemented in the persistent worker; training schedules, gradient exchange and model integration remain |
 | Other optimizer state | Parameter-specific Adam rules; sparse touched-row exchange/update; value/n-gram cadence changes at step 336 | Not implemented |
-| Loss | Sampled softcapped CE early, full vocabulary later; MTP and prefix auxiliary schedules; full-vocabulary validation | Not implemented |
+| Loss | Sampled softcapped CE early, full vocabulary later; MTP and prefix auxiliary schedules; full-vocabulary validation | BF16 full-vocabulary evaluation head/loss connected; training loss/backward, auxiliary schedules and canonical validation remain |
 | Timing | Reset warmup state, charge first data fetch, prefix-table construction, table updates, final weight blends and required validation row gathering | Not implemented |
 
 A matching individual MLP does not establish matching architecture, initialization,
@@ -921,3 +921,109 @@ and shell syntax checks pass.
 uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=body --main-shapes --sanitize
 uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=body --profile
 ```
+
+## Connected full-vocabulary BF16 evaluation head
+
+`cuda/evaluation_head.cuh` connects the final normalized hidden state to all
+50304 vocabulary entries and per-token evaluation losses. The head weight keeps
+the pinned physical 768-by-50304 layout. Each 64-by-64 GEMM tile first rounds
+its products to BF16, computes `23 / (1 + exp(-(logit + 5) / 7.5))` in FP32,
+and rounds the softcap output to BF16 before the FP32 loss reduction. It includes
+all vocabulary entries, including padding IDs; target IDs are not sampled or
+remapped. Training's sampled softmax, MTP, prefix auxiliary losses and backward
+are not part of this evaluation head.
+
+The head reuses the GEMM's shared operand storage after its final barrier for
+softcapped logits, then reduces each row's 64 columns to an exponential sum.
+One tile owns each target logit. All 786 vocabulary tiles for a 64-row group
+signal that group's loss tasks, so loss reduction can begin while other row
+groups still perform GEMMs. These tasks run in the existing persistent worker;
+no host launch separates the body, head and loss. The complete forward graph
+has **146 stages and 52 BF16 products**, with 1,224,711 tasks at 16384 tokens.
+The eleven-layer body topology is unchanged.
+
+A fixed exponential shift of 23 is stable because the rounded softcap is bounded
+by [0,23]. Each token's loss is `log(sum(exp(capped - 23))) + 23 - target`.
+The production head stores only 786 FP32 partials, one target and one loss per
+token. At 16384 tokens, partials occupy 49.125 MiB instead of a 1,648,361,472-byte
+BF16 full-logit allocation; target/loss storage adds 128 KiB. This is a memory
+reduction, not evidence of a runtime improvement. The body still retains its
+existing diagnostic buffers.
+
+`cuda/evaluation_head_check.cuh` checks the head independently with pedantic
+FP32 cuBLAS products over the same BF16 inputs, followed by CPU FP64 softcap and
+cross-entropy arithmetic. It checks every vocabulary entry in 64-row slabs,
+without requiring a full-size reference logit allocation. Small cases also
+retain native products and BF16 logits/softcaps, checking the per-tile sums,
+target selection and final reduction separately. The softcap check permits the
+existing 2e-5 absolute arithmetic error before BF16 rounding, including values
+near rounding midpoints. Loss checks retain the existing 2e-4 relative-L2 or
+2e-5 maximum-absolute gate.
+
+Fixtures change head weights and targets between executions, exercise IDs 0,
+63, 64, 50256 and 50303, include large positive/negative logits and the zero-head
+case, and cover a partially occupied final 64-row tile. Poisoned replays compare
+partials, targets and losses bitwise across the audited worker, production
+worker and both Graph controls. Small cases additionally disable all head logit
+and softcap stores, verifying bitwise-identical losses on that production path.
+
+This is a token-to-loss **evaluation arithmetic graph on synthetic inputs**.
+Exact pinned compiled-Torch/FA3 parity, canonical data packing/held-out validation,
+rotary schedule updates, sparse-cache transport, complete backward, optimizer
+integration and multi-GPU training remain. It is not a leaderboard submission
+or a reproduced training trajectory. The full reference launched by `run.sh`
+stays unchanged.
+
+The 16384-token graph passes the independent head reference with relative-L2
+loss error 4.8863076e-8 and maximum absolute error 6.61649894e-6. Every retained
+body boundary and all head partial/target/loss buffers match bitwise across
+replay modes. The fixture uses the same synthetic documents and 128/384 windows
+as earlier body checks, not the final canonical validation windows.
+
+On H100 80GB HBM3, ordinary event medians for the graph **including the head**
+are 256.876541 ms for the ordinary Graph, 203.800835 ms for the four-block Graph,
+and 218.445694 ms for the persistent worker plus reset. The persistent path is
+7.19% slower than the stronger control. These runs include body diagnostics but
+no full head logit/softcap stores. The previous token-to-hidden timing is a
+different workload and must not be presented as an optimization comparison.
+
+`profile-20260919T070737036910Z-53f3ea3f.tar.gz` retains the new graph's PTX,
+SASS and NCU report. The production worker still uses 128 registers and 32800
+shared bytes with no spill; the audited variant spills four bytes. NCU reports
+25.00% occupancy, 0.37 eligible warps per scheduler and 2.11% tensor-pipe activity.
+Long-scoreboard stalls contribute 9.68 of 14.94 warp cycles per issued
+instruction, barriers 0.58 and sleeping 0.19. The 221.40-ms profile duration is
+diagnostic. The four leading sampled instructions are again scalar shared
+operand stores (`STS.U16`, offsets 0x25a40, 0x25b80, 0x25ca0, 0x25ce0), with
+930890 of 3262172 samples. Operand loading remains an evidenced optimization
+target; no runtime improvement is claimed for this new head.
+
+The initial head suite's bundled `make sanitize` command exceeded its shared
+600-second deadline after the ordinary 16/80-token checks passed. Its original
+launcher discarded the subprocess's captured output on timeout, so that run
+cannot establish which sanitizers completed. The complete CLI failure is kept
+as `cuda-check-20260919T070538018484Z-ae693730.log`.
+
+The launcher now invokes each sanitizer directly, giving each its own existing
+600-second deadline and recording completed-tool output immediately. A timeout
+also saves the partial output and returns status 124. The body quick case now
+uses 17 workers to exercise concurrent publication instead of serializing all
+786 head tiles on one worker; its token/vocabulary sizes and arithmetic checks
+are unchanged. Ordinary tests retain the one-worker case. These changes affect
+test orchestration, not CUDA math or the measured head implementation.
+
+The final 17-worker quick case passes memcheck, initcheck, racecheck and synccheck
+in `cuda-check-20260919T071734353466Z-7ac8dc58`, alongside ordinary 16-token
+one-worker and 80-token seventeen-worker replays. All 34 files in its source
+archive match this checkpoint. The large correctness/timing run is preserved
+in `cuda-check-20260919T070737037035Z-31714145`; its subsequent older bundled
+sanitizer command also timed out, so its sanitizer result is not counted.
+BF16 primitive and shared training-attention regressions pass all four in
+`cuda-check-20260919T070737037029Z-47738ecc` and
+`cuda-check-20260919T070737037023Z-0bccdce5`.
+
+Relative to those large/profile/regression archives, only `train_gpt.py`'s
+sanitizer orchestration and the body driver's quick-case worker count changed.
+All production CUDA arithmetic and graph construction are identical. The pinned
+reference hash check and Python/shell syntax checks pass. A live upstream check
+still finds PR #360 open at the pinned commit with no newer update to it.

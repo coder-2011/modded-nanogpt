@@ -53,11 +53,11 @@ anvil anvil_idle64: anvil.cu anvil_graph.cuh anvil.cuh attention_post.cuh bf16_g
 transport: transport.cu bench.cuh Makefile
 	$(NVCC) $(NVFLAGS) transport.cu -lnccl -o $@
 
-layer layer_serial evaluation body: attention_layer.cu attention_layer.cuh attention_layer_reference.cuh attention_post.cuh attention_reference.cuh mlp_evaluation.cuh mlp_evaluation_check.cuh model_evaluation.cuh model_evaluation_check.cuh routing.cuh megakernel.cuh attention.cuh qkv.cuh anvil.cuh bf16_gemm.cuh bench.cuh frontier.cuh Makefile
+layer layer_serial evaluation body: attention_layer.cu attention_layer.cuh attention_layer_reference.cuh attention_post.cuh attention_reference.cuh mlp_evaluation.cuh mlp_evaluation_check.cuh model_evaluation.cuh model_evaluation_check.cuh evaluation_head_check.cuh routing.cuh megakernel.cuh attention.cuh qkv.cuh anvil.cuh bf16_gemm.cuh bench.cuh frontier.cuh Makefile
 	$(NVCC) $(NVFLAGS) $($@_FLAGS) attention_layer.cu -lcublas -o $@
 
 .PHONY: check sanitize clean print-flags
-$(VARIANTS) attention bf16 bf16_control anvil anvil_idle64 layer layer_serial evaluation body routing quantize: routing.cuh gates.cuh embeddings.cuh
+$(VARIANTS) attention bf16 bf16_control anvil anvil_idle64 layer layer_serial evaluation body routing quantize: routing.cuh gates.cuh embeddings.cuh evaluation_head.cuh
 
 routing: routing.cu routing.cuh bench.cuh megakernel.cuh attention.cuh qkv.cuh bf16_gemm.cuh anvil.cuh attention_post.cuh hopper.cuh Makefile
 	$(NVCC) $(NVFLAGS) $(routing_FLAGS) routing.cu -o $@

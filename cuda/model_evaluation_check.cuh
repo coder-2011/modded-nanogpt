@@ -1,5 +1,6 @@
 #pragma once
 #include "model_evaluation.cuh"
+#include "evaluation_head_check.cuh"
 
 struct GateNetworkStorage {
     int columns;
@@ -67,6 +68,7 @@ struct EmbeddingStorage {
 struct EvaluationBodyStorage {
     int t;
     EmbeddingStorage embedding;
+    EvaluationHeadStorage head;
     DeviceBuffer<bf16> x0, bigram, pre_gate, post_gate, skip_gate, residual_gains, mlp_gains, mu_last, mu_post, mu_groups;
     DeviceBuffer<bf16> initial, last_pre, last_aux, parallel, post_mix, output;
     DeviceBuffer<float> gate_scale, skip_lambda;
@@ -78,7 +80,7 @@ struct EvaluationBodyStorage {
     std::array<std::unique_ptr<LayerStorage>, 11> attention;
     std::array<std::unique_ptr<MLPEvaluationStorage>, 12> mlp;
     explicit EvaluationBodyStorage(int tokens)
-        : t(tokens), embedding(tokens), x0(size_t(t) * 768), bigram(x0.n), pre_gate(size_t(t) * 26), post_gate(size_t(t) * 41),
+        : t(tokens), embedding(tokens), head(tokens), x0(size_t(t) * 768), bigram(x0.n), pre_gate(size_t(t) * 26), post_gate(size_t(t) * 41),
           skip_gate(t), residual_gains(22), mlp_gains(11), mu_last(size_t(t) * 14), mu_post(size_t(t) * 10),
           mu_groups(size_t(t) * 120), initial(x0.n), last_pre(x0.n), last_aux(x0.n), parallel(x0.n), post_mix(x0.n), output(x0.n),
           gate_scale(1), skip_lambda(1), group_weight(14 * 12 * 64), group_product(size_t(t) * 120) {
@@ -104,6 +106,7 @@ struct EvaluationBodyStorage {
     }
     void change(int step) {
         embedding.change(step);
+        head.change(step);
         std::mt19937 rng(8173 + t + step * 31);
         std::normal_distribution<float> normal;
         for (auto *buffer : {&residual_gains, &mlp_gains}) {
@@ -156,6 +159,8 @@ struct EvaluationBodyStorage {
         for (int i = 0; i < 3; ++i) b.auxiliary[i] = auxiliary[i]->buffers();
         b.initial = initial.p; b.last_pre = last_pre.p; b.last_aux = last_aux.p; b.parallel = parallel.p;
         b.post_mix = post_mix.p; b.output = output.p;
+        b.head = head.buffers(); b.head_weight = head.weight.p;
+        b.head_logits = head.logits.p; b.head_raw = head.raw.p;
         for (int i = 0; i < 4; ++i) b.values[i] = values[i]->p;
         for (int i = 0; i < 11; ++i) {
             b.after_attention[i] = after_attention[i]->p; b.residual[i] = residual[i]->p;
@@ -181,13 +186,14 @@ struct EvaluationBodySchedule {
     DeviceBuffer<ResidualNorm> norms;
     DeviceBuffer<GateTransform> gates;
     DeviceBuffer<EmbeddingRead> embeddings;
+    DeviceBuffer<EvaluationHead> heads;
     DeviceBuffer<Task> tasks;
     DeviceBuffer<Group> groups;
     DeviceBuffer<int> counters, queue, state, audit;
     std::vector<std::unique_ptr<DeviceBuffer<float>>> raw_norms, raw_mixes, raw_gates, raw_matrices;
     explicit EvaluationBodySchedule(EvaluationBodyStorage &b) : plan(b.buffers()), matrices(plan.matrices.size()),
         qkv(plan.qkv.size()), attention(plan.attention.size()), post(plan.post.size()), setup(plan.setup.size()),
-        mixes(plan.mixes.size()), norms(plan.norms.size()), gates(plan.gates.size()), embeddings(plan.embeddings.size()),
+        mixes(plan.mixes.size()), norms(plan.norms.size()), gates(plan.gates.size()), embeddings(plan.embeddings.size()), heads(plan.heads.size()),
         tasks(plan.tasks.size()), groups(plan.groups.size()),
         counters(groups.n), queue(tasks.n), state(4), audit(tasks.n + 2) {
         for (size_t i = 0; i < plan.setup.size(); ++i) {
@@ -203,13 +209,15 @@ struct EvaluationBodySchedule {
         for (auto &op : plan.gates) {
             raw_gates.push_back(std::make_unique<DeviceBuffer<float>>(size_t(op.tokens) * op.columns)); op.raw = raw_gates.back()->p;
         }
-        for (auto &op : plan.matrices) if (!op.raw) {
+        plan.matrices[plan.head_matrix].head = heads.p;
+        for (auto &op : plan.matrices) if (!op.raw && !op.head) {
             raw_matrices.push_back(std::make_unique<DeviceBuffer<float>>(size_t(op.m) * op.n)); op.raw = raw_matrices.back()->p;
         }
         matrices.put(plan.matrices); qkv.put(plan.qkv); attention.put(plan.attention); post.put(plan.post);
         setup.put(plan.setup); mixes.put(plan.mixes); norms.put(plan.norms); gates.put(plan.gates); embeddings.put(plan.embeddings);
+        heads.put(plan.heads);
         tasks.put(plan.tasks); groups.put(plan.groups);
-        if (plan.attention.size() != 7 || plan.matrices.size() != 51 || plan.norms.size() != 18 || plan.mixes.size() != 27 || plan.gates.size() != 21)
+        if (plan.attention.size() != 7 || plan.matrices.size() != 52 || plan.norms.size() != 18 || plan.mixes.size() != 27 || plan.gates.size() != 21 || plan.heads.size() != 1)
             throw std::runtime_error("evaluation body topology count mismatch");
         // Attention slots 5/6 correspond to layers 8/10. Both projection inputs
         // must be the same allocation, and the extra MLP must share bank-8 input.
@@ -226,14 +234,17 @@ struct EvaluationBodySchedule {
             if (net == 4 || op.a != network_sources[net++]) throw std::runtime_error("gate network source mismatch");
         }
         if (net != 4) throw std::runtime_error("missing gate network");
-        if (plan.matrices.back().a != b.networks[3]->hidden.p)
+        if (plan.matrices[plan.head_matrix - 1].a != b.networks[3]->hidden.p)
             throw std::runtime_error("post-loop group branch did not share hidden activation");
+        if (plan.matrices[plan.head_matrix].a != b.output.p)
+            throw std::runtime_error("head did not consume the final normalization");
     }
     Graph graph(bool checked = false) {
         Graph g{}; g.bf16_ops = matrices.p; g.qkv = qkv.p; g.attention = attention.p;
         g.attention_post = post.p; g.layer_setup = setup.p; g.residual_mix = mixes.p; g.residual_norm = norms.p;
         g.gates = gates.p;
         g.embeddings = embeddings.p;
+        g.evaluation_heads = heads.p;
         g.tasks = tasks.p; g.groups = groups.p; g.counters = counters.p; g.queue = queue.p; g.state = state.p;
         g.task_count = int(tasks.n); g.root_count = plan.roots; g.audit = checked ? audit.p : nullptr; return g;
     }
@@ -262,7 +273,8 @@ struct EvaluationBodySchedule {
             result.push_back({op.ngram_output, size_t(op.tokens) * 768});
             for (auto *value : op.value_output) result.push_back({value, size_t(op.tokens) * 768});
         }
-        for (const auto &op : plan.matrices) result.push_back({op.output, size_t(op.m) * op.n});
+        for (const auto &op : plan.matrices) if (op.output) result.push_back({op.output, size_t(op.m) * op.n});
+        for (const auto &op : plan.heads) if (op.softcapped) result.push_back({op.softcapped, size_t(op.tokens) * op.vocabulary});
         for (const auto &op : plan.qkv) {
             result.push_back({op.q, size_t(op.tokens) * op.heads * op.qk_dim});
             result.push_back({op.k, size_t(op.tokens) * op.heads * op.qk_dim});
@@ -274,12 +286,19 @@ struct EvaluationBodySchedule {
     }
     void poison() {
         for (auto [ptr, count] : boundaries()) CHECK_CUDA(cudaMemset(ptr, 0xff, count * sizeof(bf16)));
+        for (auto [ptr, count] : head_boundaries()) CHECK_CUDA(cudaMemset(ptr, 0xff, count * sizeof(float)));
+    }
+    std::vector<std::pair<float *, size_t>> head_boundaries() {
+        const auto &h = plan.heads[0];
+        return {{h.partial, size_t(h.tokens) * 786}, {h.target_logit, size_t(h.tokens)}, {h.loss, size_t(h.tokens)}};
     }
 };
 
 void check_evaluation_body_math(EvaluationBodySchedule &schedule) {
     LayerBlasReference reference;
-    for (const auto &op : schedule.matrices.get()) reference.check_product(op);
+    auto matrices = schedule.matrices.get();
+    for (const auto &op : matrices) if (!op.head) reference.check_product(op);
+    check_evaluation_head(matrices[schedule.plan.head_matrix], schedule.plan.heads[0]);
     for (const auto &op : schedule.plan.embeddings) {
         auto ids = layer_read(op.token_ids, op.tokens), rows = layer_read(op.cache_rows, size_t(op.tokens) * 2);
         auto output = layer_read(op.token_output, size_t(op.tokens) * 768);
@@ -389,6 +408,12 @@ void check_evaluation_body(int tokens, int workers, int steps) {
             expected.push_back(layer_read(ptr, count));
             for (auto value : expected.back()) if (!std::isfinite(float(value))) throw std::runtime_error("non-finite body output");
         }
+        std::vector<std::vector<float>> expected_head;
+        auto head_boundaries = schedule.head_boundaries();
+        for (auto [ptr, count] : head_boundaries) {
+            expected_head.push_back(layer_read(ptr, count));
+            for (float value : expected_head.back()) if (!std::isfinite(value)) throw std::runtime_error("non-finite head output");
+        }
         for (int mode = 0; mode < 3; ++mode) {
             schedule.poison();
             if (mode == 0) control.run(); else if (mode == 1) bounded.run(); else schedule.run(workers);
@@ -398,6 +423,28 @@ void check_evaluation_body(int tokens, int workers, int steps) {
                 if (std::memcmp(actual.data(), expected[i].data(), count * sizeof(bf16)))
                     throw std::runtime_error("body boundary replay mismatch");
             }
+            for (size_t i = 0; i < head_boundaries.size(); ++i) {
+                auto [ptr, count] = head_boundaries[i]; auto actual = layer_read(ptr, count);
+                if (std::memcmp(actual.data(), expected_head[i].data(), count * sizeof(float)))
+                    throw std::runtime_error("head partial/target/loss replay mismatch");
+            }
+        }
+        if (storage.head.raw.n) {
+            auto matrices = schedule.matrices.get();
+            auto saved = matrices[schedule.plan.head_matrix];
+            auto heads = schedule.plan.heads;
+            matrices[schedule.plan.head_matrix].output = nullptr;
+            matrices[schedule.plan.head_matrix].raw = nullptr;
+            heads[0].softcapped = nullptr;
+            schedule.matrices.put(matrices); schedule.heads.put(heads);
+            schedule.poison(); schedule.run(workers); CHECK_CUDA(cudaDeviceSynchronize());
+            for (size_t i = 0; i < head_boundaries.size(); ++i) {
+                auto [ptr, count] = head_boundaries[i]; auto actual = layer_read(ptr, count);
+                if (std::memcmp(actual.data(), expected_head[i].data(), count * sizeof(float)))
+                    throw std::runtime_error("head without logit stores changed the loss");
+            }
+            matrices[schedule.plan.head_matrix] = saved;
+            schedule.matrices.put(matrices); schedule.heads.put(schedule.plan.heads);
         }
         printf("BODY PASS tokens=%d workers=%d step=%d tasks=%zu stages=%zu matrices=%zu attention=%zu norms=%zu mixes=%zu gates=%zu\n",
                tokens, workers, step, schedule.tasks.n, schedule.plan.stages.size(), schedule.plan.matrices.size(),
@@ -426,13 +473,13 @@ int evaluation_body_profile() {
 }
 
 int evaluation_body_main(bool quick, bool main_shapes) {
-    check_evaluation_body(16, 1, quick ? 1 : 3);
+    check_evaluation_body(16, quick ? 17 : 1, quick ? 1 : 3);
     if (!quick) check_evaluation_body(80, 17, 2);
     if (!quick && main_shapes) {
         cudaDeviceProp properties{};
         CHECK_CUDA(cudaGetDeviceProperties(&properties, 0));
         check_evaluation_body(16384, properties.multiProcessorCount * 4, 1);
     }
-    puts("PASS: token-to-hidden BF16 body with embedding/gate producers; loss, training, sparse-cache transport and optimizer integration remain");
+    puts("PASS: token-to-loss BF16 evaluation graph; compiled-trainer parity, training, sparse-cache transport and optimizer integration remain");
     return 0;
 }

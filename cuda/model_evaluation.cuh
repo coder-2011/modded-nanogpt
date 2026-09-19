@@ -30,6 +30,10 @@ struct EvaluationBodyBuffers {
     std::array<bf16 *, 12> mlp_input;
     std::array<AttentionLayerBuffers, 11> attention;
     std::array<MLPEvaluationBuffers, 12> mlp;
+    const bf16 *head_weight;
+    EvaluationHead head;
+    bf16 *head_logits = nullptr;
+    float *head_raw = nullptr;
 };
 
 struct EvaluationBodyPlan {
@@ -43,6 +47,8 @@ struct EvaluationBodyPlan {
     std::vector<ResidualNorm> norms;
     std::vector<GateTransform> gates;
     std::vector<EmbeddingRead> embeddings;
+    std::vector<EvaluationHead> heads;
+    int head_matrix = -1;
     std::vector<Task> tasks;
     std::vector<Group> groups;
     std::vector<std::pair<int, int>> stages;
@@ -252,6 +258,24 @@ struct EvaluationBodyPlan {
         }
         add_mix(final);
         norm(b.post_mix, b.output, t);
+        if (b.head.tokens != t || b.head.vocabulary != 50304)
+            throw std::runtime_error("evaluation requires the full 50304-token head");
+        heads.push_back(b.head);
+        head_matrix = int(matrices.size());
+        matrices.push_back({b.output, b.head_weight, nullptr, b.head_logits, b.head_raw,
+                            t, 50304, 768, 768, 1, 1, 50304});
+        int rows = (t + 63) / 64, columns = 50304 / 64, head_roots = rows * columns;
+        std::vector<Task> part;
+        std::vector<Group> deps;
+        for (int row = 0; row < rows; ++row) {
+            deps.push_back({columns, head_roots + row * 16, head_roots + std::min((t + 3) / 4, (row + 1) * 16)});
+            for (int col = 0; col < columns; ++col)
+                part.push_back({head_matrix, row, col, {row, -1}, 0, 0, TaskKind::bf16_matmul});
+        }
+        for (int row = 0; row < (t + 3) / 4; ++row)
+            part.push_back({0, row, 0, {-1, -1}, 0, 0, TaskKind::evaluation_loss});
+        int end = int(part.size());
+        append(std::move(part), deps, {{0, head_roots}, {head_roots, end}}, head_roots);
     }
 };
 

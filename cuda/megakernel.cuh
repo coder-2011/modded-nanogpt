@@ -129,6 +129,7 @@ struct Graph {
     const ResidualNorm *residual_norm = nullptr;
     const GateTransform *gates = nullptr;
     const EmbeddingRead *embeddings = nullptr;
+    const EvaluationHead *evaluation_heads = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -493,7 +494,9 @@ __launch_bounds__(threads)
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithRouting && task.kind == TaskKind::embedding_read) {
+        if (WithRouting && task.kind == TaskKind::evaluation_loss) {
+            evaluation_loss(g.evaluation_heads[task.op], task.row);
+        } else if (WithRouting && task.kind == TaskKind::embedding_read) {
             embedding_read(g.embeddings[task.op], task.row);
         } else if (WithRouting && task.kind == TaskKind::gate_transform) {
             gate_transform(g.gates[task.op], task.row);

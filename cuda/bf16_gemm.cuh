@@ -2,6 +2,7 @@
 #include <cuda_bf16.h>
 #include <cuda_runtime.h>
 #include <cstdint>
+#include "evaluation_head.cuh"
 
 namespace nano {
 
@@ -18,6 +19,7 @@ struct BF16Matmul {
     bool symmetric = false; // Schedule only lower-triangular tiles, mirror each owned element.
     bool relu_square = false;
     __nv_bfloat16 *pre_activation = nullptr;
+    const EvaluationHead *head = nullptr;
 };
 
 __device__ __forceinline__ void mma_bf16(float *d, const uint32_t *a, const uint32_t *b) {
@@ -147,6 +149,12 @@ __device__ __forceinline__ void bf16_matmul_tile(const BF16Matmul &op, int row, 
                     }
                     if (op.output)
                         op.output[index] = __float2bfloat16_rn(result);
+                    if (op.head) {
+                        auto capped = evaluation_softcap(x);
+                        scratch[(r - row0) * 64 + c - col0] = capped;
+                        if (op.head->softcapped) op.head->softcapped[index] = capped;
+                        if (op.head->targets[r] == c) op.head->target_logit[r] = float(capped);
+                    }
                     if (op.symmetric && r != c) {
                         int64_t mirror = int64_t(c) * op.n + r;
                         if (op.raw)
@@ -158,6 +166,10 @@ __device__ __forceinline__ void bf16_matmul_tile(const BF16Matmul &op, int row, 
                     }
                 }
             }
+    if (op.head) {
+        __syncthreads();
+        evaluation_head_partial(*op.head, scratch, row, col);
+    }
 }
 
 } // namespace nano

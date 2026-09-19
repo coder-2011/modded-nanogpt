@@ -105,7 +105,7 @@
       }
     ]
   },
-  "native_status": "token-to-hidden BF16 evaluation body with embedding and gate producers; FP8 training components, residual/RMS backward primitives and rank-local ANVIL; output head/loss, full backward, rotary state updates, sparse-cache transport, optimizer integration and distributed training/validation remain incomplete",
+  "native_status": "token-to-loss BF16 evaluation graph with a tiled full-vocabulary head; FP8 training components, residual/RMS backward primitives and rank-local ANVIL; compiled-trainer parity, full backward, rotary state updates, sparse-cache transport, optimizer integration and distributed training/validation remain incomplete",
   "architecture": {
     "model_dim": 768,
     "mlp_width": 2816,

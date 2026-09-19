@@ -104,10 +104,13 @@ body: seven attention calls, eleven MLP calls, residual/skip routing, shared
 layer-8/10 normalization, parallel layer-8 MLPs and post-loop MUDD mixing. It
 starts from token IDs, resident token/value tables, resolved sparse-cache rows,
 learned parameters and supplied rotary factors. Token/value gathers, signed
-n-gram combination, smear, initial normalization and all four coefficient
-networks now run inside the graph. Sparse-cache transport, output head/loss,
-full backward and training integration remain missing. Do not describe this body
-as the full native model. Add `--main-shapes` for the 16384-token check and native
+n-gram combination, smear, initial normalization, all four coefficient networks
+and the full-vocabulary BF16 evaluation head/loss now run inside the graph.
+The head reduces 64-column tiles without materializing the full logit tensor;
+small cases also retain logits to check rounding and the reduction separately.
+Sparse-cache transport, compiled-trainer parity, full backward and training
+integration remain missing. Do not describe this as a complete native trainer.
+Add `--main-shapes` for the 16384-token check and native
 body timings; `--experiment=body --profile` captures PTX/SASS/NCU. The fixture uses
 synthetic documents and diagnostic buffers, not canonical validation. Compare
 against the faster of both Graph controls before claiming a fusion speedup.

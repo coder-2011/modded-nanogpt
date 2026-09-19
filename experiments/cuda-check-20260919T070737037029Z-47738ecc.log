@@ -1,0 +1,245 @@
+sha256 3341bedf012c8ec2333b3ad823ce2f18468556047dfebddf406a6d063000dfbe Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 d508c8dba1c9bb0384fccc9d21dc0ed3117602ec14e362e5bc81c49b46da4e9c attention.cuh
+sha256 a8a2155c83ae275021b9cb0626865ae047eb205e067b710a6671d97ddc53633b attention_layer.cu
+sha256 5e23df96de295a12c6770293bb3724e58ffee06f6310f0dbf43293c5c377ffac attention_layer.cuh
+sha256 e43b134f524130c5fcc5b7ea3dfca072fed7dfcb72ff0957dbb0bd2e7d4f7733 attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 a3be2ab6c64f030ca01f7d30c6a6bb7604b3bbe62257ba0aad9bb72bca232c76 bench.cuh
+sha256 a1239425b438fa85c0628a25decee76f394162bc6c3aae2cfa03cc6e5fd1c3d9 bf16.cu
+sha256 3bd98e9ab25e300f62d2f9b195be657e264f54f8119d64a0a9515484bb257537 bf16_gemm.cuh
+sha256 b6013fa23a801d8e288bf261029957d6931556cc18d7e7fc2de9974ad7887d6d embeddings.cuh
+sha256 dd38c6d6039e09b954f14669ec4cd0877700ba1011719e8d784a5629f1a728d1 evaluation_head.cuh
+sha256 ec94fd114bd2b8b97e2e890697973afe316a7ce5e2535476815f9db9e12a4778 evaluation_head_check.cuh
+sha256 d4b3c092f09347b8d6cefd89d84d64bc7bea040a24b64c0dd8614fbfe7c8b621 frontier.cuh
+sha256 75c4137f95d8b352fb02671ea4995ab6d8857390eb27d11479f7d6e628f02ce5 gates.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 03f93798ed7c4fef6721da3ee868fabe7a249db8af18b6615aef883682c91615 megakernel.cuh
+sha256 650935fbe0799cec650ebe91331f83e58b23a3461c0a9df0f01a27a6dcebaec7 mlp_evaluation.cuh
+sha256 abc976abdeaa14db113f1e1c880af4aa6b3399bb04b70e1f3718ac8abbc3d888 mlp_evaluation_check.cuh
+sha256 960256e6097b5eb5a2a3e5505c14fabf62213b218441a16405ed0adceaa9ea9f model_evaluation.cuh
+sha256 076bed80c91510db3b11027d2094b83b3e9830a85f5e93cd626dff9c522ae8a4 model_evaluation_check.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 9075da55b9c101c83b3683c723f318808b2655b7b2b7219976b812520dc6deb2 routing.cu
+sha256 ca484b3e8d99319779949171f011f533443b6cd387ad8d5459fdb676e072f33a routing.cuh
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 07:07:45 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:89:00.0 Off |                    0 |
+| N/A   26C    P0             72W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda bf16
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 bf16.cu -lcublas -o bf16
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb0ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb0ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 1298.196 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 927.682 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 926.517 ms
+ptxas info    : Compiling entry function '_Z16reset_bf16_queuePiS_S_PKiii' for 'sm_90a'
+ptxas info    : Function properties for _Z16reset_bf16_queuePiS_S_PKiii
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 2.100 ms
+ptxas info    : Compiling entry function '_Z11staged_bf16N4nano10BF16MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z11staged_bf16N4nano10BF16MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 768.442 ms
+ptxas info    : Compiling entry function '_Z19reference_bf16_postN4nano10BF16MatmulEPf' for 'sm_90a'
+ptxas info    : Function properties for _Z19reference_bf16_postN4nano10BF16MatmulEPf
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 10 registers, used 0 barriers
+ptxas info    : Compile time = 2.634 ms
+ptxas info    : Compiling entry function '_Z11unpack_bf16N4nano10BF16MatmulEPfS1_' for 'sm_90a'
+ptxas info    : Function properties for _Z11unpack_bf16N4nano10BF16MatmulEPfS1_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 22 registers, used 0 barriers
+ptxas info    : Compile time = 9.964 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/bf16
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+BF16 resident_ctas_per_sm=4
+BF16 shape M=1 N=1 K=1 trans_a=0 trans_b=0 b_scale=0.7 alpha=1 beta=0 split=1 symmetric=0 workers=1
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=1 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=5.9289151e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=1
+BF16 GEMM rel_l2=6.99287322e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=6.09603427e-08 max_abs=2.98023224e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=65 N=65 K=71 trans_a=0 trans_b=0 b_scale=1 alpha=3.90523 beta=-6.09503 split=0 symmetric=1 workers=7
+BF16 GEMM rel_l2=8.85160204e-08 max_abs=2.86102295e-06
+BF16 shape M=64 N=64 K=128 trans_a=1 trans_b=1 b_scale=1 alpha=1 beta=0 split=0 symmetric=1 workers=1
+BF16 GEMM rel_l2=1.79430543e-07 max_abs=1.90734863e-06
+BF16 shape M=129 N=96 K=72 trans_a=0 trans_b=0 b_scale=0.625 alpha=1 beta=0 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=8.64948429e-08 max_abs=1.78813934e-07
+BF16 shape M=257 N=129 K=273 trans_a=1 trans_b=1 b_scale=1 alpha=1 beta=0 split=1 symmetric=0 workers=1056
+BF16 GEMM rel_l2=5.73522881e-07 max_abs=6.10351562e-05
+BF16 shape M=16384 N=768 K=768 trans_a=0 trans_b=0 b_scale=0.875 alpha=1 beta=0 split=0 symmetric=0 workers=528
+BF16 GEMM rel_l2=7.37193939e-07 max_abs=7.15255737e-06
+bf16_staged median_ms=0.208224 samples_ms= 0.208224 0.208224 0.208864 0.208480 0.207232 0.206720 0.208608 0.207424 0.209248 0.207840
+bf16_persistent_with_reset median_ms=0.237968 samples_ms= 0.237984 0.238112 0.238784 0.238400 0.239168 0.237952 0.237760 0.237792 0.237920 0.236960
+BF16 shape M=16384 N=768 K=384 trans_a=0 trans_b=0 b_scale=0.875 alpha=1 beta=0 split=0 symmetric=0 workers=528
+BF16 GEMM rel_l2=3.62417134e-07 max_abs=3.09944153e-06
+bf16_staged median_ms=0.131456 samples_ms= 0.132096 0.132224 0.129856 0.130496 0.132256 0.131584 0.131008 0.131232 0.131328 0.135776
+bf16_persistent_with_reset median_ms=0.163536 samples_ms= 0.163968 0.162208 0.163520 0.165024 0.163296 0.164064 0.163040 0.161952 0.164384 0.163552
+BF16 shape M=768 N=768 K=2816 trans_a=1 trans_b=1 b_scale=1 alpha=1 beta=0 split=0 symmetric=1 workers=528
+BF16 GEMM rel_l2=6.84664843e-06 max_abs=0.0009765625
+bf16_staged median_ms=0.271424 samples_ms= 0.272192 0.271456 0.269792 0.271392 0.269792 0.272032 0.272096 0.272096 0.270432 0.270112
+bf16_persistent_with_reset median_ms=0.540832 samples_ms= 0.541152 0.540512 0.547200 0.540448 0.542144 0.540032 0.539808 0.539360 0.542688 0.541280
+BF16 shape M=2816 N=768 K=768 trans_a=0 trans_b=1 b_scale=1 alpha=1 beta=3.9238 split=1 symmetric=0 workers=528
+BF16 GEMM rel_l2=5.64413038e-05 max_abs=0.015625
+bf16_staged median_ms=0.103792 samples_ms= 0.104640 0.104064 0.103872 0.103296 0.103424 0.103712 0.103648 0.103968 0.103648 0.104256
+bf16_persistent_with_reset median_ms=0.164672 samples_ms= 0.163584 0.164960 0.164832 0.164192 0.164928 0.164736 0.164704 0.163904 0.164640 0.163904
+PASS: native BF16 GEMM, scaled weights, split epilogues, symmetric Gram and dependent scheduling
+
+$ make -C /workspace/cuda sanitize BIN=bf16 CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./bf16 --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+BF16 resident_ctas_per_sm=4
+BF16 shape M=1 N=1 K=1 trans_a=0 trans_b=0 b_scale=0.7 alpha=1 beta=0 split=1 symmetric=0 workers=1
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=1 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=5.9289151e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=1
+BF16 GEMM rel_l2=6.99287322e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=6.09603427e-08 max_abs=2.98023224e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=65 N=65 K=71 trans_a=0 trans_b=0 b_scale=1 alpha=3.90523 beta=-6.09503 split=0 symmetric=1 workers=7
+BF16 GEMM rel_l2=8.85160204e-08 max_abs=2.86102295e-06
+BF16 shape M=64 N=64 K=128 trans_a=1 trans_b=1 b_scale=1 alpha=1 beta=0 split=0 symmetric=1 workers=1
+BF16 GEMM rel_l2=1.79430543e-07 max_abs=1.90734863e-06
+BF16 shape M=129 N=96 K=72 trans_a=0 trans_b=0 b_scale=0.625 alpha=1 beta=0 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=8.64948429e-08 max_abs=1.78813934e-07
+PASS: native BF16 GEMM, scaled weights, split epilogues, symmetric Gram and dependent scheduling
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./bf16 --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+BF16 resident_ctas_per_sm=4
+BF16 shape M=1 N=1 K=1 trans_a=0 trans_b=0 b_scale=0.7 alpha=1 beta=0 split=1 symmetric=0 workers=1
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=1 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=5.9289151e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=1
+BF16 GEMM rel_l2=6.99287322e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=6.09603427e-08 max_abs=2.98023224e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=65 N=65 K=71 trans_a=0 trans_b=0 b_scale=1 alpha=3.90523 beta=-6.09503 split=0 symmetric=1 workers=7
+BF16 GEMM rel_l2=8.85160204e-08 max_abs=2.86102295e-06
+BF16 shape M=64 N=64 K=128 trans_a=1 trans_b=1 b_scale=1 alpha=1 beta=0 split=0 symmetric=1 workers=1
+BF16 GEMM rel_l2=1.79430543e-07 max_abs=1.90734863e-06
+BF16 shape M=129 N=96 K=72 trans_a=0 trans_b=0 b_scale=0.625 alpha=1 beta=0 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=8.64948429e-08 max_abs=1.78813934e-07
+PASS: native BF16 GEMM, scaled weights, split epilogues, symmetric Gram and dependent scheduling
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./bf16 --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+BF16 resident_ctas_per_sm=4
+BF16 shape M=1 N=1 K=1 trans_a=0 trans_b=0 b_scale=0.7 alpha=1 beta=0 split=1 symmetric=0 workers=1
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=1 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=5.9289151e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=1
+BF16 GEMM rel_l2=6.99287322e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=6.09603427e-08 max_abs=2.98023224e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=65 N=65 K=71 trans_a=0 trans_b=0 b_scale=1 alpha=3.90523 beta=-6.09503 split=0 symmetric=1 workers=7
+BF16 GEMM rel_l2=8.85160204e-08 max_abs=2.86102295e-06
+BF16 shape M=64 N=64 K=128 trans_a=1 trans_b=1 b_scale=1 alpha=1 beta=0 split=0 symmetric=1 workers=1
+BF16 GEMM rel_l2=1.79430543e-07 max_abs=1.90734863e-06
+BF16 shape M=129 N=96 K=72 trans_a=0 trans_b=0 b_scale=0.625 alpha=1 beta=0 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=8.64948429e-08 max_abs=1.78813934e-07
+PASS: native BF16 GEMM, scaled weights, split epilogues, symmetric Gram and dependent scheduling
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./bf16 --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+BF16 resident_ctas_per_sm=4
+BF16 shape M=1 N=1 K=1 trans_a=0 trans_b=0 b_scale=0.7 alpha=1 beta=0 split=1 symmetric=0 workers=1
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=1 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=5.9289151e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=1
+BF16 GEMM rel_l2=6.99287322e-08 max_abs=5.96046448e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=0 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=7 N=17 K=33 trans_a=0 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=6.09603427e-08 max_abs=2.98023224e-08
+BF16 shape M=7 N=17 K=33 trans_a=1 trans_b=1 b_scale=-0.37 alpha=0.9 beta=0.3 split=1 symmetric=0 workers=7
+BF16 GEMM rel_l2=0 max_abs=0
+BF16 shape M=65 N=65 K=71 trans_a=0 trans_b=0 b_scale=1 alpha=3.90523 beta=-6.09503 split=0 symmetric=1 workers=7
+BF16 GEMM rel_l2=8.85160204e-08 max_abs=2.86102295e-06
+BF16 shape M=64 N=64 K=128 trans_a=1 trans_b=1 b_scale=1 alpha=1 beta=0 split=0 symmetric=1 workers=1
+BF16 GEMM rel_l2=1.79430543e-07 max_abs=1.90734863e-06
+BF16 shape M=129 N=96 K=72 trans_a=0 trans_b=0 b_scale=0.625 alpha=1 beta=0 split=0 symmetric=0 workers=7
+BF16 GEMM rel_l2=8.64948429e-08 max_abs=1.78813934e-07
+PASS: native BF16 GEMM, scaled weights, split epilogues, symmetric Gram and dependent scheduling
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb0ELb0EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 0, 'STL': 0}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 0, 'STL': 0}

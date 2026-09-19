@@ -168,7 +168,9 @@ __global__ __launch_bounds__(128, MinimumBlocks) void staged_layer(Graph g, int 
     __shared__ __align__(1024) fp8 scratch[bf16_scratch_bytes];
     const Task task = g.tasks[begin + blockIdx.x];
 #ifdef NANO_EVALUATION_BODY
-    if (task.kind == TaskKind::embedding_read) {
+    if (task.kind == TaskKind::evaluation_loss) {
+        evaluation_loss(g.evaluation_heads[task.op], task.row);
+    } else if (task.kind == TaskKind::embedding_read) {
         embedding_read(g.embeddings[task.op], task.row);
     } else if (task.kind == TaskKind::gate_transform) {
         gate_transform(g.gates[task.op], task.row);
