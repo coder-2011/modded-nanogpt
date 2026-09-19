@@ -13,6 +13,7 @@
 #include "gates.cuh"
 #include "embeddings.cuh"
 #include "training_loss.cuh"
+#include "tail_backward.cuh"
 
 namespace nano {
 
@@ -148,6 +149,7 @@ struct Graph {
     const TrainingLoss *training_losses = nullptr;
     const HeadInput *head_inputs = nullptr;
     const HeadSetup *head_setups = nullptr;
+    const TailBackward *tail_backward_ops = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -521,7 +523,9 @@ __launch_bounds__(threads)
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithLoss && task.kind == TaskKind::head_setup) {
+        if (WithLoss && WithRouting && task.kind == TaskKind::tail_backward) {
+            tail_backward(g.tail_backward_ops[task.op], task.row, TailStep(task.col));
+        } else if (WithLoss && task.kind == TaskKind::head_setup) {
             head_setup(g.head_setups[task.op]);
         } else if (WithLoss && task.kind == TaskKind::head_input) {
             head_input(g.head_inputs[task.op], task.row, task.col, scratch);

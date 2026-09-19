@@ -236,6 +236,7 @@ void check_head(int tokens, int vocabulary, int predictions, int workers, int st
     }
 }
 
+#ifndef NANO_TRAINING_TAIL
 int main(int argc, char **argv) {
     try {
         device_info(); bool quick = false, profile = false;
@@ -264,3 +265,4 @@ int main(int argc, char **argv) {
         puts("PASS: connected FP8 training head; compiled-trainer parity, candidate transport and full-model integration remain"); return 0;
     } catch (const std::exception &e) { fprintf(stderr, "FAIL: %s\n", e.what()); return 1; }
 }
+#endif

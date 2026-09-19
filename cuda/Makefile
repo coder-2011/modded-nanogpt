@@ -14,6 +14,7 @@ evaluation_FLAGS := $(layer_FLAGS) -DNANO_EVALUATION_ONLY=1
 routing_FLAGS := $(layer_FLAGS)
 loss_FLAGS := $(layer_FLAGS)
 head_FLAGS := $(loss_FLAGS)
+tail_FLAGS := $(head_FLAGS)
 body_control_FLAGS := $(evaluation_FLAGS) -DNANO_EVALUATION_BODY=1
 body_FLAGS := $(body_control_FLAGS) -DNANO_BF16_INDEPENDENT_LOAD=1
 bf16_async_FLAGS := $(bf16_FLAGS) -DNANO_BF16_INDEPENDENT_LOAD=1
@@ -74,6 +75,19 @@ head: head.cu loss.cu
 loss head: training_loss_reference.o $(wildcard *.cuh) Makefile
 	$(NVCC) $(NVFLAGS) $($@_FLAGS) $@.cu training_loss_reference.o -lcublas -o $@
 
+TORCH_INCLUDES = -I$(NANO_TORCH_ROOT)/include -I$(NANO_TORCH_ROOT)/include/torch/csrc/api/include
+TORCH_LIBS = -L$(NANO_TORCH_ROOT)/lib -Xlinker -rpath -Xlinker $(NANO_TORCH_ROOT)/lib -ltorch -ltorch_cpu -ltorch_cuda -lc10 -lc10_cuda
+tail_reference.o: tail_reference.cpp tail_reference.h Makefile
+	$(CXX) -std=c++17 -O2 -D_GLIBCXX_USE_CXX11_ABI=$(NANO_TORCH_ABI) $(TORCH_INCLUDES) -c tail_reference.cpp -o $@
+
+tail_reference_probe: tail_reference.cpp tail_reference.h Makefile
+	$(CXX) -std=c++17 -O2 -DNANO_TAIL_ATEN_PROBE -D_GLIBCXX_USE_CXX11_ABI=$(NANO_TORCH_ABI) $(TORCH_INCLUDES) tail_reference.cpp $(TORCH_LIBS) -o $@
+
+tail: tail.cu head.cu loss.cu tail_reference.h tail_reference.o training_loss_reference.o $(wildcard *.cuh) Makefile
+	$(NVCC) $(NVFLAGS) $(tail_FLAGS) tail.cu tail_reference.o training_loss_reference.o -lcublas $(TORCH_LIBS) -o $@
+
+$(VARIANTS) attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation body body_control routing quantize loss head: tail_backward.cuh
+
 $(VARIANTS) attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation body body_control routing quantize loss: training_loss.cuh
 
 print-flags:
@@ -82,11 +96,12 @@ print-flags:
 check: validate
 	./validate
 
+SANITIZER_FLAGS = $(CHECK_FLAGS) $(if $(filter tail,$(BIN)),--native-only)
 sanitize: $(BIN)
-	compute-sanitizer --tool memcheck --error-exitcode 1 ./$(BIN) --quick $(CHECK_FLAGS)
-	compute-sanitizer --tool initcheck --error-exitcode 1 ./$(BIN) --quick $(CHECK_FLAGS)
-	compute-sanitizer --tool racecheck --error-exitcode 1 ./$(BIN) --quick $(CHECK_FLAGS)
-	compute-sanitizer --tool synccheck --error-exitcode 1 ./$(BIN) --quick $(CHECK_FLAGS)
+	compute-sanitizer --tool memcheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
+	compute-sanitizer --tool initcheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
+	compute-sanitizer --tool racecheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
+	compute-sanitizer --tool synccheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
 
 clean:
-	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation routing body body_control loss head training_loss_reference.o
+	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation routing body body_control loss head tail tail_reference_probe training_loss_reference.o tail_reference.o

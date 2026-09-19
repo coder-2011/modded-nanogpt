@@ -56,11 +56,11 @@ constants and schedule constructor produce the values below.
 | MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | FP8 training component; BF16 branches connected in the evaluation body, including parallel layer 8 |
 | Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | FP8 training component; BF16 attention connected through the evaluation body; FA3/compiled-trainer parity unverified |
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Implemented in the BF16 evaluation body; training remains |
-| MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Four coefficient networks, ordinary auxiliary gates and evaluation routing connected; full backward remains |
+| MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Four coefficient networks and evaluation routing connected; post-loop MUDD backward connected to the training head, enclosing body backward remains |
 | Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Token/value gathers, signed resident-cache combination and smear connected; sparse row resolution/transport and backward remain |
 | Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | Rank-local update body implemented in the persistent worker; training schedules, gradient exchange and model integration remain |
 | Other optimizer state | Parameter-specific Adam rules; sparse touched-row exchange/update; value/n-gram cadence changes at step 336 | Not implemented |
-| Loss | Sampled softcapped CE early, full vocabulary later; MTP and prefix auxiliary schedules; full-vocabulary validation | BF16 full-vocabulary evaluation head/loss connected; training loss/backward, auxiliary schedules and canonical validation remain |
+| Loss | Sampled softcapped CE early, full vocabulary later; MTP and prefix auxiliary schedules; full-vocabulary validation | BF16 evaluation head/loss and FP8 training head/backward connected; candidate construction/transport, model integration and canonical validation remain |
 | Timing | Reset warmup state, charge first data fetch, prefix-table construction, table updates, final weight blends and required validation row gathering | Not implemented |
 
 A matching individual MLP does not establish matching architecture, initialization,
@@ -1357,3 +1357,104 @@ rounding against its scaled-cuBLAS implementation. Candidate construction,
 cache gathering, gradient densification, the enclosing training body and
 optimizer/distributed integration remain. The canonical reference launcher is
 unchanged; no native speedrun or leaderboard rank is claimed.
+
+## Connected post-loop MUDD and training head
+
+`--experiment=tail` extends the connected FP8 head through final RMS and grouped
+post-loop MUDD forward/backward. It includes the shared 768-to-64 GELU network,
+ten scalar coefficients, ten-by-twelve group deltas, gradients for its four
+parameter tensors and all ten source states. The source order is `cache[0]`,
+`cache[7]`, `cache[9]`, value plane 0, `cache[3]`, value planes 1/2/3, `normed`,
+then `_n3_normed`. These remain external inputs with independent gradient outputs.
+Their shared uses inside the model body still require gradient accumulation.
+
+The graph has 28 phases and 26777 tasks at 256 tokens and vocabulary 50304.
+Matrix tasks own 64-by-64 tiles and pointwise tasks own four rows. Head loss
+reductions keep their row-group dependencies. The added MUDD stages currently
+use whole-stage dependencies. Head weight gradients run concurrently with head
+input gradients, and RMS backward can begin after the input gradients finish.
+Both Graph controls preserve that concurrency.
+
+The hard checks compare all nine MUDD matrix products with decoded cuBLAS,
+pointwise equations with FP64 host arithmetic, and head products/loss with the
+existing references. They verify BF16 casts, coefficient reductions, zero
+parameter rows outside the live ten coefficients, input-gradient accumulation,
+task visits and bitwise replay in both Graph controls, unaudited persistent
+execution and execution without diagnostic stores. Fixtures include partial
+65-token tiles, zero coefficient weights, zero inputs and full vocabulary.
+
+A separate C++ ATen/autograd reference uses pinned Torch 2.10.0+cu128. Its
+comparison is diagnostic, not a passed parity gate. At 256 tokens, native versus
+eager output relative L2 is 0.00559458, scalar-coefficient error is 0.00282414
+and mixed-state error is 0.00529322. Group coefficients match exactly. RMS from
+the same native mixed input matches ATen bit-for-bit in every tested fixture,
+including all 196608 elements of the 256-token case. This localizes forward
+differences to earlier boundaries, including the native fused FP32 bias/scale
+and residual arithmetic versus eager BF16 intermediate rounding. Exact pinned
+compiled-Torch forward/backward parity remains unresolved.
+
+The ATen reference fails initcheck with the CUDA 12.8 and 13.1 sanitizers,
+including uninitialized reads in GELU and an internal sanitizer hardware
+exception during cuBLAS backward. A standalone all-ones C++ linear/GELU/autograd
+program reproduces the failure without including or launching native kernels:
+`cuda-check-20260919T084608368470Z-e5d2b898`. Its ordinary run and memcheck pass.
+The attempted sanitizer upgrade is retained as a failed experiment
+(`cuda-check-20260919T084345041937Z-3776373e`), not adopted as a fix.
+[NVIDIA's release notes](https://docs.nvidia.com/compute-sanitizer/ReleaseNotes/index.html)
+list added bulk-copy instruction support and later initcheck fixes, but do not
+establish the cause of this specific failure. The reference failure remains open.
+
+Ordinary tail runs retain ATen diagnostics. Sanitizer commands explicitly pass
+`--native-only`, retaining all independent native arithmetic and replay gates.
+This separates native validation from the independently failing reference. It
+is not a claim that all linked libraries passed sanitizers.
+
+The tail profile is `profile-20260919T084209491950Z-fa856159.tar.gz`, on an H100
+80GB HBM3 with nvcc 12.8.93: 2.76 ms diagnostic duration, 23.64% achieved
+occupancy, 0.24 eligible warps per scheduler, 3.17% tensor-pipe activity and
+3.53% DRAM throughput. Long-scoreboard and barrier stalls contribute 3.42 and
+3.08 cycles per issued instruction. The worker uses 128 registers, 32800 shared
+bytes, an 8-byte stack, 16-byte spill stores and 24-byte spill loads. Both Graph
+dispatchers use 96 registers with no spills. Static production SASS contains
+104 HMMA, 84 LDGSTS, six LDL and four STL instructions, with no HGMMA. The head
+still converts FP8 operands to FP16 HMMA, rather than using native FP8 WGMMA.
+
+Reproduce the ordinary checks, native-only sanitizers, diagnostic reference
+failure and profile with:
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=tail --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=tail_reference_probe --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=tail --profile
+```
+
+The first tail archive (`cuda-check-20260919T083016005145Z-e960e4f8`) predates
+edits copied during the delayed image build: `tail.cu` and `tail_reference.cpp`
+differ from its remote hash manifest, and the header was not yet archived.
+Keep that log as exploratory evidence. Later archives include `.h` files and
+are checked against remote source hashes. No native training convergence,
+whole-model speedup or leaderboard rank is established by these component runs.
+
+Final validation is `cuda-check-20260919T084725908144Z-6d75b414`: all ordinary
+native gates and ATen diagnostics complete, followed by zero native-only
+memcheck/initcheck/synccheck errors and zero racecheck hazards. Its 40 CUDA/C++/
+header/Makefile hashes match the source archive and committed source. The head
+and evaluation-body regressions pass all four sanitizers in
+`cuda-check-20260919T083939042930Z-aaf454e1` and
+`cuda-check-20260919T083939042940Z-099ee22c`. Those earlier archives and the profile
+also match their remote manifests. Later host diagnostic/probe and build-glue
+changes do not alter their tested device arithmetic.
+
+Final ordinary CUDA-event medians on one H100, with diagnostic stores disabled:
+
+| Connected MUDD/RMS/head, T=256 / V=50304 | ms |
+| --- | ---: |
+| CUDA Graph | 2.356976 |
+| CUDA Graph, four-block occupancy target | 2.355232 |
+| Persistent worker + reset | 2.656576 |
+
+Persistent execution is 12.8% slower than the faster Graph. Its ten samples range
+from 2.572160 to 2.982272 ms, so this is a noisy component measurement, not an
+end-to-end performance claim. The earlier event run in
+`cuda-check-20260919T084209491950Z-d1a9a144` measured 2.727088 ms versus 2.339056 ms
+before its ATen initcheck failed. Both runs are retained; neither is a fusion win.

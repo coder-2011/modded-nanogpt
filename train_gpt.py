@@ -76,6 +76,11 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
     from pathlib import Path
 
     root = Path("/workspace/cuda") if Path("/workspace/cuda").exists() else Path(__file__).parent / "cuda"
+    if experiment in {"tail", "tail_reference_probe"}:
+        import torch
+        os.environ["NANO_TORCH_ROOT"] = str(Path(torch.__file__).parent)
+        os.environ["NANO_TORCH_ABI"] = str(int(torch._C._GLIBCXX_USE_CXX11_ABI))
+        print(f"Reference PyTorch={torch.__version__} CUDA={torch.version.cuda}", flush=True)
     binary = experiment or ("validate_wgmma" if wgmma else "validate")
     if variant:
         binary = "validate_" + variant
@@ -128,6 +133,8 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
             commands.extend([["make", "-C", str(root), candidate],
                              [str(root / candidate)] + flags])
     if sanitize:
+        sanitizer = "compute-sanitizer"
+        commands.append([sanitizer, "--version"])
         sanitized = [binary]
         if ablate and experiment == "anvil":
             sanitized.append("anvil_idle64")
@@ -138,12 +145,14 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
         if ablate and experiment == "body":
             sanitized.append("body_control")
         check_flags = [] if experiment else [f"--gradient-chunk={gradient_chunk}"]
+        if experiment == "tail":
+            check_flags.append("--native-only")
         for checked_binary in sanitized:
             for tool in ("memcheck", "initcheck", "racecheck", "synccheck"):
-                commands.append(["compute-sanitizer", "--tool", tool, "--error-exitcode", "1",
+                commands.append([sanitizer, "--tool", tool, "--error-exitcode", "1",
                                  str(root / checked_binary), "--quick", *check_flags])
     hashes = "\n".join(f"sha256 {hashlib.sha256(p.read_bytes()).hexdigest()} {p.name}"
-                       for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh", ".cpp"} or p.name == "Makefile")
+                       for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh", ".cpp", ".h"} or p.name == "Makefile")
     print(hashes, flush=True)
     output = [hashes]
     for command in commands:
@@ -186,7 +195,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
             ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
         subprocess.run(["nvcc"] + build_flags + ["--ptx",
                         str(root / ("attention_layer.cu" if experiment in {"layer", "evaluation", "body"} else
-                                    experiment + ".cu" if experiment in {"attention", "anvil", "routing", "loss", "head"} else "validate.cu")),
+                                    experiment + ".cu" if experiment in {"attention", "anvil", "routing", "loss", "head", "tail"} else "validate.cu")),
                         "-o", str(ptx)], check=True)
         artifacts[ptx.name] = ptx.read_bytes()
         command = ["ncu", "--set", "full", "--clock-control", "none", "--cache-control", "none",
@@ -222,13 +231,13 @@ if "--cuda-check" in sys.argv:
     if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
         raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
-    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation", "routing", "body", "loss", "head"}:
+    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation", "routing", "body", "loss", "head", "tail", "tail_reference_probe"}:
         raise SystemExit("Unknown native experiment")
     if experiment and (wgmma or (ablate and experiment not in {"bf16", "anvil", "layer", "body"})):
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")
-    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation", "routing", "body", "loss", "head"} or wgmma or ablate):
+    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation", "routing", "body", "loss", "head", "tail"} or wgmma or ablate):
         raise SystemExit("--profile targets the native MLP, attention, attention layer or ANVIL megakernel")
     if (variant or kernel_compare) and (experiment or wgmma or ablate):
         raise SystemExit("Kernel variants require the native MMA path")
@@ -244,7 +253,7 @@ if "--cuda-check" in sys.argv:
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid.uuid4().hex[:8]
     with tarfile.open(folder / f"cuda-check-{stamp}-source.tar.gz", "w:gz") as archive:
         for source in sorted((Path(__file__).parent / "cuda").iterdir()):
-            if source.suffix in {".cu", ".cuh", ".cpp"} or source.name == "Makefile":
+            if source.suffix in {".cu", ".cuh", ".cpp", ".h"} or source.name == "Makefile":
                 archive.add(source, arcname=f"cuda/{source.name}")
         archive.add(__file__, arcname="train_gpt.py")
         archive.add(Path(__file__).parent / "frontier.lock.json", arcname="frontier.lock.json")
@@ -256,6 +265,8 @@ if "--cuda-check" in sys.argv:
 
         image = (modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu24.04", add_python="3.12")
                  .entrypoint([]).apt_install("make", "g++"))
+        if experiment in {"tail", "tail_reference_probe"}:
+            image = image.pip_install("torch==2.10.0", index_url="https://download.pytorch.org/whl/cu128")
         if experiment == "tokenizer":
             image = (image.apt_install("git", "curl", "pkg-config")
                      .run_commands("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.91.1")

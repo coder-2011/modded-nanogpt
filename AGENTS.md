@@ -126,6 +126,24 @@ Both Graph controls run hidden-state and weight-gradient products concurrently;
 compare against the faster control. The enclosing training body, candidate
 transport/densification and optimizer/distributed integration remain incomplete.
 
+`--experiment=tail --sanitize` extends the training head backward through final
+RMS normalization and post-loop grouped MUDD, including its shared GELU network,
+ten independent source adjoints and all coefficient-network parameter gradients.
+It consumes externally supplied layer outputs and value planes. Shared-source
+gradient accumulation into the model body remains missing. Matrix tasks use
+64x64 tiles and pointwise tasks use four rows. The head retains row-group loss
+dependencies; the added tail stages currently use whole-stage dependencies.
+The CUDA/C++ numerical and replay checks are hard gates. The pinned Torch 2.10
+C++ autograd comparison is diagnostic: eager BF16 coefficient/mixing boundaries
+differ from the native FP32 fusion. Do not call this compiled-trainer parity.
+`--experiment=tail --profile` captures the 256-token, full-vocabulary fixture.
+Ordinary runs include the ATen diagnostic. Tail sanitizer runs pass
+`--native-only`: the ATen linear/GELU/autograd reference independently fails
+initcheck under both CUDA 12.8 and 13.1 tools. `--experiment=tail_reference_probe
+--sanitize` retains the standalone reproducer, which launches no native kernels.
+Do not claim the reference sanitizer failure has been fixed or all-library
+sanitizer coverage has passed.
+
 `--experiment=body --sanitize` runs the connected eleven-layer BF16 evaluation
 body: seven attention calls, eleven MLP calls, residual/skip routing, shared
 layer-8/10 normalization, parallel layer-8 MLPs and post-loop MUDD mixing. It

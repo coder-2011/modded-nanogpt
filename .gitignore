@@ -41,4 +41,7 @@ cuda/body_control
 cuda/bf16_async
 cuda/loss
 cuda/head
+cuda/tail
+cuda/tail_reference.o
+cuda/tail_reference_probe
 cuda/training_loss_reference.o
