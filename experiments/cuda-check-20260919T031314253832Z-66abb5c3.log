@@ -1,0 +1,50 @@
+sha256 cfc65f871439d22c2a5b5853f44ecbf3aeabe03a58021415b701e03f445c0a25 Makefile
+sha256 29c234eb274a221b576a3d724595d56b4c7115f297f312e6f46a23bbca6cbae6 attention.cu
+sha256 a03d7002eb0e65ba800ffddffb610b59027806419ff7acf0a2cad5a9b85019f1 attention.cuh
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 6eb043b0deec41825720d6ba638468d9aec856a01cb2b9dec6c23a28ffe49a81 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 0f1a2d09ed30492228dee22e12771071b0009615902506f4e12de42034359c01 megakernel.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 03:13:20 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000003:00:02.0 Off |                    0 |
+| N/A   29C    P0             70W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda attention
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 attention.cu -o attention
+attention.cuh(66): error: identifier "CUDART_INF_F" is undefined
+          float maximum = -CUDART_INF_F, sum = 0.0f;
+                           ^
+
+1 error detected in the compilation of "attention.cu".
+make: *** [Makefile:35: attention] Error 2
+make: Leaving directory '/workspace/cuda'

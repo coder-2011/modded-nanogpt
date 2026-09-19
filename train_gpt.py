@@ -153,7 +153,8 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
         build_flags = shlex.split(subprocess.check_output(
             ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
         subprocess.run(["nvcc"] + build_flags + ["--ptx",
-                        str(root / "validate.cu"), "-o", str(ptx)], check=True)
+                        str(root / ("attention.cu" if experiment == "attention" else "validate.cu")),
+                        "-o", str(ptx)], check=True)
         artifacts[ptx.name] = ptx.read_bytes()
         command = ["ncu", "--set", "full", "--clock-control", "none", "--cache-control", "none",
                    "--profile-from-start", "off", "--launch-count", "1", "--export",
@@ -188,14 +189,14 @@ if "--cuda-check" in sys.argv:
     if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
         raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
-    if experiment not in {"", "quantize", "transport", "tokenizer"}:
+    if experiment not in {"", "quantize", "transport", "tokenizer", "attention"}:
         raise SystemExit("Unknown native experiment")
     if experiment and (ablate or wgmma):
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")
-    if profile and (experiment or wgmma or ablate):
-        raise SystemExit("--profile currently targets the native MMA megakernel")
+    if profile and (experiment not in {"", "attention"} or wgmma or ablate):
+        raise SystemExit("--profile targets the native MLP or attention megakernel")
     if (variant or kernel_compare) and (experiment or wgmma or ablate):
         raise SystemExit("Kernel variants require the native MMA path")
     if kernel_compare and variant not in {"", "control"}:

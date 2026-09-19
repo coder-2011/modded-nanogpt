@@ -27,3 +27,4 @@ cuda/*.ncu-rep
 experiments/profile-*/
 
 cuda/validate_merged
+cuda/attention

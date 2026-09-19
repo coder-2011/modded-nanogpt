@@ -40,6 +40,14 @@ The default native validator now targets PR #360 MLP arithmetic. Use
 `--variant=merged` to reproduce the older 3072-wide E4M3 component. Timing these
 different workloads against each other is not an optimization comparison.
 
+`--experiment=attention --sanitize` checks the mixed-operation persistent worker:
+Q/K RMS normalization and rotary transforms, causal variable-length attention,
+attention backward, and FP8 QKV gradient packing. `--experiment=attention
+--profile` captures its current scalar attention baseline. It is not a complete
+attention layer: projection/gain gradients, XSA and head gating remain unwired.
+The dependent GEMM in this test is a scheduler sentinel, not an output projection.
+FP64 mathematical checks do not establish parity with the pinned FA3 binary.
+
 Record the GPU actually supplied, compiler resources, numerical errors and raw
 timings. Modal may supply H200 for an H100 request. Compare candidates on the same
 device, include initialization/quantization/layout costs for promotion, and keep
@@ -47,8 +55,8 @@ component timings separate from whole-model training time. Never loosen numerica
 checks merely to admit a faster candidate.
 
 A full-model result requires forward, loss, backward, optimizer, scale updates and
-distributed communication. The initial six-GEMM MLP graph is a component only; it
-accepts prequantized inputs/scales and an externally supplied output gradient.
+distributed communication. The six-GEMM MLP and attention graphs are components;
+both still accept externally supplied output gradients.
 
 Use `--main-shapes --gradient-chunk=1024 --ablate --sanitize` with the command
 above to check ordered gradient chunks and compare operand-stage sizes, FIFO,

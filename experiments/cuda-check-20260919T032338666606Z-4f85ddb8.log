@@ -1,0 +1,2321 @@
+sha256 01d8af5cd1ac92409598abe13725e86cac03385515ba94c5d74c4a9042160e03 Makefile
+sha256 4d98074bdbd7ec24e0d0aae4a0718c9913b315694f605d030c9647998a6b4974 attention.cu
+sha256 e35258002dec8809bcba72c8b7537e539592f03d16004334a312c9132841a6c6 attention.cuh
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 6eb043b0deec41825720d6ba638468d9aec856a01cb2b9dec6c23a28ffe49a81 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 e412c18213b404544eaca85c7b3159de1ec4cf9b39d91c249cd3e41cd0586168 megakernel.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 03:23:45 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:3B:00.0 Off |                    0 |
+| N/A   29C    P0             72W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda validate
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 validate.cu -lcublas -o validate
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb1ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb1ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 124 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 2135.581 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb1ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb1ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 124 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 2229.572 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 3132.847 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 126 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 3050.569 ms
+ptxas info    : Compiling entry function '_Z13staged_kernelILb0EEvN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z13staged_kernelILb0EEvN4nano6MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 125 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 2605.035 ms
+ptxas info    : Compiling entry function '_Z13staged_kernelILb1EEvN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z13staged_kernelILb1EEvN4nano6MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 95 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 2047.381 ms
+ptxas info    : Compiling entry function '_Z18reference_epiloguePKfN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z18reference_epiloguePKfN4nano6MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 17 registers, used 0 barriers
+ptxas info    : Compile time = 12.753 ms
+ptxas info    : Compiling entry function '_Z6unpackPK13__nv_fp8_e4m3Pfib' for 'sm_90a'
+ptxas info    : Function properties for _Z6unpackPK13__nv_fp8_e4m3Pfib
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 10 registers, used 0 barriers
+ptxas info    : Compile time = 1.914 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/validate --main-shapes --gradient-chunk=4096
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=124 static_shared=32776 local_bytes=0
+resident_blocks_per_SM=4
+operand_K=128
+scheduler=ready_first
+operand_stages=2
+target=PR360 commit=c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7 MLP=E4M3/E5M2 width=2816; component only
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=28
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=1 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=6
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=4
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=2
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=132 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=660 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=660 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=660 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=660 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=8209 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=12
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=8192 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=16
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=16384 C=768 H=2816 workers=528 seed=42 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=3168
+  post   rel_l2=0 max_abs=0 different=0/46137344
+  dpre   rel_l2=0 max_abs=0 different=0/46137344
+  post.T rel_l2=0 max_abs=0 different=0/46137344
+  dpre.T rel_l2=0 max_abs=0 different=0/46137344
+  y      rel_l2=1.2737462e-05 max_abs=0.0078125 different=180/12582912
+  dx     rel_l2=3.2840631e-06 max_abs=0.0009765625 different=69/12582912
+  dw1    rel_l2=3.3038052e-05 max_abs=0.125 different=273/2162688
+  dw2    rel_l2=3.2510012e-05 max_abs=0.125 different=346/2162688
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2162688
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2162688
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/46137344
+  dpre   rel_l2=0 max_abs=0 different=0/46137344
+  post.T rel_l2=0 max_abs=0 different=0/46137344
+  dpre.T rel_l2=0 max_abs=0 different=0/46137344
+  y      rel_l2=1.2737462e-05 max_abs=0.0078125 different=180/12582912
+  dx     rel_l2=3.2840631e-06 max_abs=0.0009765625 different=69/12582912
+  dw1    rel_l2=3.3038052e-05 max_abs=0.125 different=273/2162688
+  dw2    rel_l2=3.2510012e-05 max_abs=0.125 different=346/2162688
+timing median_ms fused=3.821808 staged_same_tiles=3.397536 graph_same_tiles=3.385904 fused_with_reset=3.829072 tasks=32896 (warm cache)
+samples_ms: 3.901504 3.901600 3.912288 3.814208 3.812640 3.823872 3.814720 3.818816 3.823008 3.820608
+samples_ms: 3.480640 3.478528 3.476480 3.396224 3.397344 3.397376 3.395936 3.397696 3.395360 3.398848
+samples_ms: 3.467776 3.464864 3.386144 3.385472 3.385024 3.384160 3.385920 3.385888 3.386912 3.361312
+samples_ms: 3.918944 3.920544 3.821888 3.825760 3.822528 3.824992 3.832384 3.836992 3.834688 3.794592
+shape M=32768 C=768 H=2816 workers=528 seed=42 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=7392
+  post   rel_l2=0 max_abs=0 different=0/92274688
+  dpre   rel_l2=4.8194412e-08 max_abs=0.001953125 different=3/92274688
+  post.T rel_l2=0 max_abs=0 different=0/92274688
+  dpre.T rel_l2=4.8194412e-08 max_abs=0.001953125 different=3/92274688
+  y      rel_l2=1.2823036e-05 max_abs=0.0078125 different=419/25165824
+  dx     rel_l2=6.5506135e-06 max_abs=0.00390625 different=132/25165824
+  dw1    rel_l2=2.8951632e-05 max_abs=0.125 different=364/2162688
+  dw2    rel_l2=3.6514801e-05 max_abs=0.125 different=514/2162688
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2162688
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2162688
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/92274688
+  dpre   rel_l2=4.8194412e-08 max_abs=0.001953125 different=3/92274688
+  post.T rel_l2=0 max_abs=0 different=0/92274688
+  dpre.T rel_l2=4.8194412e-08 max_abs=0.001953125 different=3/92274688
+  y      rel_l2=1.2823036e-05 max_abs=0.0078125 different=419/25165824
+  dx     rel_l2=6.5506135e-06 max_abs=0.00390625 different=132/25165824
+  dw1    rel_l2=2.8951632e-05 max_abs=0.125 different=364/2162688
+  dw2    rel_l2=3.6514801e-05 max_abs=0.125 different=514/2162688
+timing median_ms fused=7.473136 staged_same_tiles=6.597328 graph_same_tiles=6.585728 fused_with_reset=7.519824 tasks=65792 (warm cache)
+samples_ms: 7.519264 7.527776 7.533920 7.474816 7.473728 7.464960 7.465920 7.459296 7.470688 7.472544
+samples_ms: 6.643968 6.644864 6.613472 6.599616 6.600864 6.592320 6.595040 6.592192 6.594560 6.591168
+samples_ms: 6.633344 6.633664 6.589440 6.588672 6.588096 6.581696 6.581792 6.582144 6.583168 6.583360
+samples_ms: 7.571424 7.574176 7.521056 7.544608 7.518592 7.506176 7.518560 7.512672 7.523264 7.506944
+shape M=49152 C=768 H=2816 workers=528 seed=42 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=11616
+  post   rel_l2=0 max_abs=0 different=0/138412032
+  dpre   rel_l2=3.1501295e-07 max_abs=0.015625 different=3/138412032
+  post.T rel_l2=0 max_abs=0 different=0/138412032
+  dpre.T rel_l2=3.1501295e-07 max_abs=0.015625 different=3/138412032
+  y      rel_l2=1.4015295e-05 max_abs=0.0078125 different=672/37748736
+  dx     rel_l2=7.2195967e-06 max_abs=0.00390625 different=262/37748736
+  dw1    rel_l2=3.4073701e-05 max_abs=0.25 different=476/2162688
+  dw2    rel_l2=4.1781484e-05 max_abs=0.125 different=707/2162688
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2162688
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2162688
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/138412032
+  dpre   rel_l2=3.1501295e-07 max_abs=0.015625 different=3/138412032
+  post.T rel_l2=0 max_abs=0 different=0/138412032
+  dpre.T rel_l2=3.1501295e-07 max_abs=0.015625 different=3/138412032
+  y      rel_l2=1.4015295e-05 max_abs=0.0078125 different=672/37748736
+  dx     rel_l2=7.2195967e-06 max_abs=0.00390625 different=262/37748736
+  dw1    rel_l2=3.4073701e-05 max_abs=0.25 different=476/2162688
+  dw2    rel_l2=4.1781484e-05 max_abs=0.125 different=707/2162688
+timing median_ms fused=11.189360 staged_same_tiles=9.806080 graph_same_tiles=9.796448 fused_with_reset=11.242960 tasks=98688 (warm cache)
+samples_ms: 11.181312 11.190048 11.189120 11.222528 11.179200 11.189600 11.188448 11.204960 11.185664 11.191104
+samples_ms: 9.805760 9.805664 9.805568 9.806400 9.805760 9.806752 9.806624 9.804448 9.807456 9.806784
+samples_ms: 9.797792 9.794624 9.796704 9.795296 9.796448 9.796384 9.797344 9.796032 9.797344 9.796448
+samples_ms: 11.234208 11.232320 11.260320 11.244832 11.231104 11.258880 11.243168 11.251456 11.238528 11.242752
+shape M=40960 C=768 H=2816 workers=528 seed=42 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=9740
+  post   rel_l2=0 max_abs=0 different=0/115343360
+  dpre   rel_l2=1.7225925e-07 max_abs=0.0078125 different=1/115343360
+  post.T rel_l2=0 max_abs=0 different=0/115343360
+  dpre.T rel_l2=1.7225925e-07 max_abs=0.0078125 different=1/115343360
+  y      rel_l2=1.0749218e-05 max_abs=0.0078125 different=517/31457280
+  dx     rel_l2=4.1412379e-06 max_abs=0.001953125 different=175/31457280
+  dw1    rel_l2=3.4799865e-05 max_abs=0.25 different=423/2162688
+  dw2    rel_l2=4.1261756e-05 max_abs=0.25 different=673/2162688
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2162688
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2162688
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/115343360
+  dpre   rel_l2=1.7225925e-07 max_abs=0.0078125 different=1/115343360
+  post.T rel_l2=0 max_abs=0 different=0/115343360
+  dpre.T rel_l2=1.7225925e-07 max_abs=0.0078125 different=1/115343360
+  y      rel_l2=1.0749218e-05 max_abs=0.0078125 different=517/31457280
+  dx     rel_l2=4.1412379e-06 max_abs=0.001953125 different=175/31457280
+  dw1    rel_l2=3.4799865e-05 max_abs=0.25 different=423/2162688
+  dw2    rel_l2=4.1261756e-05 max_abs=0.25 different=673/2162688
+timing median_ms fused=9.348096 staged_same_tiles=8.210672 graph_same_tiles=8.201649 fused_with_reset=9.399744 tasks=82240 (warm cache)
+samples_ms: 9.484512 9.350432 9.339776 9.339616 9.348736 9.335456 9.342016 9.347456 9.395360 9.349504
+samples_ms: 8.260768 8.211392 8.210272 8.211488 8.209792 8.209248 8.210656 8.212640 8.210688 8.209536
+samples_ms: 8.200832 8.202144 8.200352 8.201600 8.201856 8.201696 8.199584 8.201792 8.201856 8.200160
+samples_ms: 9.389408 9.399968 9.391360 9.404032 9.394976 9.397024 9.442656 9.399520 9.404736 9.408224
+PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.
+
+$ make -C /workspace/cuda sanitize BIN=validate CHECK_FLAGS=--gradient-chunk=4096
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./validate --quick --gradient-chunk=4096
+========= COMPUTE-SANITIZER
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=124 static_shared=32776 local_bytes=0
+resident_blocks_per_SM=4
+operand_K=128
+scheduler=ready_first
+operand_stages=2
+target=PR360 commit=c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7 MLP=E4M3/E5M2 width=2816; component only
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=28
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=1 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=6
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=2
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=2
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=132 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=660 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=660 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=4
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=660 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=660 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=4
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=8209 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=15
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=8192 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=16
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./validate --quick --gradient-chunk=4096
+========= COMPUTE-SANITIZER
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=124 static_shared=32776 local_bytes=0
+resident_blocks_per_SM=4
+operand_K=128
+scheduler=ready_first
+operand_stages=2
+target=PR360 commit=c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7 MLP=E4M3/E5M2 width=2816; component only
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=28
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=1 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=6
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=4
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=2
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=2
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=132 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=660 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=660 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=6
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=660 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=660 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=2
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=8209 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=28
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=8192 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=19
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./validate --quick --gradient-chunk=4096
+========= COMPUTE-SANITIZER
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=124 static_shared=32776 local_bytes=0
+resident_blocks_per_SM=4
+operand_K=128
+scheduler=ready_first
+operand_stages=2
+target=PR360 commit=c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7 MLP=E4M3/E5M2 width=2816; component only
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=28
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=1 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=6
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=1
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=5
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=5
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=132 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=1
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=660 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=660 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=3
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=660 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=660 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=2
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=8209 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=14
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=8192 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=18
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./validate --quick --gradient-chunk=4096
+========= COMPUTE-SANITIZER
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=124 static_shared=32776 local_bytes=0
+resident_blocks_per_SM=4
+operand_K=128
+scheduler=ready_first
+operand_stages=2
+target=PR360 commit=c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7 MLP=E4M3/E5M2 width=2816; component only
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=28
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=1 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=6
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=4
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=132 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=7 C=17 H=33 workers=660 seed=42 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/231
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+  dw1.chunk rel_l2=0 max_abs=0 different=0/561
+  dw2.chunk rel_l2=0 max_abs=0 different=0/561
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/231
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=660 seed=1337 zeros=0 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/20640
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=660 seed=2 zeros=1 gradient_chunk=64
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+  dw1.chunk rel_l2=0 max_abs=0 different=0/2048
+  dw2.chunk rel_l2=0 max_abs=0 different=0/2048
+production specialization after reset:
+  raw    rel_l2=0 max_abs=0 different=0/4160
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=128 H=256 workers=660 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=0
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/65536
+  dpre   rel_l2=0 max_abs=0 different=0/65536
+  post.T rel_l2=0 max_abs=0 different=0/65536
+  dpre.T rel_l2=0 max_abs=0 different=0/65536
+  y      rel_l2=0 max_abs=0 different=0/32768
+  dx     rel_l2=0 max_abs=0 different=0/32768
+  dw1    rel_l2=1.5333805e-05 max_abs=0.00048828125 different=1/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+shape M=8209 C=96 H=160 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=26
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+  dw1.chunk rel_l2=0 max_abs=0 different=0/15360
+  dw2.chunk rel_l2=0 max_abs=0 different=0/15360
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/1313440
+  dpre   rel_l2=0 max_abs=0 different=0/1313440
+  post.T rel_l2=0 max_abs=0 different=0/1313440
+  dpre.T rel_l2=0 max_abs=0 different=0/1313440
+  y      rel_l2=0 max_abs=0 different=0/788064
+  dx     rel_l2=0 max_abs=0 different=0/788064
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=8192 C=128 H=256 workers=7 seed=1337 zeros=0 gradient_chunk=4096
+audit: every task executed once; gradient_tasks_before_all_roots=16
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+  dw1.chunk rel_l2=0 max_abs=0 different=0/32768
+  dw2.chunk rel_l2=0 max_abs=0 different=0/32768
+production specialization after reset:
+  post   rel_l2=0 max_abs=0 different=0/2097152
+  dpre   rel_l2=0 max_abs=0 different=0/2097152
+  post.T rel_l2=0 max_abs=0 different=0/2097152
+  dpre.T rel_l2=0 max_abs=0 different=0/2097152
+  y      rel_l2=0 max_abs=0 different=0/1048576
+  dx     rel_l2=2.0881563e-08 max_abs=2.3841858e-07 different=2/1048576
+  dw1    rel_l2=0 max_abs=0 different=0/32768
+  dw2    rel_l2=0 max_abs=0 different=0/32768
+PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb1ELb0EEEvNS_5GraphE: {'HMMA': 48, 'HGMMA': 0, 'LDGSTS': 28, 'LDL': 0, 'STL': 0}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb0EEEvNS_5GraphE: {'HMMA': 48, 'HGMMA': 0, 'LDGSTS': 28, 'LDL': 0, 'STL': 0}

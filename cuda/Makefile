@@ -6,6 +6,7 @@ BIN ?= validate
 ALIGNED_FLAGS := -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1
 OPTFLAGS := $(ALIGNED_FLAGS) -DNANO_K_LOOP=1
 validate_FLAGS := $(OPTFLAGS) -DNANO_FRONTIER=1
+attention_FLAGS := $(validate_FLAGS)
 validate_merged_FLAGS := $(OPTFLAGS)
 validate_control_FLAGS := -DNANO_FRONTIER=1
 validate_pad_FLAGS := -DNANO_TRANSPOSE_PAD=4 -DNANO_FRONTIER=1
@@ -25,11 +26,14 @@ VARIANTS := validate validate_merged validate_control validate_pad validate_dire
             validate_aligned validate_aligned_k64 validate_aligned_loop validate_wgmma validate_fifo \
             validate_serial validate_baseline validate_k32 validate_k64
 
-$(VARIANTS): validate.cu megakernel.cuh hopper.cuh frontier.cuh Makefile
+$(VARIANTS): validate.cu megakernel.cuh attention.cuh qkv.cuh hopper.cuh frontier.cuh Makefile
 	$(NVCC) $(NVFLAGS) $($@_FLAGS) validate.cu -lcublas -o $@
 
-quantize: quantize.cu bench.cuh megakernel.cuh hopper.cuh Makefile
+quantize: quantize.cu bench.cuh megakernel.cuh attention.cuh qkv.cuh hopper.cuh Makefile
 	$(NVCC) $(NVFLAGS) quantize.cu -lcublas -o $@
+
+attention: attention.cu attention.cuh qkv.cuh bench.cuh megakernel.cuh hopper.cuh frontier.cuh Makefile
+	$(NVCC) $(NVFLAGS) $(attention_FLAGS) attention.cu -o $@
 
 transport: transport.cu bench.cuh Makefile
 	$(NVCC) $(NVFLAGS) transport.cu -lnccl -o $@
@@ -48,4 +52,4 @@ sanitize: $(BIN)
 	compute-sanitizer --tool synccheck --error-exitcode 1 ./$(BIN) --quick $(CHECK_FLAGS)
 
 clean:
-	rm -f $(VARIANTS) quantize transport tokenizer
+	rm -f $(VARIANTS) quantize transport tokenizer attention

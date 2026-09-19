@@ -4,6 +4,8 @@
 #include <cuda_bf16.h>
 #include <cuda_fp8.h>
 #include <cuda_runtime.h>
+#include "attention.cuh"
+#include "qkv.cuh"
 
 namespace nano {
 
@@ -62,6 +64,7 @@ struct Task {
     int op, row, col;
     int signal[2];
     int k_begin = 0, k_end = 0;
+    TaskKind kind = TaskKind::matmul;
 };
 
 struct Group {
@@ -77,7 +80,9 @@ struct Graph {
     int *state; // ready head, ready tail, unfinished, root head
     int task_count;
     int root_count;
-    int *audit = nullptr; // task visits, completed roots, gradients started before all roots
+    int *audit = nullptr; // task visits; MLP-only completed roots and early-gradient count
+    const Attention *attention = nullptr;
+    const QKVTransform *qkv = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -390,7 +395,7 @@ __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task,
 #endif
 }
 
-template <bool Audited = false, bool Full = false>
+template <bool Audited = false, bool Full = false, bool WithAttention = false>
 __global__
 #ifdef NANO_MIN_BLOCKS
 __launch_bounds__(threads, NANO_MIN_BLOCKS)
@@ -417,18 +422,32 @@ __launch_bounds__(threads)
             continue;
         }
         const Task task = g.tasks[task_id];
-        const Matmul op = g.ops[task.op];
         if (Audited && threadIdx.x == 0) {
             atomicAdd(g.audit + task_id, 1);
-            if (task.op >= 4 && acquire(g.audit + g.task_count) < g.root_count)
+            if (!WithAttention && task.op >= 4 &&
+                acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        execute_tile<Full>(op, task, scratch);
+        if constexpr (WithAttention) {
+            if (task.kind == TaskKind::qkv_forward || task.kind == TaskKind::qkv_backward) {
+                const QKVTransform op = g.qkv[task.op];
+                execute_qkv(op, task.kind == TaskKind::qkv_backward, task.row, task.col);
+            } else if (task.kind != TaskKind::matmul) {
+                const Attention op = g.attention[task.op];
+                execute_attention(op, task.kind, task.row, task.col);
+            } else {
+                const Matmul op = g.ops[task.op];
+                execute_tile<Full>(op, task, scratch);
+            }
+        } else {
+            const Matmul op = g.ops[task.op];
+            execute_tile<Full>(op, task, scratch);
+        }
         // All output-writing threads publish before the controller signals readiness.
         __threadfence();
         __syncthreads();
         if (threadIdx.x == 0) {
-            if (Audited && task.op == 0)
+            if (Audited && !WithAttention && task.op == 0)
                 add_acq_rel(g.audit + g.task_count, 1);
             signal(g, task.signal[0]);
             signal(g, task.signal[1]);
