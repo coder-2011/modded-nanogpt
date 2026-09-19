@@ -639,8 +639,9 @@ and 3072-wide contract above is historical control evidence, not the new target.
 - Connect the native attention/QKV transforms to projections, gains and gates;
   replace scalar attention with validated tensor-core tasks. The new component
   checks and their explicit limits are in `FRONTIER.md`.
-- Add BF16 matrix multiplication for O projections and ANVIL, then port the
-  remaining head/loss, optimizer and full-model routing nodes.
+- Wire the validated BF16 matrix tasks into O projections and ANVIL, then port
+  the remaining head/loss, optimizer state and full-model routing nodes. The
+  BF16 coalesced-loader/control comparison is in `FRONTIER.md`.
 - Port schedule/data ownership and device communication; CUDA graph launch of
   separate NCCL calls alone would not meet the full fusion goal.
 - Replace the active Python/Triton training implementation only after the native

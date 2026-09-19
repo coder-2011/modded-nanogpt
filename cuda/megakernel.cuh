@@ -6,6 +6,7 @@
 #include <cuda_runtime.h>
 #include "attention.cuh"
 #include "qkv.cuh"
+#include "bf16_gemm.cuh"
 
 namespace nano {
 
@@ -83,6 +84,7 @@ struct Graph {
     int *audit = nullptr; // task visits; MLP-only completed roots and early-gradient count
     const Attention *attention = nullptr;
     const QKVTransform *qkv = nullptr;
+    const BF16Matmul *bf16_ops = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -395,7 +397,7 @@ __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task,
 #endif
 }
 
-template <bool Audited = false, bool Full = false, bool WithAttention = false>
+template <bool Audited = false, bool Full = false, bool WithAttention = false, bool WithBF16 = false>
 __global__
 #ifdef NANO_MIN_BLOCKS
 __launch_bounds__(threads, NANO_MIN_BLOCKS)
@@ -403,7 +405,7 @@ __launch_bounds__(threads, NANO_MIN_BLOCKS)
 __launch_bounds__(threads)
 #endif
     void megakernel(Graph g) {
-    __shared__ __align__(1024) fp8 scratch[scratch_bytes];
+    __shared__ __align__(1024) fp8 scratch[WithBF16 ? bf16_scratch_bytes : scratch_bytes];
     __shared__ int next, ticket;
     if (threadIdx.x == 0)
         ticket = -1;
@@ -424,11 +426,14 @@ __launch_bounds__(threads)
         const Task task = g.tasks[task_id];
         if (Audited && threadIdx.x == 0) {
             atomicAdd(g.audit + task_id, 1);
-            if (!WithAttention && task.op >= 4 &&
+            if (!WithAttention && !WithBF16 && task.op >= 4 &&
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if constexpr (WithAttention) {
+        if (WithBF16 && task.kind == TaskKind::bf16_matmul) {
+            const BF16Matmul op = g.bf16_ops[task.op];
+            bf16_matmul_tile(op, task.row, task.col, scratch);
+        } else if constexpr (WithAttention) {
             if (task.kind == TaskKind::qkv_forward || task.kind == TaskKind::qkv_backward) {
                 const QKVTransform op = g.qkv[task.op];
                 execute_qkv(op, task.kind == TaskKind::qkv_backward, task.row, task.col);
@@ -447,10 +452,13 @@ __launch_bounds__(threads)
         __threadfence();
         __syncthreads();
         if (threadIdx.x == 0) {
-            if (Audited && !WithAttention && task.op == 0)
+            if (Audited && !WithAttention && !WithBF16 && task.op == 0)
                 add_acq_rel(g.audit + g.task_count, 1);
-            signal(g, task.signal[0]);
-            signal(g, task.signal[1]);
+            // Task descriptors are immutable. Reload only on the controller so
+            // every worker lane need not retain both signals across the math.
+            const volatile Task *finished = g.tasks + task_id;
+            signal(g, finished->signal[0]);
+            signal(g, finished->signal[1]);
             add_acq_rel(g.state + 2, -1);
         }
         __syncthreads();

@@ -98,7 +98,9 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
                      "-I" + sysconfig.get_path("include"), str(library),
                      "-Wl,-rpath," + str(library.parent), "-o", str(root / binary)],
                     [str(root / binary), sys.executable, str(root / "gpt2.json")]]
-    if ablate:
+    if ablate and experiment == "bf16":
+        commands.extend([["make", "-C", str(root), "bf16_control"], [str(root / "bf16_control")]])
+    elif ablate:
         if wgmma:
             raise ValueError("--ablate compares the accepted MMA implementation only")
         for variant in ("validate_k32", "validate_k64", "validate_fifo"):
@@ -189,9 +191,9 @@ if "--cuda-check" in sys.argv:
     if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
         raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
-    if experiment not in {"", "quantize", "transport", "tokenizer", "attention"}:
+    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16"}:
         raise SystemExit("Unknown native experiment")
-    if experiment and (ablate or wgmma):
+    if experiment and (wgmma or (ablate and experiment != "bf16")):
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")

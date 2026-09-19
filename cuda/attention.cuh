@@ -19,7 +19,7 @@ struct Attention {
 };
 
 enum class TaskKind : int {
-    matmul, attention_forward, attention_dq, attention_dkv, qkv_forward, qkv_backward
+    matmul, attention_forward, attention_dq, attention_dkv, qkv_forward, qkv_backward, bf16_matmul
 };
 
 __device__ __forceinline__ float attention_sum(float x) {

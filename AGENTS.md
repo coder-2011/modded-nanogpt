@@ -48,6 +48,11 @@ attention layer: projection/gain gradients, XSA and head gating remain unwired.
 The dependent GEMM in this test is a scheduler sentinel, not an output projection.
 FP64 mathematical checks do not establish parity with the pinned FA3 binary.
 
+`--experiment=bf16 --ablate --sanitize` compares the native BF16 GEMM's coalesced
+and original strided loaders on the same GPU. This primitive preserves the
+scaled-weight and split-product rounding needed by O projections and ANVIL,
+but the complete projection/gain and optimizer paths are not wired yet.
+
 Record the GPU actually supplied, compiler resources, numerical errors and raw
 timings. Modal may supply H200 for an H100 request. Compare candidates on the same
 device, include initialization/quantization/layout costs for promotion, and keep

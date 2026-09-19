@@ -105,7 +105,7 @@
       }
     ]
   },
-  "native_status": "MLP and attention components; full model routing, optimizer, loss and training loop are not implemented",
+  "native_status": "MLP, attention/QKV and BF16 GEMM components; full model routing, optimizer, loss and training loop are not implemented",
   "architecture": {
     "model_dim": 768,
     "mlp_width": 2816,

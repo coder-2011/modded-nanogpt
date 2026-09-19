@@ -58,7 +58,7 @@ constants and schedule constructor produce the values below.
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Not implemented |
 | MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Not implemented |
 | Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Not implemented |
-| Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | Not implemented |
+| Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | BF16 matrix primitives implemented; optimizer state transitions and full cascade absent |
 | Other optimizer state | Parameter-specific Adam rules; sparse touched-row exchange/update; value/n-gram cadence changes at step 336 | Not implemented |
 | Loss | Sampled softcapped CE early, full vocabulary later; MTP and prefix auxiliary schedules; full-vocabulary validation | Not implemented |
 | Timing | Reset warmup state, charge first data fetch, prefix-table construction, table updates, final weight blends and required validation row gathering | Not implemented |
@@ -243,8 +243,8 @@ queue initialization and one 64x64 GEMM. All four sanitizers pass that run.
 
 Final attention/QKV validation is recorded in
 `cuda-check-20260919T032848168561Z-c53ea42e`, including the live non-paired 64/64
-geometry and paired 64/128 without auxiliary values. Its source archive matches
-the current native kernels, build file, Python glue and frontier lock. All four
+geometry and paired 64/128 without auxiliary values. Its source archive captures
+the attention checkpoint's native kernels, build file, Python glue and frontier lock. All four
 sanitizers pass. The largest reported relative-L2 error is 0.000114196161 on an
 adversarial sharp-logit attention gradient. No tolerance was relaxed.
 
@@ -273,6 +273,68 @@ Successful runs supersede it; it contributes no performance result.
 Still missing: QKV/O projection integration and gain gradients, XSA/head-gate
 backward, tensor-core attention, model routing/normalization, embeddings, loss,
 optimizer, scale updates, data ownership and distributed execution. The native
-path cannot train or rank the complete model yet. The next reusable primitive
-is BF16 matrix multiplication for the O projections and ANVIL's matrix maps;
-the existing native GEMM descriptors currently accept FP8 operands only.
+path cannot train or rank the complete model yet. BF16 matrix multiplication for
+the O projections and ANVIL's matrix maps is now implemented below, but those
+operations still need to be connected to their full forward/backward and optimizer
+state transitions.
+
+## BF16 matrix primitive
+
+`cuda/bf16_gemm.cuh` adds device-callable 64x64 tasks using PTX
+`mma.sync.aligned.m16n8k16.row.col.f32.bf16.bf16.f32`, two shared-memory operand
+stages, and `cp.async` on aligned contiguous inputs. Strided operands use
+coalesced reads along their contiguous dimension. Input/output addressing is
+64-bit. The existing FP8 MLP remains a separate arithmetic path.
+
+The descriptor supports pre-GEMM BF16 weight scaling for O projections, FP32
+accumulation, an optional BF16 product rounding before addition for ANVIL's
+split path, and a fused scaled-matrix addition for its other path. Symmetric
+Gram tasks own one triangle and mirror their outputs without duplicate writes.
+Output may alias the additive C operand, but not either multiplicative input.
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=bf16 --ablate --sanitize
+```
+
+The validator checks an independent unpack-to-FP32/cuBLAS pedantic reference,
+BF16 rounding, exact symmetry, a dependent identity GEMM, poisoned-buffer reuse,
+one-worker/oversubscribed scheduling, and in-place additive output. It covers
+all four input-layout combinations, ragged tails, single-element matrices,
+the 768/384-wide O projection geometries, and ANVIL-sized Gram/products. No
+correctness threshold was loosened for the load-layout optimization.
+
+The first same-GPU candidate/control comparison is
+`cuda-check-20260919T034326458867Z-71addc3b`, on H100 80GB and CUDA 12.8.93:
+
+| M / N / K, operation | Original persistent + reset | Coalesced persistent + reset |
+| --- | ---: | ---: |
+| 16384 / 768 / 768, scaled projection | 0.211952 ms | 0.209696 ms |
+| 16384 / 768 / 384, scaled projection | 0.144512 ms | 0.143632 ms |
+| 768 / 768 / 2816, transposed symmetric Gram | 0.688896 ms | 0.545808 ms |
+| 2816 / 768 / 768, split product/add | 0.171120 ms | 0.169616 ms |
+
+The Gram result is a 20.77% time reduction in this controlled component run.
+The other persistent differences are small. The faster separate-launch controls
+remain in the raw log, and this is not a speedup against cuBLAS or the complete
+frontier trainer. Both variants pass the numerical checks, with maximum relative
+L2 0.0000564413038. The coalesced candidate passes all four sanitizers. The
+first BF16 implementation and its checks are retained in
+`cuda-check-20260919T034022871321Z-2af75848`.
+
+Final BF16 checks, including the worker compiled with attention and BF16 support
+together, pass in `cuda-check-20260919T034853939196Z-9c0ebc97`. That source archive
+matches the current native source/build files, Python glue and frontier lock.
+Reloading the immutable completion signals only on the controller reduced this
+combined candidate's spill loads/stores from eight to four bytes per thread.
+The combined specialization still has one static LDL/STL pair, 128 registers and
+four resident CTAs per SM. The dedicated BF16 specialization reports no spills.
+This is a resource improvement, not an established full-model timing improvement.
+An additional shared-slot reload did not remove the remaining spill and was
+rejected. Its evidence is `cuda-check-20260919T035104616570Z-1c5c0ad8`.
+
+The same final shared headers pass the full MLP main-shape checks and all four
+sanitizers in `cuda-check-20260919T034854781208Z-48b4dc04`, and attention/QKV checks
+and all four sanitizers in `cuda-check-20260919T034855970984Z-9866c50a`. The BF16
+validator also checks that its outputs remain identical when attention support
+is compiled into the worker. These still are separate component graphs, not a
+complete native training step.
