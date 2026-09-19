@@ -69,7 +69,21 @@ struct Matmul {
     float *raw = nullptr;
     float *accumulation = nullptr;
     bool a_e5 = false, b_e5 = false, quantized_e5 = false;
+    bool precise = false;
 };
+
+struct HeadSetup {
+    Matmul *ops;
+    const float *scales, *loss_parameters;
+};
+
+__device__ __forceinline__ void head_setup(const HeadSetup &op) {
+    if (!threadIdx.x) {
+        op.ops[0].scale = op.scales[0] * op.scales[1];
+        op.ops[1].scale = op.loss_parameters[0] * op.scales[1];
+        op.ops[2].scale = op.scales[0] * op.loss_parameters[0];
+    }
+}
 
 struct Task {
     int op, row, col;
@@ -132,6 +146,8 @@ struct Graph {
     const EmbeddingRead *embeddings = nullptr;
     const EvaluationHead *evaluation_heads = nullptr;
     const TrainingLoss *training_losses = nullptr;
+    const HeadInput *head_inputs = nullptr;
+    const HeadSetup *head_setups = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -311,7 +327,7 @@ __device__ __forceinline__ void load_operands(const Matmul &op, int row0, int co
     }
 }
 
-template <bool Full = false>
+template <bool Full = false, bool Precise = false>
 __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, fp8 *scratch) {
     const int lane = threadIdx.x % 32, warp = threadIdx.x / 32;
     const int wm = (warp / 2) * 32, wn = (warp % 2) * 32;
@@ -377,7 +393,13 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                         int k = ki + lane % 4 * 4 + j * 16;
                         b[j] = *reinterpret_cast<const uint32_t *>(sb + operand_index(r, k));
                     }
-                    mma(acc[mi][ni], a, b, op.a_e5, op.b_e5);
+                    if constexpr (Precise) {
+                        // Keep cross-instruction accumulation in FP32 for head backward.
+                        float product[4] = {};
+                        mma(product, a, b, op.a_e5, op.b_e5);
+#pragma unroll
+                        for (int j = 0; j < 4; ++j) acc[mi][ni][j] += product[j];
+                    } else mma(acc[mi][ni], a, b, op.a_e5, op.b_e5);
                 }
             }
         }
@@ -448,8 +470,11 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
 
 namespace nano {
 
-template <bool Full = false>
+template <bool Full = false, bool WithPrecise = false>
 __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task, fp8 *scratch) {
+    if constexpr (WithPrecise) {
+        if (op.precise) { matmul_tile<Full, true>(op, task, scratch); return; }
+    }
 #ifdef NANO_WGMMA
     hopper_tile(op, task, scratch);
 #else
@@ -496,7 +521,11 @@ __launch_bounds__(threads)
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithLoss && task.kind == TaskKind::loss_partial) {
+        if (WithLoss && task.kind == TaskKind::head_setup) {
+            head_setup(g.head_setups[task.op]);
+        } else if (WithLoss && task.kind == TaskKind::head_input) {
+            head_input(g.head_inputs[task.op], task.row, task.col, scratch);
+        } else if (WithLoss && task.kind == TaskKind::loss_partial) {
             training_loss_partial(g.training_losses[task.op], task.row, task.col);
         } else if (WithLoss && task.kind == TaskKind::loss_reduce) {
             training_loss_reduce(g.training_losses[task.op], task.row);
@@ -538,11 +567,11 @@ __launch_bounds__(threads)
                 execute_attention(op, task.kind, task.row, task.col);
             } else {
                 const Matmul op = g.ops[task.op];
-                execute_tile<Full>(op, task, scratch);
+                execute_tile<Full, WithLoss>(op, task, scratch);
             }
         } else {
             const Matmul op = g.ops[task.op];
-            execute_tile<Full>(op, task, scratch);
+            execute_tile<Full, WithLoss>(op, task, scratch);
         }
         // All output-writing threads publish before the controller signals readiness.
         __threadfence();

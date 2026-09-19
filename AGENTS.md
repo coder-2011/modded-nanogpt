@@ -108,9 +108,23 @@ gradient-byte ownership. Tests cover full vocabulary and the actual sampled
 widths 10240, 14336 and 24576, graph reuse and zero loss scale.
 `--experiment=loss --profile` captures its PTX/SASS/NCU report. This correctness
 baseline is slower than the pinned standalone loss; no training speedup is
-claimed. Logit/gradient GEMMs, candidate selection/gather/densification and full
-model training integration remain. The numerical reference is CUDA/C++, and
+claimed. Head GEMMs are connected in `--experiment=head`; candidate selection,
+gather/densification and full-model training integration remain. The numerical reference is CUDA/C++, and
 `train_gpt.py` still only launches the new implementation.
+
+`--experiment=head --sanitize` checks the connected FP8 training head, starting
+from BF16 hidden states and resident FP8 weight caches. Input division/packing,
+transposes, raw E4M3 logit GEMM, MTP/prefix loss, E5M2 logit gradients and both
+BF16 gradient products execute in the persistent graph. Backward matrix products
+accumulate fresh K=32 tensor products with explicit FP32 additions. This applies
+only to head backward; existing component arithmetic is unchanged. Tests check
+cuBLAS products, the pinned CUDA loss, all rounding/transposes and Graph replay.
+The BF16 division boundary follows the explicit source; compiled-Torch fusion
+and exact scaled-cuBLAS/FA3 parity remain unverified. `--experiment=head --profile`
+profiles the 256-token, full-vocabulary fixture, not an end-to-end training step.
+Both Graph controls run hidden-state and weight-gradient products concurrently;
+compare against the faster control. The enclosing training body, candidate
+transport/densification and optimizer/distributed integration remain incomplete.
 
 `--experiment=body --sanitize` runs the connected eleven-layer BF16 evaluation
 body: seven attention calls, eleven MLP calls, residual/skip routing, shared

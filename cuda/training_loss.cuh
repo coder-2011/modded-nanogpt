@@ -1,4 +1,5 @@
 #pragma once
+#include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <cuda_fp8.h>
 #include <cuda_runtime.h>
@@ -17,7 +18,33 @@ struct TrainingLoss {
     __nv_fp8_e5m2 *gradient;
     int tokens, vocabulary, predictions;
     float *raw_gradient = nullptr;
+    __nv_fp8_e5m2 *gradient_transposed = nullptr;
 };
+
+struct HeadInput {
+    const __nv_bfloat16 *input;
+    __nv_fp8_e4m3 *quantized, *transposed;
+    const float *scales;
+    int tokens;
+};
+
+__device__ __forceinline__ void head_input(const HeadInput &op, int tile_row, int tile_col, __nv_fp8_e4m3 *scratch) {
+    for (int i = threadIdx.x; i < 4096; i += 128) {
+        int row = tile_row * 64 + i / 64, col = tile_col * 64 + i % 64;
+        if (row < op.tokens) {
+            float value = __bfloat162float(__float2bfloat16_rn(float(op.input[int64_t(row) * 768 + col]) / op.scales[0]));
+            auto packed = __nv_fp8_e4m3(value);
+            op.quantized[int64_t(row) * 768 + col] = packed;
+            scratch[i] = packed;
+        }
+    }
+    __syncthreads();
+    for (int i = threadIdx.x; i < 4096; i += 128) {
+        int row = tile_row * 64 + i % 64, col = tile_col * 64 + i / 64;
+        if (row < op.tokens) op.transposed[int64_t(col) * op.tokens + row] = scratch[i % 64 * 64 + i / 64];
+    }
+    __syncthreads();
+}
 
 __device__ __forceinline__ float training_sigmoid(__nv_fp8_e4m3 logit) {
     float value = 0.5f + __tanhf((float(logit) * (1.0f / 7.5f) + 5.0f / 7.5f) * 0.5f) * 0.5f;
@@ -85,6 +112,10 @@ __device__ __forceinline__ void training_loss_gradient(const TrainingLoss &op, i
         uint16_t packed;
         asm("cvt.rn.satfinite.e5m2x2.f32 %0, %1, %2;" : "=h"(packed) : "f"(gradient[1]), "f"(gradient[0]));
         *reinterpret_cast<uint16_t *>(op.gradient + int64_t(token) * op.vocabulary + col) = packed;
+        if (op.gradient_transposed) {
+            op.gradient_transposed[int64_t(col) * op.tokens + token].__x = uint8_t(packed);
+            op.gradient_transposed[int64_t(col + 1) * op.tokens + token].__x = uint8_t(packed >> 8);
+        }
     }
 }
 

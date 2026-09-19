@@ -141,11 +141,11 @@ struct LossControl {
     void run() { CHECK_CUDA(cudaGraphLaunch(exec, nullptr)); }
 };
 
-void check_loss_math(LossStorage &b) {
+void check_loss_math(LossStorage &b, bool descaled_gradient = false) {
     auto logits = b.logits.get(); auto targets = b.targets.get(), prefix = b.prefixes.get();
     auto weights = b.weights.get(), loss = b.loss.get(), raw = b.raw.get();
     auto gradient = b.gradient.get();
-    double maximum_loss = 0, maximum_gradient = 0;
+    double maximum_loss = 0, maximum_gradient = 0, gradient_error = 0, gradient_norm = 0;
     for (int row : {0, b.tokens - 1}) {
         std::vector<double> sigmoid(b.vocabulary);
         double sum = 0, total_weight = 0;
@@ -171,7 +171,9 @@ void check_loss_math(LossStorage &b) {
             if (prefix[row] == col) correction += b.settings[2];
             double expected = b.settings[1] * (23.0 / 7.5) / b.settings[0] *
                 (total_weight * std::exp(23.0 * sigmoid[col] - lse) - correction) * sigmoid[col] * (1 - sigmoid[col]);
-            maximum_gradient = std::max(maximum_gradient, std::abs(raw[size_t(row) * b.vocabulary + col] - expected));
+            double error = raw[size_t(row) * b.vocabulary + col] - expected;
+            maximum_gradient = std::max(maximum_gradient, std::abs(error));
+            gradient_error += error * error; gradient_norm += expected * expected;
         }
     }
     for (size_t i = 0; i < raw.size(); ++i) {
@@ -179,7 +181,13 @@ void check_loss_math(LossStorage &b) {
             throw std::runtime_error("training loss E5M2 boundary mismatch");
     }
     printf("LOSS FP64 max_loss=%.9g max_raw_gradient=%.9g\n", maximum_loss, maximum_gradient);
-    if (maximum_loss > 2e-5 || maximum_gradient > 2e-5) throw std::runtime_error("training loss mathematical gate failed");
+    double relative_gradient = std::sqrt(gradient_error / std::max(gradient_norm, 1e-30));
+    bool gradient_failed = maximum_gradient > 2e-5;
+    if (descaled_gradient) {
+        printf("LOSS FP64 max_descaled_gradient=%.9g gradient_rel_l2=%.9g\n", maximum_gradient * b.settings[0], relative_gradient);
+        gradient_failed = maximum_gradient * b.settings[0] > 2e-5 || relative_gradient > 2e-6;
+    }
+    if (maximum_loss > 2e-5 || gradient_failed) throw std::runtime_error("training loss mathematical gate failed");
 
     launch_reference_loss(b.descriptor(true), b.settings.data());
     CHECK_CUDA(cudaDeviceSynchronize());
@@ -233,6 +241,7 @@ void check_loss(int tokens, int vocabulary, int predictions, int workers, int st
     }
 }
 
+#ifndef NANO_TRAINING_HEAD
 int main(int argc, char **argv) {
     try {
         device_info(); bool quick = false, profile = false;
@@ -262,3 +271,4 @@ int main(int argc, char **argv) {
         return 0;
     } catch (const std::exception &e) { fprintf(stderr, "FAIL: %s\n", e.what()); return 1; }
 }
+#endif

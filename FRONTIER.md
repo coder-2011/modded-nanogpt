@@ -1239,3 +1239,121 @@ The evaluation body's specialization leaves the new loss dispatch disabled.
 Its regression run `cuda-check-20260919T075525349231Z-06553dfb` passes the 16/80-row
 arithmetic/replay cases and all four sanitizers on the 16-row quick case. Its
 source archive has the same two comment/prerequisite-only differences above.
+
+## Connected FP8 training head
+
+`cuda/head.cu` connects BF16 hidden states to training loss, BF16 hidden-state
+gradients and BF16 head-weight gradients. The graph starts from resident FP8
+weight caches in both layouts, matching the reference's optimizer-owned caches.
+The input producer divides BF16 hidden states by the input scale, preserves the
+explicit BF16 division boundary, then packs E4M3 bytes and their transpose. A
+device setup task refreshes the three product scales before their consumers run.
+This preserves graph reuse when scales change without rebuilding descriptors.
+
+The three products have the reference's shapes and formats:
+
+| Product | Shape | Inputs | Stored result |
+| --- | --- | --- | --- |
+| Logits | `[T,768] @ [768,V]` | E4M3 / E4M3 | Raw E4M3 logit codes |
+| Hidden-state gradient | `[T,V] @ [V,768]` | E5M2 / E4M3 | BF16 |
+| Head-weight gradient | `[768,T] @ [T,V]` | E4M3 / E5M2 | BF16 |
+
+The middle of the graph is the preceding tiled training loss. Its gradient
+producer also writes the transposed E5M2 bytes consumed by the weight-gradient
+product. Backward uses fresh K=32 tensor products followed by explicit FP32
+additions, rather than carrying a long accumulator through tensor instructions.
+The `precise` descriptor flag is enabled only for head backward, and its dispatch
+is compiled only into workers with loss support. Existing component product
+arithmetic is unchanged. This addresses the reference's `use_fast_accum=False`
+requirement; exact cuBLAS algorithm/order parity is still unverified.
+
+Input/product tasks use 64-by-64 tiles, with the existing four-row/512-column
+loss tasks. Packing, logit production and the backward products currently have
+whole-phase dependencies; loss reductions retain independent four-row-group
+dependencies. Both backward products can run concurrently. The 256-token,
+50304-column fixture contains 25409 tasks across eight phases. This is the head
+component, not an enclosing eleven-layer training graph.
+
+The first run (`cuda-check-20260919T080734623641Z-30decd15`) failed the isolated
+loss fixture's absolute raw-gradient check: `0.000470709119` error in FP8 encoding
+units. At the head's canonical scale (`0.0625 * (0.75 / 8) / 448`), that error is
+`6.15638677e-9` after descaling. Raw FP32 values near this head's target gradients
+cannot satisfy the old fixture's absolute threshold in encoding units.
+The head check therefore requires both descaled maximum error <= `2e-5` and
+relative L2 <= `2e-6`. The original isolated loss keeps its existing absolute
+raw-gradient gate unchanged. Exact raw-to-E5M2 conversion and the direct pinned
+CUDA gradient comparison also remain mandatory. No arithmetic was changed to
+make this units check pass.
+
+The selected ordinary run is `cuda-check-20260919T081055455010Z-7385c05f` on H100
+80GB HBM3. It checks:
+
+- 16/65-token cases at 2048 columns, including partial token/K tiles;
+- 16-token full vocabulary with changing scales, zero weights and zero inputs;
+- 80 tokens at the actual sampled widths 10240, 14336 and 24576, with three/two/
+  one MTP predictions respectively;
+- 256 tokens at full vocabulary with 528 workers, checking every product,
+  loss/gradient element, packing boundary and transpose;
+- exact task visits and dependency counts, bitwise replay through both Graph
+  controls and the unaudited persistent worker, and identical final outputs when
+  all raw-gradient/product diagnostic stores are disabled.
+
+Independent pedantic cuBLAS SGEMM checks decode the actual FP8 operands to FP32
+and compare each product before output rounding. The largest observed relative
+product error is `1.02405318e-6` (full-vocabulary hidden-state gradient). The
+256-token product maxima are `9.53674316e-7` for logits, `2.60770321e-8` for the
+hidden-state gradient and `2.98023224e-7` for the weight gradient. All tested E5M2
+logit-gradient bytes match the pinned CUDA loss exactly; maximum loss difference
+is `3.81469727e-6`. These are boundary arithmetic checks, not a claim of exact
+compiled-Torch execution or convergence.
+
+The current same-GPU event medians, including input packing/transposes, loss,
+both gradient products and persistent queue reset, with diagnostics disabled:
+
+| Head implementation, T=256 / V=50304 | ms |
+| --- | ---: |
+| CUDA Graph, concurrent backward products | 1.723216 |
+| CUDA Graph, four-block occupancy target | 1.724608 |
+| Persistent worker + reset | 2.083024 |
+
+The persistent head is about 20.9% slower than the faster Graph. It is not a
+training speedup. The earlier passing head run
+`cuda-check-20260919T080916201016Z-fd902584` used a serial backward Graph control;
+that weaker control is not used for this comparison.
+
+The profile is `profile-20260919T081056283577Z-da4ff2a6.tar.gz`: 2.11 ms diagnostic
+duration, 22.01% occupancy, 0.44 eligible warps per scheduler and 4.16% tensor-pipe
+activity. DRAM throughput is 4.62% of peak. Long-scoreboard stalls account for
+3.12 of 11.66 warp cycles per issued instruction, and barriers for 1.19. Logit
+conversion and target-load consumers remain prominent sampled stalls.
+
+The persistent build has 128 registers, 32800 shared bytes, a 32-byte stack,
+44-byte spill stores and 72-byte spill loads. Both Graph dispatchers use 87
+registers and no spills. Static SASS has 104 HMMA, 84 LDGSTS, 18 LDL and 11 STL
+instructions in the production worker. PTX's FP8 `mma.sync.m16n8k32` operations
+lower to FP8-to-FP16 conversions and paired `HMMA.16816.F32` instructions on this
+build; this is not native FP8 WGMMA throughput. The precise path's FP32 additions
+are present after the tensor-product pairs. PTX/SASS and ordinary timing are
+both retained so the FP8 storage format is not mistaken for the hardware math
+instruction format.
+
+Reproduce with:
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=head --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=head --profile
+```
+
+The head, standalone loss and evaluation body each pass all four sanitizers in
+`cuda-check-20260919T081055455010Z-7385c05f`,
+`cuda-check-20260919T081057497246Z-e021c540` and
+`cuda-check-20260919T081058640502Z-d1fd0887`, respectively. All 38 source files in
+those archives and the profile match except for a later Makefile prerequisite
+repair: the reference object now has its own target, avoiding concurrent writes
+when building `head` and `loss` together. Compiler commands/flags and all CUDA
+arithmetic are identical. The explicit input-division boundary
+still needs comparison against the pinned compiled Torch fusion, and FP8 product
+rounding against its scaled-cuBLAS implementation. Candidate construction,
+cache gathering, gradient densification, the enclosing training body and
+optimizer/distributed integration remain. The canonical reference launcher is
+unchanged; no native speedrun or leaderboard rank is claimed.
