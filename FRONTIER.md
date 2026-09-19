@@ -1027,3 +1027,115 @@ sanitizer orchestration and the body driver's quick-case worker count changed.
 All production CUDA arithmetic and graph construction are identical. The pinned
 reference hash check and Python/shell syntax checks pass. A live upstream check
 still finds PR #360 open at the pinned commit with no newer update to it.
+
+## Independent BF16 operand loading
+
+The evaluation graph now enables `NANO_BF16_INDEPENDENT_LOAD` in
+`cuda/bf16_gemm.cuh`. Previously, a transposed matrix forced both operands through
+scalar global-to-shared loads, even when its partner was contiguous. Each
+operand now independently qualifies for 16-byte `cp.async` transfers. Eligibility
+requires contiguous inner elements, an inner size and row stride divisible by
+eight BF16 elements, and a 16-byte-aligned base pointer. Misaligned views and
+partial inner dimensions use scalar loads; out-of-range rows/tile elements are
+zero-filled. When both operands qualify, the original paired copy loop remains.
+
+The existing shared-memory swizzle, double buffers, commit/wait barriers, tensor
+instructions, scaling and BF16 rounding are unchanged. The change applies to the
+connected evaluation graph by default. `body_control` retains the former load
+policy. Other component defaults retain their existing policy; `bf16_async`
+exposes the new loader for the primitive comparison.
+
+The primitive suite now includes both mixed-layout orientations at 65-by-80-by-72,
+with aligned bases and one-BF16-element offsets. These exercise asynchronous A
+and asynchronous B separately, partial row/K tiles, and misalignment fallback.
+Existing checks cover four layouts, scaled weights, split-product rounding,
+in-place outputs, symmetric Gram matrices, dependency publication and exact
+staged/persistent replay against independent cuBLAS arithmetic.
+
+An initial candidate loaded even two contiguous operands through separate copy
+loops. It improved a mixed-layout primitive from 0.164640 to 0.103152 ms, but
+slightly slowed the two contiguous cases. It also increased the combined worker's
+spill traffic to 24-byte stores and 48-byte loads. The retained version restores
+the paired loop for two eligible operands and adds the alignment checks above.
+
+The refined primitive comparison on one H100 80GB HBM3 gives these event medians
+for persistent execution plus reset (`cuda-check-20260919T072852535444Z-06bcd9f5`):
+
+| M, N, K / layout | Existing coalesced loader ms | Independent loader ms |
+| --- | ---: | ---: |
+| 16384, 768, 768 / both contiguous | 0.235792 | 0.229520 |
+| 16384, 768, 384 / both contiguous | 0.163072 | 0.159936 |
+| 768, 768, 2816 / both transposed, symmetric | 0.535088 | 0.541984 |
+| 2816, 768, 768 / B transposed, split product | 0.165248 | 0.103280 |
+
+The symmetric case is slightly slower in this measurement. The raw log also
+retains the original strided control; it is not substituted for the existing
+coalesced default to inflate the comparison.
+
+The same-GPU **token-to-loss evaluation graph** comparison at 16384 tokens and
+528 workers is `cuda-check-20260919T072852535444Z-94ae7d5b`:
+
+| Load policy | Graph ms | Four-block Graph ms | Persistent + reset ms |
+| --- | ---: | ---: | ---: |
+| Existing coupled decision | 256.810028 | 205.015610 | 218.537758 |
+| Independent, aligned, paired fast path | 256.694092 | 155.661491 | 168.568481 |
+
+The persistent graph is **22.87% faster than its previous implementation**,
+but remains **8.29% slower than its own faster Graph control**. The body keeps
+its diagnostic stores and the head omits full logit stores, as in the preceding
+checkpoint. No arithmetic, vocabulary, target, architecture or training recipe
+was changed. This remains a synthetic evaluation graph, not a native training
+speedrun or canonical validation result.
+
+The first full-graph candidate also passes its 16384-token arithmetic/replay
+checks and improves 218.313789 to 168.476349 ms in
+`cuda-check-20260919T072604624289Z-277f2c83`. Its stronger Graph improves
+203.831375 to 154.683167 ms. That version predates the paired-path preservation
+and alignment fallback, so the refined implementation above is the selected one.
+
+The selected build's profile is
+`profile-20260919T073652898139Z-1326f24c.tar.gz`. NCU reports 170.63 ms
+(diagnostic), 25.00% occupancy, 0.36 eligible warps per scheduler and 2.76%
+tensor-pipe activity, up from 2.11% before this change. Long-scoreboard stalls
+remain dominant at 9.19 of 14.59 warp cycles per issued instruction. Four scalar
+shared stores in the remaining operand-load path account for 714656 of 3262154
+samples. Loading is still the next performance target; the graph is not now
+compute-saturated.
+
+The production worker retains 128 registers and 32800 shared bytes, but now has
+20-byte spill stores and 24-byte spill loads (five static `LDL`, four `STL`).
+Both speed comparisons include that cost. Static SASS contains 84 `LDGSTS` and
+56 `HMMA` instructions, versus 56 of each previously. The unconstrained Graph
+dispatcher grows from 165 to 175 registers per thread: at 128 threads per block,
+that crosses H100's register limit from three resident blocks to two. This is
+consistent with the flat unconstrained Graph timing; the four-block Graph
+control is the relevant faster comparator.
+
+Use these commands to reproduce the selected policy and its former control:
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=body --ablate --main-shapes --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=body --profile
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=bf16 --ablate --sanitize
+```
+
+The comparison logs above predate the default switch: there, `body` means the
+former policy and `body_async` means the selected policy. Current commands name
+them `body_control` and `body`, respectively. Only the target names/default flags
+and launcher selection changed; the selected kernel code and flags are identical.
+
+The selected default passes all four sanitizers in
+`cuda-check-20260919T073652898139Z-e88ad0a9`. The final primitive suite, including
+both aligned mixed-layout orientations and their misaligned counterparts,
+passes all four for the current coalesced and independent paths in
+`cuda-check-20260919T073811871771Z-b3a08bd0`; its original strided control also
+passes the ordinary numerical suite. All 34 source files in that final archive
+match this checkpoint exactly. The profile/default-body archives differ only
+in the primitive driver's two added aligned cases; that file is not compiled
+into the body. The large comparison additionally predates target/default naming
+and launcher selection changes. All production kernel code is identical.
+
+The refined large comparison completed successfully: both load policies also
+pass memcheck, initcheck, racecheck and synccheck on the quick case in
+`cuda-check-20260919T072852535444Z-94ae7d5b`. All eight sanitizer summaries report
+zero errors; both race checks report zero warnings.

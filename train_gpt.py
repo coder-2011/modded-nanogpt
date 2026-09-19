@@ -102,6 +102,9 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
                     [str(root / binary), sys.executable, str(root / "gpt2.json")]]
     if ablate and experiment == "bf16":
         commands.extend([["make", "-C", str(root), "bf16_control"], [str(root / "bf16_control")]])
+        commands.extend([["make", "-C", str(root), "bf16_async"], [str(root / "bf16_async")]])
+    elif ablate and experiment == "body":
+        commands.extend([["make", "-C", str(root), "body_control"], [str(root / "body_control"), *flags]])
     elif ablate and experiment == "anvil":
         commands.extend([["make", "-C", str(root), "anvil_idle64"], [str(root / "anvil_idle64")]])
     elif ablate and experiment == "layer":
@@ -130,6 +133,10 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
             sanitized.append("anvil_idle64")
         if ablate and experiment == "layer":
             sanitized.append("layer_serial")
+        if ablate and experiment == "bf16":
+            sanitized.append("bf16_async")
+        if ablate and experiment == "body":
+            sanitized.append("body_control")
         check_flags = [] if experiment else [f"--gradient-chunk={gradient_chunk}"]
         for checked_binary in sanitized:
             for tool in ("memcheck", "initcheck", "racecheck", "synccheck"):
@@ -217,7 +224,7 @@ if "--cuda-check" in sys.argv:
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
     if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation", "routing", "body"}:
         raise SystemExit("Unknown native experiment")
-    if experiment and (wgmma or (ablate and experiment not in {"bf16", "anvil", "layer"})):
+    if experiment and (wgmma or (ablate and experiment not in {"bf16", "anvil", "layer", "body"})):
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")

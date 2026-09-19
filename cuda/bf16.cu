@@ -110,10 +110,10 @@ void compare(const std::vector<float> &actual, const std::vector<float> &referen
 
 void check(int m, int n, int k, bool trans_a, bool trans_b, float b_scale,
            float alpha, float beta, bool round_product, bool symmetric, int workers, bool timing,
-           bool inplace = false) {
-    printf("BF16 shape M=%d N=%d K=%d trans_a=%d trans_b=%d b_scale=%g alpha=%g beta=%g split=%d symmetric=%d workers=%d\n",
-           m, n, k, trans_a, trans_b, b_scale, alpha, beta, round_product, symmetric, workers);
-    DeviceBuffer<bf16> a(size_t(m) * k), b(size_t(n) * k), c(size_t(m) * n), y(c.n), copied(c.n), identity(size_t(n) * n);
+           bool inplace = false, int offset = 0) {
+    printf("BF16 shape M=%d N=%d K=%d trans_a=%d trans_b=%d b_scale=%g alpha=%g beta=%g split=%d symmetric=%d workers=%d offset=%d\n",
+           m, n, k, trans_a, trans_b, b_scale, alpha, beta, round_product, symmetric, workers, offset);
+    DeviceBuffer<bf16> a(size_t(m) * k + offset), b(size_t(n) * k + offset), c(size_t(m) * n), y(c.n), copied(c.n), identity(size_t(n) * n);
     DeviceBuffer<float> raw(c.n), packed_a(a.n), packed_b(b.n), reference(c.n);
     std::mt19937 rng(1009 + m + n + k);
     std::normal_distribution<float> normal;
@@ -127,7 +127,7 @@ void check(int m, int n, int k, bool trans_a, bool trans_b, float b_scale,
     for (int i = 0; i < n; ++i)
         id[i * n + i] = bf16(1.0f);
     identity.put(id);
-    BF16Matmul op{a.p, symmetric ? a.p : b.p, c.p, y.p, raw.p, m, n, k,
+    BF16Matmul op{a.p + offset, (symmetric ? a.p : b.p) + offset, c.p, y.p, raw.p, m, n, k,
                   trans_a ? 1 : k, trans_a ? m : 1,
                   trans_b ? 1 : k, trans_b ? n : 1, alpha, beta, b_scale, round_product, symmetric};
     if (symmetric && (m != n || trans_a != trans_b || b_scale != 1.0f))
@@ -236,6 +236,10 @@ int main(int argc, char **argv) {
         check(65, 65, 71, false, false, 1, 3.9052346f, -6.0950269f, false, true, 7, false);
         check(64, 64, 128, true, true, 1, 1, 0, false, true, 1, false);
         check(129, 96, 72, false, false, 0.625f, 1, 0, false, false, 7, false);
+        for (int offset : {0, 1}) {
+            check(65, 80, 72, false, true, 0.625f, 1, 0, false, false, 7, false, false, offset);
+            check(65, 80, 72, true, false, 0.625f, 1, 0, false, false, 7, false, false, offset);
+        }
         if (!quick) {
             check(257, 129, 273, true, true, 1, 1, 0, true, false, p.multiProcessorCount * 8, false);
             check(16384, 768, 768, false, false, 0.875f, 1, 0, false, false, p.multiProcessorCount * resident, true);

@@ -37,3 +37,5 @@ cuda/layer_serial
 cuda/evaluation
 cuda/routing
 cuda/body
+cuda/body_control
+cuda/bf16_async

@@ -36,9 +36,38 @@ __device__ __forceinline__ int bf16_operand_index(int row, int k) {
     return row * bf16_k_tile + (k ^ ((row & 7) * 8));
 }
 
+#ifdef NANO_BF16_INDEPENDENT_LOAD
+__device__ __forceinline__ void load_bf16_operand(const __nv_bfloat16 *input, __nv_bfloat16 *shared,
+        int rows, int inner, int row0, int k0, int64_t row_stride, int64_t inner_stride) {
+    if (inner_stride == 1 && inner % 8 == 0 && row_stride % 8 == 0 && (reinterpret_cast<uintptr_t>(input) & 15) == 0) {
+        for (int i = threadIdx.x; i < bf16_operand_elements / 8; i += 128) {
+            int row = i / 8, k = i % 8 * 8;
+            const auto *source = input + int64_t(row0 + row < rows ? row0 + row : 0) * row_stride + (k0 + k < inner ? k0 + k : 0);
+            unsigned destination = __cvta_generic_to_shared(shared + bf16_operand_index(row, k));
+            int bytes = row0 + row < rows && k0 + k < inner ? 16 : 0;
+            asm volatile("cp.async.ca.shared.global [%0], [%1], 16, %2;"
+                         :: "r"(destination), "l"(source), "r"(bytes) : "memory");
+        }
+    } else {
+        for (int i = threadIdx.x; i < bf16_operand_elements; i += 128) {
+            int row = i / 64, k = i % 64;
+#ifdef NANO_BF16_COALESCED
+            if (row_stride == 1) { row = i % 64; k = i / 64; }
+#endif
+            shared[bf16_operand_index(row, k)] = row0 + row < rows && k0 + k < inner ?
+                input[int64_t(row0 + row) * row_stride + int64_t(k0 + k) * inner_stride] : __float2bfloat16_rn(0.0f);
+        }
+    }
+}
+#endif
+
 __device__ __forceinline__ void load_bf16_operands(const BF16Matmul &op, int row0, int col0,
                                                  int k0, __nv_bfloat16 *sa, __nv_bfloat16 *sb) {
-    if (op.ak == 1 && op.bk == 1 && op.k % 8 == 0 && op.ar % 8 == 0 && op.br % 8 == 0) {
+    bool paired = op.ak == 1 && op.bk == 1 && op.k % 8 == 0 && op.ar % 8 == 0 && op.br % 8 == 0;
+#ifdef NANO_BF16_INDEPENDENT_LOAD
+    paired = paired && ((reinterpret_cast<uintptr_t>(op.a) | reinterpret_cast<uintptr_t>(op.b)) & 15) == 0;
+#endif
+    if (paired) {
         for (int i = threadIdx.x; i < bf16_operand_elements / 8; i += 128) {
             int r = i / (bf16_k_tile / 8), k = k0 + i % (bf16_k_tile / 8) * 8;
             const auto *ap = op.a + int64_t(row0 + r < op.m ? row0 + r : 0) * op.ar + (k < op.k ? k : 0);
@@ -52,6 +81,12 @@ __device__ __forceinline__ void load_bf16_operands(const BF16Matmul &op, int row
         }
         asm volatile("cp.async.commit_group;" ::: "memory");
     } else {
+#ifdef NANO_BF16_INDEPENDENT_LOAD
+        // A transposed operand must not force its contiguous partner onto scalar loads.
+        load_bf16_operand(op.a, sa, op.m, op.k, row0, k0, op.ar, op.ak);
+        load_bf16_operand(op.b, sb, op.n, op.k, col0, k0, op.br, op.bk);
+        asm volatile("cp.async.commit_group;" ::: "memory");
+#else
         for (int i = threadIdx.x; i < bf16_operand_elements; i += 128) {
             int ar = i / bf16_k_tile, ak = i % bf16_k_tile;
             int br = ar, bk = ak;
@@ -70,6 +105,7 @@ __device__ __forceinline__ void load_bf16_operands(const BF16Matmul &op, int row
             sb[bf16_operand_index(br, bk)] = col0 + br < op.n && k0 + bk < op.k ?
                 op.b[int64_t(col0 + br) * op.br + int64_t(k0 + bk) * op.bk] : __float2bfloat16_rn(0.0f);
         }
+#endif
     }
 }
 

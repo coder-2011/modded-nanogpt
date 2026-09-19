@@ -48,8 +48,8 @@ test does not include projection/gain gradients, XSA or head gating.
 The dependent GEMM in this test is a scheduler sentinel, not an output projection.
 FP64 mathematical checks do not establish parity with the pinned FA3 binary.
 
-`--experiment=bf16 --ablate --sanitize` compares the native BF16 GEMM's coalesced
-and original strided loaders on the same GPU. This primitive preserves the
+`--experiment=bf16 --ablate --sanitize` compares the native BF16 GEMM's coalesced,
+original strided and independent asynchronous loaders on the same GPU. This primitive preserves the
 scaled-weight and split-product rounding needed by O projections and ANVIL,
 and the connected training-attention layer uses it for O and projection gradients.
 
@@ -114,6 +114,11 @@ Add `--main-shapes` for the 16384-token check and native
 body timings; `--experiment=body --profile` captures PTX/SASS/NCU. The fixture uses
 synthetic documents and diagnostic buffers, not canonical validation. Compare
 against the faster of both Graph controls before claiming a fusion speedup.
+The body enables `NANO_BF16_INDEPENDENT_LOAD`: contiguous aligned operands use
+asynchronous copies even when their partner is transposed. `--experiment=body
+--ablate --main-shapes --sanitize` compares this default with `body_control`,
+which preserves the former coupled load decision, and sanitizes both builds.
+Other component defaults retain their existing load policy.
 `--experiment=routing --sanitize` checks weighted mixing and RMS normalization
 forward/backward, including FP64 references and normalization finite differences.
 Coefficient adjoints are unrounded per-token/group partials; their consumers own
