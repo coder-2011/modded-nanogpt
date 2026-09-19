@@ -83,6 +83,7 @@ struct MLPSetup {
     Matmul *ops;
     const float *scales; // input, up weight, down weight, incoming gradient, post, dpre
     float *amax;
+    const bf16 *fold_p = nullptr;
 };
 
 __device__ __forceinline__ void mlp_setup(const MLPSetup &op) {
@@ -91,6 +92,11 @@ __device__ __forceinline__ void mlp_setup(const MLPSetup &op) {
     op.ops[0].scale = s[0] * s[1]; op.ops[0].output_scale = s[4];
     op.ops[1].scale = s[4] * s[2];
     op.ops[2].scale = s[3] * s[2]; op.ops[2].output_scale = s[5]; op.ops[2].post_scale = s[4];
+    if (op.fold_p) {
+        float p = float(*op.fold_p);
+        op.ops[1].scale = s[4] * (s[2] * p);
+        op.ops[2].scale = (s[2] * s[3]) * p;
+    }
     op.ops[3].scale = s[5] * s[1];
     op.ops[4].scale = s[5] * s[0]; op.ops[5].scale = s[4] * s[3];
     op.amax[0] = op.amax[1] = 0;

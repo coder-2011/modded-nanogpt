@@ -17,6 +17,7 @@ head_FLAGS := $(loss_FLAGS)
 tail_FLAGS := $(head_FLAGS)
 suffix_FLAGS := $(tail_FLAGS)
 last_layer_FLAGS := $(suffix_FLAGS)
+layer_nine_FLAGS := $(last_layer_FLAGS)
 last_layer_idle64_FLAGS := $(last_layer_FLAGS) -DNANO_IDLE_NS=64
 body_control_FLAGS := $(evaluation_FLAGS) -DNANO_EVALUATION_BODY=1
 body_FLAGS := $(body_control_FLAGS) -DNANO_BF16_INDEPENDENT_LOAD=1
@@ -102,7 +103,7 @@ print-flags:
 check: validate
 	./validate
 
-SANITIZER_FLAGS = $(CHECK_FLAGS) $(if $(filter tail suffix last_layer last_layer_idle64,$(BIN)),--native-only)
+SANITIZER_FLAGS = $(CHECK_FLAGS) $(if $(filter tail suffix last_layer last_layer_idle64 layer_nine,$(BIN)),--native-only)
 sanitize: $(BIN)
 	compute-sanitizer --tool memcheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
 	compute-sanitizer --tool initcheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
@@ -110,7 +111,10 @@ sanitize: $(BIN)
 	compute-sanitizer --tool synccheck --error-exitcode 1 ./$(BIN) --quick $(SANITIZER_FLAGS)
 
 clean:
-	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation routing body body_control loss head tail suffix last_layer last_layer_idle64 tail_reference_probe training_loss_reference.o tail_reference.o
+	rm -f $(VARIANTS) quantize transport tokenizer attention bf16 bf16_control bf16_async anvil anvil_idle64 layer layer_serial evaluation routing body body_control loss head tail suffix last_layer last_layer_idle64 layer_nine tail_reference_probe training_loss_reference.o tail_reference.o
 
 last_layer last_layer_idle64: last_layer.cu attention_layer.cu suffix.cu tail.cu head.cu loss.cu tail_reference.h tail_reference.o training_loss_reference.o $(wildcard *.cuh) Makefile
 	$(NVCC) $(NVFLAGS) $($@_FLAGS) last_layer.cu tail_reference.o training_loss_reference.o -lcublas $(TORCH_LIBS) -o $@
+
+layer_nine: layer_nine.cu last_layer.cu attention_layer.cu suffix.cu tail.cu head.cu loss.cu tail_reference.h tail_reference.o training_loss_reference.o $(wildcard *.cuh) Makefile
+	$(NVCC) $(NVFLAGS) $(layer_nine_FLAGS) layer_nine.cu tail_reference.o training_loss_reference.o -lcublas $(TORCH_LIBS) -o $@

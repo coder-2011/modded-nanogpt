@@ -123,6 +123,7 @@ struct LastLayerPlan {
     std::vector<Group> groups;
     std::vector<std::pair<int, int>> stages;
     std::vector<std::vector<int>> predecessor;
+    LastLayerPlan() = default;
     int phase(TaskKind kind, int op, int nr, int nc = 1, int backward = 0, int column = -1) {
         int id = int(stages.size()), begin = int(tasks.size());
         for (int r = 0; r < nr; ++r) for (int c = 0; c < nc; ++c)
@@ -290,7 +291,7 @@ __global__ __launch_bounds__(128, MinimumBlocks) void last_layer_stage(Graph g, 
 
 struct LastLayerControl {
     cudaGraph_t graph; cudaGraphExec_t exec;
-    LastLayerControl(LastLayerSchedule &schedule, bool bounded) {
+    template <class Schedule> LastLayerControl(Schedule &schedule, bool bounded) {
         CHECK_CUDA(cudaGraphCreate(&graph, 0)); std::vector<cudaGraphNode_t> nodes;
         for (size_t i = 0; i < schedule.plan.stages.size(); ++i) {
             auto [begin, end] = schedule.plan.stages[i]; Graph g = schedule.graph(); void *args[] = {&g, &begin};
@@ -420,6 +421,7 @@ void check_last_layer(int tokens, int vocabulary, int workers, int steps, bool t
     }
 }
 
+#ifndef NANO_TRAINING_LAYER_NINE
 int main(int argc, char **argv) {
     try {
         device_info(); bool quick = false, profile = false, aten = true;
@@ -446,3 +448,4 @@ int main(int argc, char **argv) {
         puts("PASS: last-layer attention and MUDD network connected to MLP/loss/backward; earlier body and compiled parity remain"); return 0;
     } catch (const std::exception &e) { fprintf(stderr, "FAIL: %s\n", e.what()); return 1; }
 }
+#endif

@@ -113,6 +113,8 @@ struct ProjectionGradient {
     float *partial, *gain_gradient, *extra_gain_gradient;
     int elements;
     bool output_projection;
+    const __nv_bfloat16 *fold_gain = nullptr;
+    __nv_bfloat16 *fold_gradient = nullptr;
 };
 constexpr int projection_elements = 1024;
 
@@ -120,7 +122,8 @@ __device__ __forceinline__ void projection_gradient_tile(const ProjectionGradien
                                                          int tile, float *scratch) {
     float sum = 0;
     if (!reduce) {
-        float gain = op.output_projection ? op.scalars[4] * op.scalars[5] : op.scalars[3];
+        float gain = op.fold_gain ? float(*op.fold_gain) :
+            op.output_projection ? op.scalars[4] * op.scalars[5] : op.scalars[3];
         int begin = tile * projection_elements;
         for (int i = begin + threadIdx.x; i < min(begin + projection_elements, op.elements); i += 128) {
             float gradient = float(op.unscaled_gradient[i]);
@@ -135,6 +138,7 @@ __device__ __forceinline__ void projection_gradient_tile(const ProjectionGradien
         sum = anvil_sum(sum, scratch);
         if (threadIdx.x == 0) {
             *op.gain_gradient = sum * (op.output_projection ? op.scalars[5] : 1.0f);
+            if (op.fold_gradient) *op.fold_gradient = __float2bfloat16_rn(sum);
             if (op.extra_gain_gradient)
                 *op.extra_gain_gradient = sum * op.scalars[4];
         }

@@ -53,7 +53,7 @@ constants and schedule constructor produce the values below.
 | Surface | PR #360 contract | Native status |
 | --- | --- | --- |
 | Residual stream | Width 768, eleven numbered layers, six heads | Eleven-layer BF16 evaluation body connected; full training routing remains |
-| MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | Final FP8 MLP connected to loss/backward; earlier training MLPs remain components; BF16 evaluation branches connected, including parallel layer 8 |
+| MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | Layer-9/10 FP8 MLPs connected to loss/backward, including layer-9 folded post-lambda; earlier training MLPs remain components; BF16 evaluation branches connected, including parallel layer 8 |
 | Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | Layer-10 FP8 attention connected to loss/backward; earlier training attention remains a component; BF16 evaluation body connected; FA3/compiled-trainer parity unverified |
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Implemented in the BF16 evaluation body; training remains |
 | MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Four evaluation coefficient networks connected; last-layer and post-loop MUDD backward connected to loss with shared-source gradient joins; earlier body/gate-network backward remains |
@@ -1651,3 +1651,78 @@ updates, distributed execution and canonical validation remain incomplete, and
 no complete training time, convergence result or leaderboard rank is available.
 Both idle-delay builds also pass all four native sanitizers in the paired run;
 the rejected setting is slower, not numerically invalid.
+
+## Layer-9 folded MLP connected to loss and backward
+
+`cuda/layer_nine.cu` now prepends layer 9 to the validated last-layer section.
+Layer 9 has no attention and no x0 injection. It scales the incoming layer-8
+state by its attention residual lambda, adds the per-token gated bigram values,
+normalizes, runs the 2816-wide FP8 MLP and combines the result with its MLP
+residual lambda. Its output supplies cache[9] to the layer-10 coefficient network
+and post-loop mixing. Backward consumes the complete cache[9] adjoint returned
+by the last-layer graph and returns the preceding state and gate gradients.
+The bigram contributions from layers 9 and 10 join before returning; earlier
+bigram uses still need to join when those layers are connected.
+
+This ports the pinned MLPFOLD route from `triton_kernels.py:832`: the BF16
+post-lambda p is folded into the forward down scale `post_s * (w2_s * p)` and
+the backward dpre scale `(w2_s * grad_s) * p`. The saved post-activation scale
+stays unfolded. The down-weight product first produces an unscaled BF16 dW2;
+the scalar adjoint is its FP32 dot with the original BF16 W2, then cast to BF16.
+The final down-weight adjoint is BF16(p * dW2). There is no division by p. The
+zero-p fixture explicitly requires a nonzero scalar adjoint while checking zero
+MLP input/up-weight/down-weight adjoints. Residual scalar adjoints use FP32 dot
+reductions followed by BF16 casts. All of these run as native tasks.
+
+The connected graph has 106 phases and 51,677 tasks at 256 tokens/full
+vocabulary. The added layer overlaps weight-gradient/scalar work with its
+input-gradient path in both the persistent worker and Graph controls. Layer-9
+inputs, its earlier bigram-gate producer, the other cached states, head gates,
+weights, scales and rotary state are still supplied externally. This is not
+complete body backward or a runnable native trainer.
+
+The first build (`cuda-check-20260919T095705910843Z-312b22cb`) failed on three
+mixed-type C++ `auto` declarations in the checker. It ran no numerical tests or
+benchmarks; the corrected declarations are in the subsequent archived source.
+The ordinary corrected run (`cuda-check-20260919T095753547690Z-95fcb518`) passes
+cuBLAS/FP64 checks, folded scales, original-weight scalar gradients, both FP8
+layouts, activation maxima, shared gradient joins, task audits and bitwise
+Graph/production replay at 16/80/256 tokens. Reuse changes positive/zero/negative
+multipliers, weights, scales and inputs. Existing downstream checks include
+full-vocabulary loss and the pinned CUDA loss reference. ATen remains only an
+eager post-loop-tail diagnostic; compiled-Torch/FA3 parity is unresolved.
+
+Ordinary H100 80GB event medians are 4.733792 ms persistent, 4.067296 ms Graph
+and 4.061680 ms four-block Graph. The persistent worker remains about 16.5%
+slower than the faster same-work Graph control. This adds model work and is not
+compared against the shorter last-layer workload as a speed improvement. Its
+production worker uses 128 registers, 32800 shared bytes, a 32-byte stack,
+32 spill-store bytes and 112 spill-load bytes.
+
+All four native sanitizers pass the corrected layer-9 run and the previous
+last-layer regression (`cuda-check-20260919T095836212244Z-7f70656c`). The latter's
+ordinary persistent median is 4.239728 ms versus its 3.646976 ms faster Graph;
+this separate allocation is regression evidence, not an optimization comparison.
+`layer-nine-contract-20260919.log` verifies all 45 native source/build hashes
+against both successful runs and the profile archive, remote uploads and current
+files. Python glue and frontier lock also match. The failed build's archive
+matches its own remote hashes and remains preserved.
+
+`profile-20260919T100200055983Z-c216f6d4.tar.gz` contains PTX, SASS, the NCU report
+and decoded views for the larger section. Its diagnostic duration is 4.65 ms,
+with 25.00% occupancy, 0.19 eligible warps per scheduler, 85.89% cycles without
+an eligible warp, 2.29% tensor activity and 2.94% DRAM throughput. Sleeping,
+barrier and long-scoreboard stalls are 13.50, 4.32 and 3.97 cycles per issued
+instruction. Static SASS retains 104 HMMA, 84 LDGSTS, 28 LDL and eight STL
+instructions, with no HGMMA. Both Graph dispatchers use 96 registers and no
+stack/spills.
+
+Source sampling places 69,780 barrier samples after the scheduler's first
+block barrier, following lane-0 queue polling. Only 1,723 occur at the later
+reader barrier. The largest long-scoreboard samples are at queue acquire/cache
+invalidation sites, followed by FP8 conversion consumers; 281,729 sleeping
+samples occur at the idle back edge. This points toward readiness and memory
+latency as further profiling targets. It does not justify removing the reader
+barrier, whose idle-path correctness requirement remains, or repeating the
+previously rejected shorter-sleep change. The new work establishes an additional
+connected training layer, not an end-to-end speedup or convergence result.

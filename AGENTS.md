@@ -214,3 +214,18 @@ Use `--experiment=last_layer --ablate --sanitize` to compare the default
 1024 ns idle delay with `last_layer_idle64` on the same GPU. Shorter sleeping and
 three-block occupancy did not improve the first experiments; preserve the
 four-block, 1024 ns default unless a new controlled measurement supports a change.
+
+`--experiment=layer_nine --sanitize` extends the training section through layer
+9's skipped-attention residual/bigram site and folded FP8 MLP. Layer 9 has no
+x0 injection. Its post-lambda is folded into the forward down-projection and
+backward dpre scales; the saved post-activation scale stays unfolded. The
+unscaled BF16 dW2 is dotted with the original BF16 W2 for the post-lambda gradient,
+then multiplied by the BF16 post-lambda for the final weight gradient. Never
+recover that scalar gradient by dividing by the post-lambda: zero is supported.
+The two residual scalar gradients are FP32 reductions followed by BF16 casts.
+Layer-9 and layer-10 bigram adjoints join, while the earlier bigram consumers and
+head/bigram gate-network producers remain outside this section. Use
+`--experiment=layer_nine --profile` for the 256-token/full-vocabulary fixture.
+Native-only sanitizer scope and the diagnostic-only ATen tail comparison remain
+unchanged. Earlier body backward, scale/cache updates and optimizer/distributed
+integration are still required for a complete trainer.
