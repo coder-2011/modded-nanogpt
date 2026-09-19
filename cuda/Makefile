@@ -57,7 +57,7 @@ layer layer_serial evaluation body: attention_layer.cu attention_layer.cuh atten
 	$(NVCC) $(NVFLAGS) $($@_FLAGS) attention_layer.cu -lcublas -o $@
 
 .PHONY: check sanitize clean print-flags
-$(VARIANTS) attention bf16 bf16_control anvil anvil_idle64 layer layer_serial evaluation body routing quantize: routing.cuh
+$(VARIANTS) attention bf16 bf16_control anvil anvil_idle64 layer layer_serial evaluation body routing quantize: routing.cuh gates.cuh embeddings.cuh
 
 routing: routing.cu routing.cuh bench.cuh megakernel.cuh attention.cuh qkv.cuh bf16_gemm.cuh anvil.cuh attention_post.cuh hopper.cuh Makefile
 	$(NVCC) $(NVFLAGS) $(routing_FLAGS) routing.cu -o $@

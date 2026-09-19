@@ -56,8 +56,8 @@ constants and schedule constructor produce the values below.
 | MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | FP8 training component; BF16 branches connected in the evaluation body, including parallel layer 8 |
 | Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | FP8 training component; BF16 attention connected through the evaluation body; FA3/compiled-trainer parity unverified |
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Implemented in the BF16 evaluation body; training remains |
-| MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Evaluation mixing/routing implemented; coefficients, gates and ordinary auxiliary values are prepared externally |
-| Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Not implemented |
+| MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Four coefficient networks, ordinary auxiliary gates and evaluation routing connected; full backward remains |
+| Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Token/value gathers, signed resident-cache combination and smear connected; sparse row resolution/transport and backward remain |
 | Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | Rank-local update body implemented in the persistent worker; training schedules, gradient exchange and model integration remain |
 | Other optimizer state | Parameter-specific Adam rules; sparse touched-row exchange/update; value/n-gram cadence changes at step 336 | Not implemented |
 | Loss | Sampled softcapped CE early, full vocabulary later; MTP and prefix auxiliary schedules; full-vocabulary validation | Not implemented |
@@ -727,7 +727,7 @@ hash check and local Python/shell syntax checks pass. This checkpoint adds
 evaluation components and faithful role coverage; the full parent routing,
 loss, optimizer integration and distributed training remain unfinished.
 
-## Connected BF16 evaluation body and residual backward primitives
+## Connected BF16 evaluation body and residual backward primitives (before embedding/gate producers)
 
 `cuda/model_evaluation.cuh` connects the actual eleven numbered layer positions
 inside one persistent worker. Its 108 stages contain seven attention calls,
@@ -824,3 +824,100 @@ Relative to the final small-case sanitizer archive, only the Python launcher,
 case changed; the production CUDA math and graph planner are identical. The
 pinned reference hash check and Python/shell syntax checks pass. PR #360 was
 rechecked during this work and remains open at the same approved source commit.
+
+## Token-to-hidden evaluation with embedding and gate producers
+
+The body now begins with canonical token IDs, resident token/value tables,
+resolved compact n-gram cache row IDs, learned parameters and supplied rotary
+factors. `cuda/embeddings.cuh` gathers the 50304-by-768 token table and four value
+planes, applies the pinned bigram/trigram sign hashes, and combines the two cache
+rows with one BF16 store. The first token uses sign row zero for both hashes;
+the second uses sign row zero for the trigram. Cache-row resolution and sparse
+multi-GPU row exchange remain external. The fixture allocates full vocabulary
+and value tables but initializes only accessed rows; its compact synthetic cache
+is not the full distributed 84,602,880-row table.
+
+`cuda/gates.cuh` computes token smearing and all four coefficient networks:
+pre-gates from normalized embeddings, post-gates from the layer-3 output,
+last-layer coefficients from layer 9, and post-loop coefficients/group deltas
+from layer 10. Each network uses BF16 products, width-64 GELU and its pinned
+bias/scale behavior. The live gate scale rounds to BF16 where the trainer casts
+it; the fixed MUDD scale stays 0.1. The post-loop branches share one hidden
+activation. Ordinary auxiliary gates concatenate the normalized first six
+channels with the matching value-plane channels, then compute the six gates
+that modulate 128 channels each. Skip, compact XSA/head gates and smear are
+produced in the same graph. Smear leaves the first token unchanged and crosses
+BOS boundaries, as the pinned source does.
+
+The graph has **144 stages, 51 BF16 products, seven attention calls, eighteen
+normalizations, twenty-seven mixes, twenty-one gate transformations and one
+embedding-read descriptor**. At 16384 tokens it schedules 1,019,399 tasks.
+Changed-input replays alter token/cache IDs, accessed table rows, weights,
+biases and live scalars, including zero gate scales and zero projection weights.
+Independent C++ references check selected embedding rows and hashes, FP64 gate
+arithmetic, pedantic-cuBLAS products, normalization and residual mixing.
+Audited/production executions and both Graph controls agree bitwise at all
+retained BF16 boundaries. Attention/QKV math also has its separate component
+suite; the body check does not execute the pinned Torch trainer.
+
+Pointwise intermediates use FP32 and materialized outputs use BF16. Exact
+compiled-Torch/FA3 parity is still unverified. This body lacks the output
+head/loss, full backward, rotary schedule updates, sparse-cache transport,
+optimizer integration and distributed training. It is not a complete native
+model, convergence result or leaderboard entry.
+
+The first gate build failed on a C++ declaration that mixed vector element types
+under one `auto`; the corrected declaration splits them. The failure is retained
+in `cuda-check-20260919T064109683720Z-649b5b12`. The gate-only snapshot passes all
+four sanitizers in `cuda-check-20260919T064200755005Z-91847e1a`. The initial
+embedding-plus-gates snapshot also passes all four in
+`cuda-check-20260919T064737783081Z-5093ecb7`; the final snapshot adds only the body
+timing/profile plumbing and status metadata after that run was launched.
+
+The final 16384-token synthetic body passes arithmetic, dependency/task audits
+and poisoned bitwise replay in `cuda-check-20260919T064950574161Z-fab9f998`.
+On NVIDIA H100 80GB HBM3, ordinary CUDA-event medians are:
+
+| Execution | Median ms |
+| --- | ---: |
+| CUDA Graph | 132.404411 |
+| CUDA Graph, four-block occupancy control | 112.205345 |
+| Persistent worker plus queue reset | 120.299362 |
+
+All include diagnostic output stores. The persistent path is **7.21% slower**
+than the faster control; comparing only with the first Graph would hide that
+loss. These are native token-to-hidden fixture timings, not training timings.
+
+`profile-20260919T064950574160Z-aaf2a5f2.tar.gz` contains PTX, SASS and NCU for
+the same 16384-token graph. The production worker uses 128 registers and 32800
+shared bytes, without spills; the audited variant spills eight bytes. NCU
+reports 25.00% achieved occupancy, 0.36 eligible warps per scheduler and 2.32%
+tensor-pipe activity. Long-scoreboard stalls account for 8.98 of 14.75 warp
+cycles per issued instruction; barriers account for 0.78 and sleeping for 0.33.
+Its 120.54-ms duration is diagnostic, not a replacement for event timing.
+Four `STS.U16` instructions at SASS offsets 0x25530, 0x25730, 0x25900 and 0x25990
+account for 845734 of 3262170 sampled stalls (25.93%). Their surrounding code
+loads scalar BF16 operands and calculates swizzled shared-memory destinations.
+This points to operand loading as a candidate for optimization; it does not
+establish a measured speedup or exclude scalar attention as another bottleneck.
+
+The next forward integration is the BF16 evaluation head: physical weight layout
+768-by-50304, BF16 logits, the pinned `23 * sigmoid((logits + 5) / 7.5)` softcap,
+and FP32 full-vocabulary cross entropy for every target. It must preserve the
+compiled path's rounding boundaries and avoid treating sampled training loss as
+held-out evaluation. That head is not implemented in this checkpoint.
+
+The final body, routing and shared training-attention builds pass all four
+sanitizers (memcheck, initcheck, racecheck, synccheck) in
+`cuda-check-20260919T064950574161Z-fab9f998`,
+`cuda-check-20260919T064950574160Z-d0d341bb` and
+`cuda-check-20260919T064950574160Z-0e2ea959`, respectively. Body sanitizer scope
+is the 16-token quick case; ordinary checks also cover 80 and 16384 tokens.
+All 32 files in these three source archives and the final profile source archive
+match the implementation exactly. The pinned reference hash check and Python
+and shell syntax checks pass.
+
+```sh
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=body --main-shapes --sanitize
+uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal --experiment=body --profile
+```

@@ -102,11 +102,15 @@ both still accept externally supplied output gradients.
 `--experiment=body --sanitize` runs the connected eleven-layer BF16 evaluation
 body: seven attention calls, eleven MLP calls, residual/skip routing, shared
 layer-8/10 normalization, parallel layer-8 MLPs and post-loop MUDD mixing. It
-accepts prepared normalized embeddings, n-gram/value tensors, gates, auxiliary
-values, MUDD coefficients and rotary factors. Their producers, loss and training
-integration are still missing. Do not describe this body as the full native model.
-Add `--main-shapes` for the 16384-token body check. It uses synthetic documents
-and checks arithmetic/replay, not canonical validation or end-to-end timing.
+starts from token IDs, resident token/value tables, resolved sparse-cache rows,
+learned parameters and supplied rotary factors. Token/value gathers, signed
+n-gram combination, smear, initial normalization and all four coefficient
+networks now run inside the graph. Sparse-cache transport, output head/loss,
+full backward and training integration remain missing. Do not describe this body
+as the full native model. Add `--main-shapes` for the 16384-token check and native
+body timings; `--experiment=body --profile` captures PTX/SASS/NCU. The fixture uses
+synthetic documents and diagnostic buffers, not canonical validation. Compare
+against the faster of both Graph controls before claiming a fusion speedup.
 `--experiment=routing --sanitize` checks weighted mixing and RMS normalization
 forward/backward, including FP64 references and normalization finite differences.
 Coefficient adjoints are unrounded per-token/group partials; their consumers own

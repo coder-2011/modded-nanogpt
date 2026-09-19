@@ -168,7 +168,11 @@ __global__ __launch_bounds__(128, MinimumBlocks) void staged_layer(Graph g, int 
     __shared__ __align__(1024) fp8 scratch[bf16_scratch_bytes];
     const Task task = g.tasks[begin + blockIdx.x];
 #ifdef NANO_EVALUATION_BODY
-    if (task.kind == TaskKind::residual_mix) {
+    if (task.kind == TaskKind::embedding_read) {
+        embedding_read(g.embeddings[task.op], task.row);
+    } else if (task.kind == TaskKind::gate_transform) {
+        gate_transform(g.gates[task.op], task.row);
+    } else if (task.kind == TaskKind::residual_mix) {
         residual_mix_forward(g.residual_mix[task.op], task.row);
     } else if (task.kind == TaskKind::residual_norm) {
         residual_norm(g.residual_norm[task.op], task.row, false);
@@ -455,7 +459,7 @@ int main(int argc, char **argv) {
             else if (arg.rfind("--gradient-chunk=", 0) != 0) throw std::runtime_error("unknown argument: " + arg);
         }
 #ifdef NANO_EVALUATION_BODY
-        if (profile) throw std::runtime_error("evaluation body profiling is not wired yet");
+        if (profile) return evaluation_body_profile();
         return evaluation_body_main(quick, main_shapes);
 #endif
         if (profile) { benchmark_layer(128, 128, false, true, evaluation); return 0; }

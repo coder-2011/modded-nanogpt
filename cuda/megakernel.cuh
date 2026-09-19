@@ -10,6 +10,8 @@
 #include "anvil.cuh"
 #include "attention_post.cuh"
 #include "routing.cuh"
+#include "gates.cuh"
+#include "embeddings.cuh"
 
 namespace nano {
 
@@ -125,6 +127,8 @@ struct Graph {
     const ProjectionGradient *projection_gradient = nullptr;
     const ResidualMix *residual_mix = nullptr;
     const ResidualNorm *residual_norm = nullptr;
+    const GateTransform *gates = nullptr;
+    const EmbeddingRead *embeddings = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -489,7 +493,11 @@ __launch_bounds__(threads)
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithRouting && task.kind == TaskKind::residual_mix) {
+        if (WithRouting && task.kind == TaskKind::embedding_read) {
+            embedding_read(g.embeddings[task.op], task.row);
+        } else if (WithRouting && task.kind == TaskKind::gate_transform) {
+            gate_transform(g.gates[task.op], task.row);
+        } else if (WithRouting && task.kind == TaskKind::residual_mix) {
             const auto &op = g.residual_mix[task.op];
             if (task.k_begin) residual_mix_backward(op, task.row, task.col);
             else residual_mix_forward(op, task.row);

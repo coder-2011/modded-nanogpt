@@ -165,7 +165,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
         build_flags = shlex.split(subprocess.check_output(
             ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
         subprocess.run(["nvcc"] + build_flags + ["--ptx",
-                        str(root / ("attention_layer.cu" if experiment in {"layer", "evaluation"} else
+                        str(root / ("attention_layer.cu" if experiment in {"layer", "evaluation", "body"} else
                                     experiment + ".cu" if experiment in {"attention", "anvil", "routing"} else "validate.cu")),
                         "-o", str(ptx)], check=True)
         artifacts[ptx.name] = ptx.read_bytes()
@@ -208,7 +208,7 @@ if "--cuda-check" in sys.argv:
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")
-    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation", "routing"} or wgmma or ablate):
+    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation", "routing", "body"} or wgmma or ablate):
         raise SystemExit("--profile targets the native MLP, attention, attention layer or ANVIL megakernel")
     if (variant or kernel_compare) and (experiment or wgmma or ablate):
         raise SystemExit("Kernel variants require the native MMA path")
