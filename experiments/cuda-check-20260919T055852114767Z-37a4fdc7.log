@@ -1,0 +1,116 @@
+sha256 22d493979c57dd2b5bd10f12f62bb24b38b71942d5a8e8f32ef6bec9fae41c78 Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 e812d0893018744a951d04067f35048daff4799b3f4404eb146ba669f81f4d45 attention.cuh
+sha256 b9d3edc8a1b0896fb853e1411606d4eb6059fd0e1d406dfe73743f6069b2ab6e attention_layer.cu
+sha256 5e23df96de295a12c6770293bb3724e58ffee06f6310f0dbf43293c5c377ffac attention_layer.cuh
+sha256 e43b134f524130c5fcc5b7ea3dfca072fed7dfcb72ff0957dbb0bd2e7d4f7733 attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 a3be2ab6c64f030ca01f7d30c6a6bb7604b3bbe62257ba0aad9bb72bca232c76 bench.cuh
+sha256 a1239425b438fa85c0628a25decee76f394162bc6c3aae2cfa03cc6e5fd1c3d9 bf16.cu
+sha256 a221a6525b5565df618f066c3a4267b1702a9bef96f183e104e7974f0ecf7e3a bf16_gemm.cuh
+sha256 d4b3c092f09347b8d6cefd89d84d64bc7bea040a24b64c0dd8614fbfe7c8b621 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 1e00df85a3549a3f31a8074bf98ef117fcfcb895b6960eb65326eed83b94a817 megakernel.cuh
+sha256 650935fbe0799cec650ebe91331f83e58b23a3461c0a9df0f01a27a6dcebaec7 mlp_evaluation.cuh
+sha256 abc976abdeaa14db113f1e1c880af4aa6b3399bb04b70e1f3718ac8abbc3d888 mlp_evaluation_check.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 05:58:59 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 NVL                On  |   00000002:00:00.0 Off |                    0 |
+| N/A   67C    P0             75W /  400W |       4MiB /  95830MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda evaluation
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 -DNANO_COOP_PUBLISH=1 -DNANO_EVALUATION_ONLY=1 attention_layer.cu -lcublas -o evaluation
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1241.166 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1429.664 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1451.207 ms
+ptxas info    : Compiling entry function '_Z12staged_layerILi4EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_layerILi4EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 126 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 718.779 ms
+ptxas info    : Compiling entry function '_Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE' for 'sm_90a'
+ptxas info    : Function properties for _Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 42 registers, used 0 barriers
+ptxas info    : Compile time = 34.445 ms
+ptxas info    : Compiling entry function '_Z12staged_layerILi1EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_layerILi1EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 165 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 675.052 ms
+ptxas info    : Compiling entry function '_Z11reset_layerN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z11reset_layerN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.599 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/evaluation --profile --gradient-chunk=4096
+GPU[0]=NVIDIA H100 NVL SMs=132 runtime=12080
+LAYER BENCH role=3 evaluation=1 tokens=16384 qk=128 v=128 paired=0 window=384 documents=19 workers=528 tasks=86017 stages=6
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 1, 'STL': 1}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 1, 'STL': 1}
+$ ncu --set full --clock-control none --cache-control none --profile-from-start off --launch-count 1 --export /workspace/cuda/profile --force-overwrite /workspace/cuda/evaluation --profile --gradient-chunk=4096
+exit_status=0
+==WARNING== Note: Running with uncontrolled GPU caches. Profiling results may be inconsistent.
+==WARNING== Note: Running with unmodified GPU clocks. If not controlled otherwise, profiling results may be inconsistent.
+==PROF== Connected to process 87 (/workspace/cuda/evaluation)
+==WARNING== Unable to access the following 6 metrics: ctc__rx_bytes_data_user.sum, ctc__rx_bytes_data_user.sum.pct_of_peak_sustained_elapsed, ctc__rx_bytes_data_user.sum.per_second, ctc__tx_bytes_data_user.sum, ctc__tx_bytes_data_user.sum.pct_of_peak_sustained_elapsed, ctc__tx_bytes_data_user.sum.per_second.
+
+
+==PROF== Profiling "megakernel" - 0 (1/1): 0%....50%....100% - 39 passes
+GPU[0]=NVIDIA H100 NVL SMs=132 runtime=12080
+LAYER BENCH role=3 evaluation=1 tokens=16384 qk=128 v=128 paired=0 window=384 documents=19 workers=528 tasks=86017 stages=6
+==PROF== Disconnected from process 87
+==PROF== Report: /workspace/cuda/profile.ncu-rep

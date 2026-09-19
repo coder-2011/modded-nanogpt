@@ -53,8 +53,8 @@ constants and schedule constructor produce the values below.
 | Surface | PR #360 contract | Native status |
 | --- | --- | --- |
 | Residual stream | Width 768, eleven numbered layers, six heads | Dimensions pinned |
-| MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | Individual six-GEMM branch implemented; full routing absent |
-| Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | Connected training-attention forward/backward including FP8 QKV, O projections, XSA, head gates and gain gradients; BF16 eval projections and full routing remain; FA3/compiled-trainer parity unverified |
+| MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | Individual FP8 training branch and BF16 evaluation forward implemented; full routing absent |
+| Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | Connected FP8 training forward/backward and BF16 evaluation forward, including projections and gates; full routing remains; FA3/compiled-trainer parity unverified |
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Not implemented |
 | MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Not implemented |
 | Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Not implemented |
@@ -494,7 +494,7 @@ remain unverified. The independent references check mathematical stages on their
 actual validated input boundaries. They do not substitute for a full-model
 training/convergence comparison or patched-FA3 binary parity.
 
-The full validation checks all five active attention roles across three graph
+The initial full validation checks five geometry/gating combinations across three graph
 executions with changed gains/scales. It includes zero QKV/O gains, negative O
 gains, poison/replay checks, exact BF16 and E4M3 stores, auxiliary gradient padding,
 and finite-difference checks on the XSA/head-gate derivatives. Dedicated XSA tests
@@ -611,3 +611,118 @@ stalls account for 7.28, sleeping for 1.23 and barriers for 0.67. This confirms
 that queue publication no longer dominates in the same way. Scalar attention
 memory dependencies are now the principal measured stall source. The profiler's
 33.45 ms duration is diagnostic and is not substituted for the event timings.
+
+## Native BF16 evaluation components
+
+`--experiment=evaluation` now runs BF16 attention forward and the BF16 MLP
+forward inside the same typed persistent worker used for training components.
+The attention graph has six stages and no FP8 products or backward tasks.
+QKV/O weights are the original BF16 values, with gains multiplied and rounded
+into BF16 weights before the products. Narrow V64 evaluation uses separate QK
+and compact live-row V products. Other geometries use the reference's packed
+QKV layout, including paired evaluation. Q/K normalization, supplied rotary
+factors, shifted keys, auxiliary values, XSA and head gates retain the training
+component's math and storage contracts.
+
+The evaluation graph accepts normalized BF16 input. FP8 and backward pointers
+are null, and the tests put NaNs in the unused FP8 scale slots. Reused graphs
+must still produce finite, correct results as QKV/O gains change, including zero
+and negative gains. The harness allocates no FP8 caches or backward storage for
+evaluation and omits diagnostic buffers in the large timed cases. It does not
+build the parent model's normalization, rotary schedule, gates or parameter-bank
+views. Prepared scalar inputs and any scalar-gradient casts also belong to that
+parent graph, so these components do not establish compiled-trainer parity.
+
+`cuda/mlp_evaluation.cuh` implements the reference's 768 → 2816 → 768 evaluation
+MLP. The BF16 up-product first rounds its pre-activation to BF16, then computes
+squared ReLU and stores BF16 before the down-product. The down weight remains
+in its original `[2816, 768]` bank layout. Evaluation does not fold the post-lambda
+into its weight scale: the reference applies that gain at the residual site.
+That enclosing site and layer 8's parallel-MLP combination remain to be wired.
+The planner releases each 64-token row's down-product tiles after that row's
+44 up-product tiles finish. It does not wait for every row of the batch.
+
+The pinned reference uses **262144 tokens per GPU** for validation. At the last
+step, `TrainingManager.apply_final_ws_ext()` sets the long window to 20×128 =
+**2560**, while the short window stays at 6×128 = **768**. The extension changes
+the window without another Yarn update. These constants are now explicit in
+`cuda/frontier.cuh` and `frontier.lock.json`. They do not change the canonical
+10485760-token held-out set, full-vocabulary CE, or timing convention. Synthetic
+component checks at those shapes are not a held-out validation run.
+
+Initial BF16 attention references, graph reuse/replay and all four sanitizers
+pass in `cuda-check-20260919T053721181201Z-66d43978`. Adding the MLP's BF16
+activation and per-row dependencies also passes the combined numerical suite
+and all four sanitizers in `cuda-check-20260919T054303831948Z-fb34d4b8`. MLP tests
+include changed inputs, a partial final row tile and zero down-projection
+weights, using pedantic-cuBLAS products and exact BF16 activation/store checks.
+The existing numerical gates remain unchanged. Shared changes pass the training
+attention layer in `cuda-check-20260919T054325910154Z-14e31d71`, FP8 MLP in
+`cuda-check-20260919T054325910257Z-cb1ae2d7`, BF16 primitives in
+`cuda-check-20260919T054325910128Z-be04e727`, and ANVIL in
+`cuda-check-20260919T054325910324Z-6086ffee`, each with all four sanitizers.
+
+The evaluation profile `profile-20260919T054936290928Z-6bdf07ea.tar.gz` captures
+the BF16 wide-attention graph at 16384 tokens and a 384-token window on H100
+80GB HBM3. The combined worker uses 128 registers, 32800 shared bytes and a
+four-byte spill. Achieved occupancy is 24.98%, with 0.36 eligible warps per
+scheduler. Long-scoreboard stalls account for 8.81 of 14.20 warp cycles per
+issued instruction, barriers for 0.54 and sleeping for 0.13. This remains a
+scalar-attention memory-dependency bottleneck, not evidence that the native
+attention approaches the pinned FA3 implementation.
+
+Auditing the parent call sites exposed a coverage error in the earlier harness:
+its geometry/gating stress cases were not all actual layer configurations.
+The new manifest and tests use the effective roles below, after skipped sites
+are removed. Layers 0 and 5 share an attention configuration but differ in parent
+routing. Layer 10 receives auxiliary values including MUDD and uses a unit extra
+O multiplier. Its enclosing graph must discard the derivative of that constant.
+
+| Layer | Paired | Auxiliary V | XSA | Head gate | Extra O multiplier |
+| --- | --- | --- | --- | --- | --- |
+| 0, 5 | Yes | No | No | No | Learned |
+| 1 | No | Yes | Yes | No | Learned |
+| 2 | Yes | Yes | No | No | Learned |
+| 3 | No | No | Yes | Yes | Learned |
+| 8 | No | Yes | No | No | Learned |
+| 10 | No | Yes | No | Yes | Unit |
+
+The final role-specific training suite passes all four sanitizers in
+`cuda-check-20260919T055852114767Z-11d426b4`; evaluation passes all four in
+`cuda-check-20260919T055852114769Z-93c5b12f`. The evaluation suite's numerical
+checks and bitwise replay include the 262144-token MLP and wide attention with
+64 synthetic 4096-token documents and a 2560-token window. The following event
+medians use H100 80GB HBM3, five warmups and ten retained samples; persistent
+timing includes queue reset, and both Graph occupancy variants are measured.
+These are native component comparisons with externally prepared inputs.
+
+| Workload | Persistent, 528 blocks | Faster native CUDA Graph |
+| --- | ---: | ---: |
+| Training role 2, 16384 tokens, window 128 | 16.435280 ms | 14.994864 ms |
+| Training role 1, 16384 tokens, window 128 | 15.071264 ms | 13.546336 ms |
+| Training role 3, 16384 tokens, window 384 | 33.515039 ms | 31.973696 ms |
+| Evaluation role 2, 16384 tokens, window 128 | 2.942368 ms | 2.500096 ms |
+| Evaluation role 1, 16384 tokens, window 128 | 2.668912 ms | 2.207584 ms |
+| Evaluation role 3, 16384 tokens, window 384 | 9.975536 ms | 9.481952 ms |
+| Evaluation MLP, 16384 tokens | 4.265872 ms | 4.912352 ms |
+| Evaluation MLP, 262144 tokens | 68.820545 ms | 76.747536 ms |
+| Evaluation role 3, 262144 tokens, window 2560 | 580.132996 ms | 569.041992 ms |
+
+The evaluation MLP benefits from row-local dependencies in this native comparison;
+attention remains slower than its stronger Graph control. Evaluation component
+timings do not establish a speedup in the benchmark's timed training loop.
+
+The final role-3 profile is `profile-20260919T055852114767Z-37a4fdc7.tar.gz`.
+Modal supplied **H100 NVL** for this profile, unlike the H100 80GB HBM3 event
+measurements above. It retains PTX, SASS and the complete NCU report. Resources
+remain 128 registers, 32800 shared bytes and a four-byte spill; achieved occupancy
+is 24.98%, with 0.37 eligible warps per scheduler. Long-scoreboard stalls account
+for 8.58 of 13.88 warp cycles per issued instruction, barriers for 0.50 and sleeping
+for 0.12. Its 10.96 ms profiled duration is diagnostic, not a timing comparison
+against a run on the other GPU model.
+
+All 26 members of each final training, evaluation and profile source archive
+match the CUDA/build files, Python glue and frontier lock exactly. The source
+hash check and local Python/shell syntax checks pass. This checkpoint adds
+evaluation components and faithful role coverage; the full parent routing,
+loss, optimizer integration and distributed training remain unfinished.

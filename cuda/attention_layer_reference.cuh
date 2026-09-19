@@ -74,8 +74,17 @@ struct LayerBlasReference {
         auto raw = layer_read(op.raw, reference.size());
         layer_near("BF16 projection/product", raw, reference);
         auto rounded = layer_read(op.output, reference.size());
-        for (size_t i = 0; i < raw.size(); ++i)
-            if (float(rounded[i]) != float(bf16(raw[i]))) throw std::runtime_error("layer BF16 output rounding mismatch");
+        auto pre = op.pre_activation ? layer_read(op.pre_activation, reference.size()) : std::vector<bf16>{};
+        for (size_t i = 0; i < raw.size(); ++i) {
+            float expected = raw[i];
+            if (op.relu_square) {
+                expected = float(bf16(expected));
+                if (!pre.empty() && float(pre[i]) != expected) throw std::runtime_error("BF16 pre-activation rounding mismatch");
+                expected = expected < 0.0f ? 0.0f : expected;
+                expected *= expected;
+            }
+            if (float(rounded[i]) != float(bf16(expected))) throw std::runtime_error("layer BF16 output rounding mismatch");
+        }
     }
 };
 
@@ -146,20 +155,28 @@ void check_layer_math(Buffers &b, Schedule &schedule) {
     auto scalars = b.scalars.get();
     auto fp8_ops = schedule.ops.get();
     auto bf16_ops = schedule.bf16_ops.get();
-    float ws = scalars[1] * scalars[3];
-    for (int i = 0; i < b.forwards; ++i)
-        if (fp8_ops[i].scale != scalars[0] * ws) throw std::runtime_error("stale QKV forward scale");
-    if (fp8_ops[b.forwards].scale != scalars[2] * scalars[0] ||
-        fp8_ops[b.forwards + 1].scale != scalars[2] * ws ||
-        bf16_ops[0].b_scale != scalars[4] * scalars[5] || bf16_ops[1].b_scale != scalars[4] * scalars[5] ||
-        schedule.qkv.get()[0].grad_scale != scalars[2]) throw std::runtime_error("stale projection gradient scale");
+    if (b.evaluation) {
+        if (!fp8_ops.empty() || !schedule.plan.gradient.empty() || schedule.plan.stages.size() != 6)
+            throw std::runtime_error("evaluation graph contains training operations");
+        if (bf16_ops[0].b_scale != scalars[4] * scalars[5]) throw std::runtime_error("stale evaluation O gain");
+        for (int i = 1; i <= b.forwards; ++i)
+            if (bf16_ops[i].b_scale != scalars[3]) throw std::runtime_error("stale evaluation QKV gain");
+    } else {
+        float ws = scalars[1] * scalars[3];
+        for (int i = 0; i < b.forwards; ++i)
+            if (fp8_ops[i].scale != scalars[0] * ws) throw std::runtime_error("stale QKV forward scale");
+        if (fp8_ops[b.forwards].scale != scalars[2] * scalars[0] ||
+            fp8_ops[b.forwards + 1].scale != scalars[2] * ws ||
+            bf16_ops[0].b_scale != scalars[4] * scalars[5] || bf16_ops[1].b_scale != scalars[4] * scalars[5] ||
+            schedule.qkv.get()[0].grad_scale != scalars[2]) throw std::runtime_error("stale projection gradient scale");
+    }
     LayerBlasReference blas;
     for (const auto &op : fp8_ops) blas.check_product(op);
     for (const auto &op : bf16_ops) blas.check_product(op);
     auto projected = b.projected.get();
-    auto projected_v = b.paired ? b.projected_v.get() : std::vector<bf16>{};
+    auto projected_v = b.separate ? b.projected_v.get() : std::vector<bf16>{};
     auto f1 = b.factors1.get(), f2 = b.factors2.get(), aux = b.aux.get();
-    int stride = b.paired ? 12 * b.d : b.f, factor_stride = b.d * (b.paired ? 2 : 1);
+    int stride = b.separate ? 12 * b.d : b.f, factor_stride = b.d * (b.paired ? 2 : 1);
     auto rms = [&](int t, int head) {
         double square = 0;
         for (int c = 0; c < b.d; ++c) {
@@ -183,7 +200,7 @@ void check_layer_math(Buffers &b, Schedule &schedule) {
                 }
             }
             for (int c = 0; c < b.v; ++c) {
-                float x = b.paired ? float(projected_v[(t * 6 + h) * b.v + c]) :
+                float x = b.separate ? float(projected_v[(t * 6 + h) * b.v + c]) :
                     float(projected[t * stride + 12 * b.d + h * b.v + c]);
                 if (b.auxiliary) x += float(aux[(t * 6 + h) * 128 + c]);
                 refv[(t * 6 + h) * b.v + c] = float(bf16(x));
@@ -201,28 +218,33 @@ void check_layer_math(Buffers &b, Schedule &schedule) {
     };
     AttentionInputs inputs{b.t * (b.paired ? 2 : 1), b.paired ? 3 : 6, b.d, b.v,
                            schedule.plan.attention.window, schedule.plan.attention.scale, b.seq,
-                           b.q.get(), b.k.get(), b.value.get(), b.attn_dy.get()};
+                           b.q.get(), b.k.get(), b.value.get(),
+                           b.evaluation ? std::vector<bf16>(b.value.n, bf16(0.0f)) : b.attn_dy.get()};
     auto saved_y = b.attn_y.get();
     AttentionReference attention(inputs, &saved_y);
     layer_near("attention Y", b.raw_a_y.get(), attention.y);
-    layer_near("attention dQ", b.raw_a_dq.get(), attention.dq);
-    layer_near("attention dK", b.raw_a_dk.get(), attention.dk);
-    layer_near("attention dV", b.raw_a_dv.get(), attention.dv);
+    if (!b.evaluation) {
+        layer_near("attention dQ", b.raw_a_dq.get(), attention.dq);
+        layer_near("attention dK", b.raw_a_dk.get(), attention.dk);
+        layer_near("attention dV", b.raw_a_dv.get(), attention.dv);
+    }
     auto alpha = b.alpha.get(), gate = b.gate.get();
-    auto dpost = b.dpost.get();
+    auto dpost = b.evaluation ? std::vector<bf16>(b.value.n, bf16(0.0f)) : b.dpost.get();
     PostReference post(saved_y, inputs.value, dpost, b.xsa ? &alpha : nullptr, b.gated ? &gate : nullptr, b.v);
-    post_finite_difference(saved_y, inputs.value, dpost, b.xsa ? &alpha : nullptr, b.gated ? &gate : nullptr, b.v, post);
     layer_near("post Y", b.raw_post.get(), post.output);
-    layer_near("post dY", b.raw_post_dy.get(), post.dy);
-    layer_near("post dV side", b.side.get(), post.dv);
-    layer_near("post dAlpha", b.raw_da.get(), post.da);
-    layer_near("post dGate", b.raw_dg.get(), post.dg);
     auto rounding = [](const std::vector<bf16> &output, const std::vector<float> &raw) {
         for (size_t i = 0; i < raw.size(); ++i)
             if (float(output[i]) != float(bf16(raw[i]))) throw std::runtime_error("layer boundary BF16 rounding mismatch");
     };
-    rounding(saved_y, b.raw_a_y.get()); rounding(b.dq.get(), b.raw_a_dq.get()); rounding(b.dk.get(), b.raw_a_dk.get());
-    rounding(b.post_y.get(), b.raw_post.get()); rounding(b.attn_dy.get(), b.raw_post_dy.get());
+    rounding(saved_y, b.raw_a_y.get()); rounding(b.post_y.get(), b.raw_post.get());
+    if (b.evaluation) return;
+    post_finite_difference(saved_y, inputs.value, dpost, b.xsa ? &alpha : nullptr, b.gated ? &gate : nullptr, b.v, post);
+    layer_near("post dY", b.raw_post_dy.get(), post.dy);
+    layer_near("post dV side", b.side.get(), post.dv);
+    layer_near("post dAlpha", b.raw_da.get(), post.da);
+    layer_near("post dGate", b.raw_dg.get(), post.dg);
+    rounding(b.dq.get(), b.raw_a_dq.get()); rounding(b.dk.get(), b.raw_a_dk.get());
+    rounding(b.attn_dy.get(), b.raw_post_dy.get());
     rounding(b.dalpha.get(), b.raw_da.get()); rounding(b.dgate.get(), b.raw_dg.get());
     auto side = b.side.get(), attention_dv = b.raw_a_dv.get();
     auto dv = b.dv.get();

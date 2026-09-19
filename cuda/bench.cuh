@@ -20,7 +20,7 @@ template <class T> struct DeviceBuffer {
     int device;
     explicit DeviceBuffer(size_t count) : n(count) {
         CHECK_CUDA(cudaGetDevice(&device));
-        CHECK_CUDA(cudaMalloc(&p, n * sizeof(T)));
+        if (n) CHECK_CUDA(cudaMalloc(&p, n * sizeof(T)));
     }
     ~DeviceBuffer() {
         int current;
@@ -33,11 +33,11 @@ template <class T> struct DeviceBuffer {
     void put(const std::vector<T> &v) {
         if (v.size() != n)
             throw std::runtime_error("size mismatch");
-        CHECK_CUDA(cudaMemcpy(p, v.data(), n * sizeof(T), cudaMemcpyHostToDevice));
+        if (n) CHECK_CUDA(cudaMemcpy(p, v.data(), n * sizeof(T), cudaMemcpyHostToDevice));
     }
     std::vector<T> get() const {
         std::vector<T> v(n);
-        CHECK_CUDA(cudaMemcpy(v.data(), p, n * sizeof(T), cudaMemcpyDeviceToHost));
+        if (n) CHECK_CUDA(cudaMemcpy(v.data(), p, n * sizeof(T), cudaMemcpyDeviceToHost));
         return v;
     }
 };

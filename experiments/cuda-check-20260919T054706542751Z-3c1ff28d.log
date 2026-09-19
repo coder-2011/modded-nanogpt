@@ -1,0 +1,682 @@
+sha256 22d493979c57dd2b5bd10f12f62bb24b38b71942d5a8e8f32ef6bec9fae41c78 Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 e812d0893018744a951d04067f35048daff4799b3f4404eb146ba669f81f4d45 attention.cuh
+sha256 26801d75a64fa3003f50d9f766002ddb082ce67ad32f9bd08e47e15bfa07a23a attention_layer.cu
+sha256 5e23df96de295a12c6770293bb3724e58ffee06f6310f0dbf43293c5c377ffac attention_layer.cuh
+sha256 e43b134f524130c5fcc5b7ea3dfca072fed7dfcb72ff0957dbb0bd2e7d4f7733 attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 a3be2ab6c64f030ca01f7d30c6a6bb7604b3bbe62257ba0aad9bb72bca232c76 bench.cuh
+sha256 a1239425b438fa85c0628a25decee76f394162bc6c3aae2cfa03cc6e5fd1c3d9 bf16.cu
+sha256 a221a6525b5565df618f066c3a4267b1702a9bef96f183e104e7974f0ecf7e3a bf16_gemm.cuh
+sha256 170d05babe21d6f3aae65832c26605dddf0c669a22984e25627dfec22b542de1 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 1e00df85a3549a3f31a8074bf98ef117fcfcb895b6960eb65326eed83b94a817 megakernel.cuh
+sha256 650935fbe0799cec650ebe91331f83e58b23a3461c0a9df0f01a27a6dcebaec7 mlp_evaluation.cuh
+sha256 abc976abdeaa14db113f1e1c880af4aa6b3399bb04b70e1f3718ac8abbc3d888 mlp_evaluation_check.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 05:47:12 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:4C:00.0 Off |                    0 |
+| N/A   31C    P0             71W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda evaluation
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 -DNANO_COOP_PUBLISH=1 -DNANO_EVALUATION_ONLY=1 attention_layer.cu -lcublas -o evaluation
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1921.252 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 2265.728 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 2236.804 ms
+ptxas info    : Compiling entry function '_Z12staged_layerILi4EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_layerILi4EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 126 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1088.187 ms
+ptxas info    : Compiling entry function '_Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE' for 'sm_90a'
+ptxas info    : Function properties for _Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 42 registers, used 0 barriers
+ptxas info    : Compile time = 44.072 ms
+ptxas info    : Compiling entry function '_Z12staged_layerILi1EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_layerILi1EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 165 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1058.109 ms
+ptxas info    : Compiling entry function '_Z11reset_layerN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z11reset_layerN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 2.255 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/evaluation
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.62212013e-07 max_abs=5.96046448e-07
+LAYER BF16 projection/product rel_l2=6.97134956e-07 max_abs=1.13248825e-06
+LAYER BF16 projection/product rel_l2=7.01928343e-07 max_abs=1.1920929e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.45250676e-08 max_abs=1.01977317e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.19729133e-07 max_abs=2.2649765e-06
+LAYER BF16 projection/product rel_l2=7.21101942e-07 max_abs=2.02655792e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.23985545e-08 max_abs=1.91009988e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=2 grad_scale=nan qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.44737138e-07 max_abs=1.78813934e-06
+LAYER BF16 projection/product rel_l2=6.89881458e-07 max_abs=1.66893005e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.48756487e-08 max_abs=1.7048618e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.10713175e-07 max_abs=2.38418579e-06
+LAYER Q transform rel_l2=3.52346883e-05 max_abs=0.00390625
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.69259655e-08 max_abs=2.67897249e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=2 grad_scale=nan qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER BF16 projection/product rel_l2=6.67058579e-07 max_abs=9.53674316e-07
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.67745359e-08 max_abs=2.55448478e-08
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.54659405e-07 max_abs=8.94069672e-07
+LAYER BF16 projection/product rel_l2=6.98774212e-07 max_abs=1.43051147e-06
+LAYER Q transform rel_l2=4.15800479e-11 max_abs=6.51925802e-09
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.63307078e-08 max_abs=2.52713139e-07
+LAYER post Y rel_l2=3.66810979e-08 max_abs=1.11163429e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.15326355e-07 max_abs=2.14576721e-06
+LAYER Q transform rel_l2=1.24574891e-05 max_abs=0.001953125
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.67800678e-08 max_abs=1.99371031e-07
+LAYER post Y rel_l2=3.86008777e-08 max_abs=1.18326069e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=2 grad_scale=nan qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER BF16 projection/product rel_l2=7.89380391e-07 max_abs=7.15255737e-07
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.47300246e-08 max_abs=2.38418579e-08
+LAYER post Y rel_l2=3.92265914e-08 max_abs=4.4601941e-08
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.56637654e-07 max_abs=9.53674316e-07
+LAYER BF16 projection/product rel_l2=6.98394062e-07 max_abs=1.43051147e-06
+LAYER BF16 projection/product rel_l2=6.95235843e-07 max_abs=1.49011612e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.26702063e-08 max_abs=2.69994401e-07
+LAYER post Y rel_l2=2.83458992e-08 max_abs=1.34112006e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.1895069e-07 max_abs=2.38418579e-06
+LAYER BF16 projection/product rel_l2=7.16640763e-07 max_abs=2.62260437e-06
+LAYER Q transform rel_l2=2.22845089e-05 max_abs=0.00390625
+LAYER K transform rel_l2=4.35243455e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.35617358e-08 max_abs=3.01480812e-07
+LAYER post Y rel_l2=2.83948555e-08 max_abs=1.56464007e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER step=2 grad_scale=nan qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER BF16 projection/product rel_l2=3.28752029e-07 max_abs=4.17232513e-07
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=1.68918443e-08 max_abs=2.38418579e-08
+LAYER post Y rel_l2=2.90279866e-08 max_abs=6.9491904e-08
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.83380913e-07 max_abs=5.96046448e-07
+LAYER BF16 projection/product rel_l2=6.98774212e-07 max_abs=1.43051147e-06
+LAYER Q transform rel_l2=4.15800479e-11 max_abs=6.51925802e-09
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.63437186e-08 max_abs=1.35583862e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=193
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.15326355e-07 max_abs=2.14576721e-06
+LAYER Q transform rel_l2=1.24574891e-05 max_abs=0.001953125
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.70066392e-08 max_abs=2.50015665e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=193
+LAYER step=2 grad_scale=nan qkv_gain=0 o_gain=-0.5 extra_gain=1.5
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=0 max_abs=0
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=0 gate=1 tasks=193
+LAYER BF16 projection/product rel_l2=7.28271504e-07 max_abs=1.90734863e-06
+LAYER BF16 projection/product rel_l2=2.98697076e-06 max_abs=7.03334808e-06
+EVAL MLP PASS tokens=16 step=0 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.26243493e-07 max_abs=2.02655792e-06
+LAYER BF16 projection/product rel_l2=3.00288773e-06 max_abs=7.39097595e-06
+EVAL MLP PASS tokens=16 step=1 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.26243493e-07 max_abs=2.02655792e-06
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+EVAL MLP PASS tokens=16 step=2 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.31736516e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.03555667e-06 max_abs=7.15255737e-06
+EVAL MLP PASS tokens=80 step=0 tasks=112 roots=88 row_dependencies=2
+LAYER BF16 projection/product rel_l2=7.31820741e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.04009382e-06 max_abs=8.10623169e-06
+EVAL MLP PASS tokens=80 step=1 tasks=112 roots=88 row_dependencies=2
+LAYER BF16 projection/product rel_l2=7.31820741e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+EVAL MLP PASS tokens=80 step=2 tasks=112 roots=88 row_dependencies=2
+PASS: connected attention layer, independent stage references and exact replay
+LAYER BENCH evaluation=1 tokens=16384 qk=64 v=128 paired=1 window=128 documents=19 workers=528 tasks=82945 stages=6
+LAYER BF16 evaluation bitwise replay PASS; normalized input supplied externally
+LAYER separate stages median_ms=3.125504 samples_ms= 3.138176 3.126464 3.124608 3.125824 3.125664 3.124896 3.122336 3.126560 3.123616 3.125344
+LAYER CUDA Graph median_ms=3.119824 samples_ms= 3.119648 3.118176 3.118304 3.119712 3.120768 3.120064 3.119360 3.121600 3.121088 3.119936
+LAYER CUDA Graph four-block occupancy median_ms=2.474096 samples_ms= 2.475328 2.473312 2.474752 2.474688 2.473856 2.473184 2.473952 2.472736 2.474240 2.474336
+LAYER persistent+reset workers=132 median_ms=10.093568 samples_ms= 10.097248 10.095616 10.088608 10.095936 10.092384 10.093056 10.090368 10.097632 10.094080 10.089824
+LAYER persistent+reset workers=264 median_ms=5.269168 samples_ms= 5.268416 5.265408 5.269408 5.267808 5.268992 5.269664 5.269600 5.269056 5.269760 5.269280
+LAYER persistent+reset workers=528 median_ms=2.939264 samples_ms= 2.937312 2.940608 2.939520 2.939904 2.939008 2.938880 2.938912 2.937856 2.940640 2.942848
+LAYER BENCH evaluation=1 tokens=16384 qk=64 v=64 paired=0 window=128 documents=19 workers=528 tasks=81409 stages=6
+LAYER BF16 evaluation bitwise replay PASS; normalized input supplied externally
+LAYER separate stages median_ms=2.809856 samples_ms= 2.810528 2.809440 2.810240 2.813664 2.809152 2.807840 2.810144 2.809568 2.808576 2.810144
+LAYER CUDA Graph median_ms=2.800704 samples_ms= 2.801728 2.803104 2.804032 2.800736 2.800672 2.800896 2.798048 2.799264 2.798464 2.799520
+LAYER CUDA Graph four-block occupancy median_ms=2.203248 samples_ms= 2.202496 2.204128 2.202272 2.204064 2.203008 2.204736 2.203296 2.207360 2.203200 2.202816
+LAYER persistent+reset workers=132 median_ms=9.388448 samples_ms= 9.410624 9.387584 9.387808 9.389856 9.384128 9.390976 9.393376 9.387744 9.382912 9.389088
+LAYER persistent+reset workers=264 median_ms=4.871232 samples_ms= 4.870624 4.874496 4.867808 4.871392 4.869824 4.871360 4.871840 4.871104 4.874880 4.866528
+LAYER persistent+reset workers=528 median_ms=2.652400 samples_ms= 2.652512 2.651168 2.652288 2.655584 2.654880 2.654304 2.652288 2.652000 2.650912 2.652608
+LAYER BENCH evaluation=1 tokens=16384 qk=128 v=128 paired=0 window=384 documents=19 workers=528 tasks=86017 stages=6
+LAYER BF16 evaluation bitwise replay PASS; normalized input supplied externally
+LAYER separate stages median_ms=10.825920 samples_ms= 10.825120 10.824768 10.826400 10.828128 10.827072 10.829408 10.825568 10.822688 10.826272 10.821248
+LAYER CUDA Graph median_ms=10.820112 samples_ms= 10.818720 10.821024 10.822432 10.827488 10.823168 10.815904 10.812384 10.819200 10.824864 10.817216
+LAYER CUDA Graph four-block occupancy median_ms=9.485408 samples_ms= 9.484512 9.484992 9.485824 9.481184 9.487808 9.496640 9.489824 9.486464 9.480256 9.483040
+LAYER persistent+reset workers=132 median_ms=28.364783 samples_ms= 28.366528 28.402945 28.365055 28.367905 28.364511 28.354240 28.359072 28.363008 28.362783 28.369217
+LAYER persistent+reset workers=264 median_ms=14.619824 samples_ms= 14.611872 14.622784 14.626272 14.618976 14.620672 14.621952 14.616832 14.615392 14.624608 14.617344
+LAYER persistent+reset workers=528 median_ms=9.960528 samples_ms= 9.963904 9.964704 9.952064 9.964512 9.963872 9.957184 9.964640 9.955488 9.956128 9.949216
+EVAL MLP BENCH tokens=16384 hidden=2816 tasks=14336 roots=11264 row_dependencies=256
+EVAL MLP CUDA Graph median_ms=6.572944 samples_ms= 6.551712 6.560320 6.608320 6.513120 6.614560 6.585568 6.518560 6.608288 6.626240 6.544608
+EVAL MLP CUDA Graph four-block occupancy median_ms=4.978496 samples_ms= 5.000128 4.982080 5.013088 4.996576 4.991712 4.947392 4.931808 4.940928 4.934144 4.974912
+EVAL MLP persistent+reset workers=132 median_ms=13.416976 samples_ms= 13.489280 13.405920 13.437024 13.386784 13.431840 13.428032 13.482048 13.399680 13.404864 13.344640
+EVAL MLP persistent+reset workers=264 median_ms=7.003600 samples_ms= 6.999680 6.991264 6.995968 7.025440 7.005888 7.001312 7.019872 7.012800 6.998208 7.009728
+EVAL MLP persistent+reset workers=528 median_ms=4.387808 samples_ms= 4.412384 4.377216 4.411232 4.375168 4.368576 4.397344 4.394016 4.379200 4.395616 4.381600
+EVAL MLP BENCH tokens=262144 hidden=2816 tasks=229376 roots=180224 row_dependencies=4096
+EVAL MLP CUDA Graph median_ms=100.619934 samples_ms= 100.666275 100.623421 100.547295 100.637917 100.694366 100.624252 100.616447 100.544479 100.555038 100.603424
+EVAL MLP CUDA Graph four-block occupancy median_ms=76.636768 samples_ms= 76.487808 76.589119 76.754814 76.904030 76.650368 76.369629 76.810562 76.439041 76.746399 76.623169
+EVAL MLP persistent+reset workers=132 median_ms=211.316864 samples_ms= 210.887390 211.906311 210.897888 211.273254 211.730759 211.167618 211.494339 211.360474 211.748352 209.962021
+EVAL MLP persistent+reset workers=264 median_ms=107.591473 samples_ms= 107.587135 107.600159 107.611137 107.665184 107.514977 107.579201 107.595810 107.581375 107.548225 107.622627
+EVAL MLP persistent+reset workers=528 median_ms=67.548817 samples_ms= 67.382942 67.752579 67.693184 67.737572 67.582115 67.517311 67.499168 67.580322 67.400032 67.406815
+LAYER BENCH evaluation=1 tokens=262144 qk=128 v=128 paired=0 window=2560 documents=64 workers=528 tasks=1376257 stages=6
+LAYER BF16 evaluation bitwise replay PASS; normalized input supplied externally
+LAYER separate stages median_ms=749.958893 samples_ms= 749.986694 749.949158 749.950134 749.956909 749.967590 750.011536 749.962891 749.957336 749.960449 749.921448
+LAYER CUDA Graph median_ms=749.937805 samples_ms= 749.904236 749.962646 750.023438 749.974487 749.909058 749.946472 749.893433 749.949768 749.891785 749.929138
+LAYER CUDA Graph four-block occupancy median_ms=569.675964 samples_ms= 569.638672 569.749329 569.690308 569.738953 569.651794 569.658020 569.676331 569.675598 569.762390 569.642029
+LAYER persistent+reset workers=132 median_ms=2237.510498 samples_ms= 2228.371826 2237.479248 2237.775879 2228.974121 2237.541748 2238.365234 2237.856689 2228.291992 2237.962891 2228.341309
+LAYER persistent+reset workers=264 median_ms=1130.448975 samples_ms= 1126.549072 1129.750854 1126.160889 1130.512451 1130.479980 1130.457764 1130.531860 1130.440186 1130.424927 1130.464844
+LAYER persistent+reset workers=528 median_ms=580.162231 samples_ms= 580.149048 580.208008 580.188599 580.145142 580.172668 580.142151 580.167786 580.126526 580.168823 580.156677
+
+$ make -C /workspace/cuda sanitize BIN=evaluation CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./evaluation --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.62212013e-07 max_abs=5.96046448e-07
+LAYER BF16 projection/product rel_l2=6.97134956e-07 max_abs=1.13248825e-06
+LAYER BF16 projection/product rel_l2=7.01928343e-07 max_abs=1.1920929e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.45250676e-08 max_abs=1.01977317e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.19729133e-07 max_abs=2.2649765e-06
+LAYER BF16 projection/product rel_l2=7.21101942e-07 max_abs=2.02655792e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.23985545e-08 max_abs=1.91009988e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.44737138e-07 max_abs=1.78813934e-06
+LAYER BF16 projection/product rel_l2=6.89881458e-07 max_abs=1.66893005e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.48756487e-08 max_abs=1.7048618e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.10713175e-07 max_abs=2.38418579e-06
+LAYER Q transform rel_l2=3.52346883e-05 max_abs=0.00390625
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.69259655e-08 max_abs=2.67897249e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.54659405e-07 max_abs=8.94069672e-07
+LAYER BF16 projection/product rel_l2=6.98774212e-07 max_abs=1.43051147e-06
+LAYER Q transform rel_l2=4.15800479e-11 max_abs=6.51925802e-09
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.63307078e-08 max_abs=2.52713139e-07
+LAYER post Y rel_l2=3.66810979e-08 max_abs=1.11163429e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.15326355e-07 max_abs=2.14576721e-06
+LAYER Q transform rel_l2=1.24574891e-05 max_abs=0.001953125
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.67800678e-08 max_abs=1.99371031e-07
+LAYER post Y rel_l2=3.86008777e-08 max_abs=1.18326069e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.56637654e-07 max_abs=9.53674316e-07
+LAYER BF16 projection/product rel_l2=6.98394062e-07 max_abs=1.43051147e-06
+LAYER BF16 projection/product rel_l2=6.95235843e-07 max_abs=1.49011612e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.26702063e-08 max_abs=2.69994401e-07
+LAYER post Y rel_l2=2.83458992e-08 max_abs=1.34112006e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.1895069e-07 max_abs=2.38418579e-06
+LAYER BF16 projection/product rel_l2=7.16640763e-07 max_abs=2.62260437e-06
+LAYER Q transform rel_l2=2.22845089e-05 max_abs=0.00390625
+LAYER K transform rel_l2=4.35243455e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.35617358e-08 max_abs=3.01480812e-07
+LAYER post Y rel_l2=2.83948555e-08 max_abs=1.56464007e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER BF16 projection/product rel_l2=7.28271504e-07 max_abs=1.90734863e-06
+LAYER BF16 projection/product rel_l2=2.98697076e-06 max_abs=7.03334808e-06
+EVAL MLP PASS tokens=16 step=0 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.26243493e-07 max_abs=2.02655792e-06
+LAYER BF16 projection/product rel_l2=3.00288773e-06 max_abs=7.39097595e-06
+EVAL MLP PASS tokens=16 step=1 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.31736516e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.03555667e-06 max_abs=7.15255737e-06
+EVAL MLP PASS tokens=80 step=0 tasks=112 roots=88 row_dependencies=2
+LAYER BF16 projection/product rel_l2=7.31820741e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.04009382e-06 max_abs=8.10623169e-06
+EVAL MLP PASS tokens=80 step=1 tasks=112 roots=88 row_dependencies=2
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./evaluation --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.62212013e-07 max_abs=5.96046448e-07
+LAYER BF16 projection/product rel_l2=6.97134956e-07 max_abs=1.13248825e-06
+LAYER BF16 projection/product rel_l2=7.01928343e-07 max_abs=1.1920929e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.45250676e-08 max_abs=1.01977317e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.19729133e-07 max_abs=2.2649765e-06
+LAYER BF16 projection/product rel_l2=7.21101942e-07 max_abs=2.02655792e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.23985545e-08 max_abs=1.91009988e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.44737138e-07 max_abs=1.78813934e-06
+LAYER BF16 projection/product rel_l2=6.89881458e-07 max_abs=1.66893005e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.48756487e-08 max_abs=1.7048618e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.10713175e-07 max_abs=2.38418579e-06
+LAYER Q transform rel_l2=3.52346883e-05 max_abs=0.00390625
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.69259655e-08 max_abs=2.67897249e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.54659405e-07 max_abs=8.94069672e-07
+LAYER BF16 projection/product rel_l2=6.98774212e-07 max_abs=1.43051147e-06
+LAYER Q transform rel_l2=4.15800479e-11 max_abs=6.51925802e-09
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.63307078e-08 max_abs=2.52713139e-07
+LAYER post Y rel_l2=3.66810979e-08 max_abs=1.11163429e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.15326355e-07 max_abs=2.14576721e-06
+LAYER Q transform rel_l2=1.24574891e-05 max_abs=0.001953125
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.67800678e-08 max_abs=1.99371031e-07
+LAYER post Y rel_l2=3.86008777e-08 max_abs=1.18326069e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.56637654e-07 max_abs=9.53674316e-07
+LAYER BF16 projection/product rel_l2=6.98394062e-07 max_abs=1.43051147e-06
+LAYER BF16 projection/product rel_l2=6.95235843e-07 max_abs=1.49011612e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.26702063e-08 max_abs=2.69994401e-07
+LAYER post Y rel_l2=2.83458992e-08 max_abs=1.34112006e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.1895069e-07 max_abs=2.38418579e-06
+LAYER BF16 projection/product rel_l2=7.16640763e-07 max_abs=2.62260437e-06
+LAYER Q transform rel_l2=2.22845089e-05 max_abs=0.00390625
+LAYER K transform rel_l2=4.35243455e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.35617358e-08 max_abs=3.01480812e-07
+LAYER post Y rel_l2=2.83948555e-08 max_abs=1.56464007e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER BF16 projection/product rel_l2=7.28271504e-07 max_abs=1.90734863e-06
+LAYER BF16 projection/product rel_l2=2.98697076e-06 max_abs=7.03334808e-06
+EVAL MLP PASS tokens=16 step=0 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.26243493e-07 max_abs=2.02655792e-06
+LAYER BF16 projection/product rel_l2=3.00288773e-06 max_abs=7.39097595e-06
+EVAL MLP PASS tokens=16 step=1 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.31736516e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.03555667e-06 max_abs=7.15255737e-06
+EVAL MLP PASS tokens=80 step=0 tasks=112 roots=88 row_dependencies=2
+LAYER BF16 projection/product rel_l2=7.31820741e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.04009382e-06 max_abs=8.10623169e-06
+EVAL MLP PASS tokens=80 step=1 tasks=112 roots=88 row_dependencies=2
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./evaluation --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.62212013e-07 max_abs=5.96046448e-07
+LAYER BF16 projection/product rel_l2=6.97134956e-07 max_abs=1.13248825e-06
+LAYER BF16 projection/product rel_l2=7.01928343e-07 max_abs=1.1920929e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.45250676e-08 max_abs=1.01977317e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.19729133e-07 max_abs=2.2649765e-06
+LAYER BF16 projection/product rel_l2=7.21101942e-07 max_abs=2.02655792e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.23985545e-08 max_abs=1.91009988e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.44737138e-07 max_abs=1.78813934e-06
+LAYER BF16 projection/product rel_l2=6.89881458e-07 max_abs=1.66893005e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.48756487e-08 max_abs=1.7048618e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.10713175e-07 max_abs=2.38418579e-06
+LAYER Q transform rel_l2=3.52346883e-05 max_abs=0.00390625
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.69259655e-08 max_abs=2.67897249e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.54659405e-07 max_abs=8.94069672e-07
+LAYER BF16 projection/product rel_l2=6.98774212e-07 max_abs=1.43051147e-06
+LAYER Q transform rel_l2=4.15800479e-11 max_abs=6.51925802e-09
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.63307078e-08 max_abs=2.52713139e-07
+LAYER post Y rel_l2=3.66810979e-08 max_abs=1.11163429e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.15326355e-07 max_abs=2.14576721e-06
+LAYER Q transform rel_l2=1.24574891e-05 max_abs=0.001953125
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.67800678e-08 max_abs=1.99371031e-07
+LAYER post Y rel_l2=3.86008777e-08 max_abs=1.18326069e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.56637654e-07 max_abs=9.53674316e-07
+LAYER BF16 projection/product rel_l2=6.98394062e-07 max_abs=1.43051147e-06
+LAYER BF16 projection/product rel_l2=6.95235843e-07 max_abs=1.49011612e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.26702063e-08 max_abs=2.69994401e-07
+LAYER post Y rel_l2=2.83458992e-08 max_abs=1.34112006e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.1895069e-07 max_abs=2.38418579e-06
+LAYER BF16 projection/product rel_l2=7.16640763e-07 max_abs=2.62260437e-06
+LAYER Q transform rel_l2=2.22845089e-05 max_abs=0.00390625
+LAYER K transform rel_l2=4.35243455e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.35617358e-08 max_abs=3.01480812e-07
+LAYER post Y rel_l2=2.83948555e-08 max_abs=1.56464007e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER BF16 projection/product rel_l2=7.28271504e-07 max_abs=1.90734863e-06
+LAYER BF16 projection/product rel_l2=2.98697076e-06 max_abs=7.03334808e-06
+EVAL MLP PASS tokens=16 step=0 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.26243493e-07 max_abs=2.02655792e-06
+LAYER BF16 projection/product rel_l2=3.00288773e-06 max_abs=7.39097595e-06
+EVAL MLP PASS tokens=16 step=1 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.31736516e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.03555667e-06 max_abs=7.15255737e-06
+EVAL MLP PASS tokens=80 step=0 tasks=112 roots=88 row_dependencies=2
+LAYER BF16 projection/product rel_l2=7.31820741e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.04009382e-06 max_abs=8.10623169e-06
+EVAL MLP PASS tokens=80 step=1 tasks=112 roots=88 row_dependencies=2
+PASS: connected attention layer, independent stage references and exact replay
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./evaluation --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.62212013e-07 max_abs=5.96046448e-07
+LAYER BF16 projection/product rel_l2=6.97134956e-07 max_abs=1.13248825e-06
+LAYER BF16 projection/product rel_l2=7.01928343e-07 max_abs=1.1920929e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.45250676e-08 max_abs=1.01977317e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.19729133e-07 max_abs=2.2649765e-06
+LAYER BF16 projection/product rel_l2=7.21101942e-07 max_abs=2.02655792e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=5.23985545e-08 max_abs=1.91009988e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=16 qk=64 v=64 paired=0 xsa=0 gate=0 tasks=103
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.44737138e-07 max_abs=1.78813934e-06
+LAYER BF16 projection/product rel_l2=6.89881458e-07 max_abs=1.66893005e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.48756487e-08 max_abs=1.7048618e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.10713175e-07 max_abs=2.38418579e-06
+LAYER Q transform rel_l2=3.52346883e-05 max_abs=0.00390625
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=8.69259655e-08 max_abs=2.67897249e-07
+LAYER post Y rel_l2=0 max_abs=0
+LAYER PASS evaluation=1 tokens=32 qk=64 v=128 paired=1 xsa=0 gate=0 tasks=181
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=7.54659405e-07 max_abs=8.94069672e-07
+LAYER BF16 projection/product rel_l2=6.98774212e-07 max_abs=1.43051147e-06
+LAYER Q transform rel_l2=4.15800479e-11 max_abs=6.51925802e-09
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.63307078e-08 max_abs=2.52713139e-07
+LAYER post Y rel_l2=3.66810979e-08 max_abs=1.11163429e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.15326355e-07 max_abs=2.14576721e-06
+LAYER Q transform rel_l2=1.24574891e-05 max_abs=0.001953125
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=6.67800678e-08 max_abs=1.99371031e-07
+LAYER post Y rel_l2=3.86008777e-08 max_abs=1.18326069e-07
+LAYER PASS evaluation=1 tokens=32 qk=128 v=128 paired=0 xsa=1 gate=1 tasks=193
+LAYER step=0 grad_scale=nan qkv_gain=0.75 o_gain=0.875 extra_gain=1.125
+LAYER BF16 projection/product rel_l2=3.56637654e-07 max_abs=9.53674316e-07
+LAYER BF16 projection/product rel_l2=6.98394062e-07 max_abs=1.43051147e-06
+LAYER BF16 projection/product rel_l2=6.95235843e-07 max_abs=1.49011612e-06
+LAYER Q transform rel_l2=0 max_abs=0
+LAYER K transform rel_l2=0 max_abs=0
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.26702063e-08 max_abs=2.69994401e-07
+LAYER post Y rel_l2=2.83458992e-08 max_abs=1.34112006e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER step=1 grad_scale=nan qkv_gain=1.25 o_gain=0 extra_gain=0.875
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.1895069e-07 max_abs=2.38418579e-06
+LAYER BF16 projection/product rel_l2=7.16640763e-07 max_abs=2.62260437e-06
+LAYER Q transform rel_l2=2.22845089e-05 max_abs=0.00390625
+LAYER K transform rel_l2=4.35243455e-08 max_abs=7.62939453e-06
+LAYER V transform rel_l2=0 max_abs=0
+LAYER attention Y rel_l2=9.35617358e-08 max_abs=3.01480812e-07
+LAYER post Y rel_l2=2.83948555e-08 max_abs=1.56464007e-07
+LAYER PASS evaluation=1 tokens=80 qk=64 v=64 paired=0 xsa=1 gate=0 tasks=421
+LAYER BF16 projection/product rel_l2=7.28271504e-07 max_abs=1.90734863e-06
+LAYER BF16 projection/product rel_l2=2.98697076e-06 max_abs=7.03334808e-06
+EVAL MLP PASS tokens=16 step=0 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.26243493e-07 max_abs=2.02655792e-06
+LAYER BF16 projection/product rel_l2=3.00288773e-06 max_abs=7.39097595e-06
+EVAL MLP PASS tokens=16 step=1 tasks=56 roots=44 row_dependencies=1
+LAYER BF16 projection/product rel_l2=7.31736516e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.03555667e-06 max_abs=7.15255737e-06
+EVAL MLP PASS tokens=80 step=0 tasks=112 roots=88 row_dependencies=2
+LAYER BF16 projection/product rel_l2=7.31820741e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=3.04009382e-06 max_abs=8.10623169e-06
+EVAL MLP PASS tokens=80 step=1 tasks=112 roots=88 row_dependencies=2
+PASS: connected attention layer, independent stage references and exact replay
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 1, 'STL': 1}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 1, 'STL': 1}

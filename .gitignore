@@ -34,3 +34,4 @@ cuda/anvil
 cuda/anvil_idle64
 cuda/layer
 cuda/layer_serial
+cuda/evaluation

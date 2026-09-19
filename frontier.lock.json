@@ -105,7 +105,7 @@
       }
     ]
   },
-  "native_status": "MLP, connected training-attention layer with projections and gates, BF16 GEMM and rank-local ANVIL update components; BF16 evaluation, full model routing, optimizer integration and Adam, loss and training loop remain incomplete",
+  "native_status": "FP8 training and BF16 evaluation MLP/attention components, BF16 GEMM and rank-local ANVIL update; full model routing, optimizer integration and Adam, loss and distributed training/validation remain incomplete",
   "architecture": {
     "model_dim": 768,
     "mlp_width": 2816,
@@ -155,7 +155,19 @@
     "ngram_sign_rows": 8192,
     "attention_segment_cap": 2560,
     "padded_vocabulary": 50304,
-    "validation_tokens": 10485760
+    "validation_tokens": 10485760,
+    "validation_local_tokens": 262144,
+    "final_validation_short_window": 768,
+    "final_validation_long_window": 2560,
+    "attention_roles": [
+      {"layer": 0, "paired": true, "auxiliary": false, "xsa": false, "head_gate": false, "extra_output_gain": true},
+      {"layer": 1, "paired": false, "auxiliary": true, "xsa": true, "head_gate": false, "extra_output_gain": true},
+      {"layer": 2, "paired": true, "auxiliary": true, "xsa": false, "head_gate": false, "extra_output_gain": true},
+      {"layer": 3, "paired": false, "auxiliary": false, "xsa": true, "head_gate": true, "extra_output_gain": true},
+      {"layer": 5, "paired": true, "auxiliary": false, "xsa": false, "head_gate": false, "extra_output_gain": true},
+      {"layer": 8, "paired": false, "auxiliary": true, "xsa": false, "head_gate": false, "extra_output_gain": true},
+      {"layer": 10, "paired": false, "auxiliary": true, "xsa": false, "head_gate": true, "extra_output_gain": false}
+    ]
   },
   "attention_kernel": {
     "repository": "devenpzak/flash-attn3-12864",

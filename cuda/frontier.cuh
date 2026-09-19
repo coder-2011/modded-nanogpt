@@ -8,11 +8,30 @@ inline constexpr int model_dim = 768, mlp_width = 2816, heads = 6, layers = 11;
 inline constexpr int scheduled_steps = 1174, total_steps = 1194, untie_step = 1175;
 inline constexpr int ngram_rows = 84602880, ngram_dim = 768, sign_rows = 8192;
 inline constexpr int validation_tokens = 10485760, vocabulary = 50304;
+inline constexpr int validation_local_tokens = 262144;
+inline constexpr int final_validation_short_window = 768, final_validation_long_window = 2560;
 inline constexpr int attention_segment_cap = 2560;
 inline constexpr std::array<int, 4> unique_local_tokens{16384, 32768, 49152, 40960};
 // Zero means the sublayer is absent. Layer 8 also executes MLP bank slot 11.
 inline constexpr std::array<int, 11> qk_width{64, 64, 64, 128, 0, 64, 0, 0, 64, 0, 128};
 inline constexpr std::array<int, 11> value_width{128, 64, 128, 128, 0, 128, 0, 0, 64, 0, 128};
+struct AttentionRole {
+    bool paired, auxiliary, xsa, head_gate, extra_output_gain;
+};
+// Effective roles after skipped attention sites are removed. Layer 10's
+// auxiliary value includes MUDD, and its residual gain stays outside O.
+inline constexpr std::array<AttentionRole, 11> attention_role{{
+    {true, false, false, false, true},
+    {false, true, true, false, true},
+    {true, true, false, false, true},
+    {false, false, true, true, true},
+    {},
+    {true, false, false, false, true},
+    {}, {},
+    {false, true, false, false, true},
+    {},
+    {false, true, false, true, false},
+}};
 inline constexpr std::array<int, 11> mlp_bank_order{0, 1, 2, 3, 4, 5, 6, 8, 11, 9, 10};
 
 struct Stage {

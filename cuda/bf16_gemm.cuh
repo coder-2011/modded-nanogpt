@@ -16,6 +16,8 @@ struct BF16Matmul {
     float alpha = 1.0f, beta = 0.0f, b_scale = 1.0f;
     bool round_product = false;
     bool symmetric = false; // Schedule only lower-triangular tiles, mirror each owned element.
+    bool relu_square = false;
+    __nv_bfloat16 *pre_activation = nullptr;
 };
 
 __device__ __forceinline__ void mma_bf16(float *d, const uint32_t *a, const uint32_t *b) {
@@ -135,14 +137,24 @@ __device__ __forceinline__ void bf16_matmul_tile(const BF16Matmul &op, int row, 
                         x = fmaf(op.beta, float(op.c[index]), x);
                     if (op.raw)
                         op.raw[index] = x;
+                    float result = x;
+                    if (op.relu_square) {
+                        auto pre = __float2bfloat16_rn(x);
+                        if (op.pre_activation) op.pre_activation[index] = pre;
+                        float positive = float(pre);
+                        positive = positive < 0.0f ? 0.0f : positive;
+                        result = positive * positive;
+                    }
                     if (op.output)
-                        op.output[index] = __float2bfloat16_rn(x);
+                        op.output[index] = __float2bfloat16_rn(result);
                     if (op.symmetric && r != c) {
                         int64_t mirror = int64_t(c) * op.n + r;
                         if (op.raw)
                             op.raw[mirror] = x;
+                        if (op.relu_square && op.pre_activation)
+                            op.pre_activation[mirror] = __float2bfloat16_rn(x);
                         if (op.output)
-                            op.output[mirror] = __float2bfloat16_rn(x);
+                            op.output[mirror] = __float2bfloat16_rn(result);
                     }
                 }
             }

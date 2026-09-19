@@ -163,7 +163,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
         build_flags = shlex.split(subprocess.check_output(
             ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
         subprocess.run(["nvcc"] + build_flags + ["--ptx",
-                        str(root / ("attention_layer.cu" if experiment == "layer" else
+                        str(root / ("attention_layer.cu" if experiment in {"layer", "evaluation"} else
                                     experiment + ".cu" if experiment in {"attention", "anvil"} else "validate.cu")),
                         "-o", str(ptx)], check=True)
         artifacts[ptx.name] = ptx.read_bytes()
@@ -200,13 +200,13 @@ if "--cuda-check" in sys.argv:
     if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
         raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
-    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer"}:
+    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation"}:
         raise SystemExit("Unknown native experiment")
     if experiment and (wgmma or (ablate and experiment not in {"bf16", "anvil", "layer"})):
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")
-    if profile and (experiment not in {"", "attention", "anvil", "layer"} or wgmma or ablate):
+    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation"} or wgmma or ablate):
         raise SystemExit("--profile targets the native MLP, attention, attention layer or ANVIL megakernel")
     if (variant or kernel_compare) and (experiment or wgmma or ablate):
         raise SystemExit("Kernel variants require the native MMA path")

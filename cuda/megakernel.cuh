@@ -80,11 +80,17 @@ struct AttentionLayerSetup {
     BF16Matmul *bf16_ops;
     QKVTransform *qkv;
     int forwards;
+    bool evaluation = false;
 };
 
 __device__ __forceinline__ void setup_attention_layer(const AttentionLayerSetup &op) {
     if (threadIdx.x == 0) {
         const float *s = op.scalars;
+        if (op.evaluation) {
+            op.bf16_ops[0].b_scale = s[4] * s[5];
+            for (int i = 0; i < op.forwards; ++i) op.bf16_ops[i + 1].b_scale = s[3];
+            return;
+        }
         float scaled_weight = s[1] * s[3];
         for (int i = 0; i < op.forwards; ++i) op.ops[i].scale = s[0] * scaled_weight;
         op.ops[op.forwards].scale = s[2] * s[0];

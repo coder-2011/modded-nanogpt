@@ -24,7 +24,7 @@ std::vector<int> layer_sequences(int tokens, bool paired, int limit) {
 
 struct LayerStorage {
     int t, d, v, f, forwards;
-    bool paired, shifted, auxiliary, xsa, gated;
+    bool paired, shifted, auxiliary, xsa, gated, evaluation, separate;
     DeviceBuffer<bf16> input, weights, wo, dy, factors1, factors2, aux, alpha, gate;
     DeviceBuffer<bf16> projected, projected_v, q, k, value, attn_y, post_y, output;
     DeviceBuffer<bf16> dpost, attn_dy, dq, dk, dv, daux, dalpha, dgate, dx, dwq0, dwq, dwo0, dwo;
@@ -35,27 +35,33 @@ struct LayerStorage {
     DeviceBuffer<int> sequences;
     std::vector<std::unique_ptr<DeviceBuffer<float>>> raw_fp8, raw_bf16;
     LayerStorage(int tokens, int qk, int vd, bool pair, bool offset, bool aux_enabled, bool alpha_enabled, bool gate_enabled,
-                 int sequence_limit = 0)
-        : t(tokens), d(qk), v(vd), f(6 * (2 * d + v)), forwards(pair ? 2 : 1), paired(pair), shifted(offset),
-          auxiliary(aux_enabled), xsa(alpha_enabled), gated(gate_enabled), input(size_t(t) * 768), weights(size_t(f) * 768),
-          wo(size_t(768) * 6 * v), dy(input.n), factors1(size_t(t) * d * (pair ? 2 : 1)), factors2(factors1.n),
+                 int sequence_limit = 0, bool eval = false, bool diagnostics = true)
+        : t(tokens), d(qk), v(vd), f(6 * (2 * d + v)), forwards((eval ? vd == 64 : pair) ? 2 : 1), paired(pair), shifted(offset),
+          auxiliary(aux_enabled), xsa(alpha_enabled), gated(gate_enabled), evaluation(eval), separate(forwards == 2),
+          input(size_t(t) * 768), weights(size_t(f) * 768),
+          wo(size_t(768) * 6 * v), dy(eval ? 0 : input.n), factors1(size_t(t) * d * (pair ? 2 : 1)), factors2(factors1.n),
           aux(size_t(t) * 768), alpha(size_t(t) * 6), gate(alpha.n),
-          projected(size_t(t) * (pair ? 12 * d : f)), projected_v(pair ? size_t(t) * 6 * v : 1),
+          projected(size_t(t) * (separate ? 12 * d : f)), projected_v(separate ? size_t(t) * 6 * v : 1),
           q(size_t(t) * 6 * d), k(q.n), value(size_t(t) * 6 * v), attn_y(value.n), post_y(value.n), output(input.n),
-          dpost(value.n), attn_dy(value.n), dq(q.n), dk(q.n), dv(value.n), daux(aux.n), dalpha(alpha.n), dgate(alpha.n),
-          dx(input.n), dwq0(weights.n), dwq(weights.n), dwo0(wo.n), dwo(wo.n),
-          x8(input.n), xt8(input.n), w8(weights.n), wt8(weights.n), grad8(size_t(t) * f), gradt8(grad8.n),
-          scalars(6), lse(size_t(t) * 6), delta(lse.n), side(value.n),
-          qpartial((weights.n + projection_elements - 1) / projection_elements),
-          opartial((wo.n + projection_elements - 1) / projection_elements), gains(3),
-          raw_a_y(value.n), raw_a_dq(q.n), raw_a_dk(q.n), raw_a_dv(value.n),
-          raw_post(value.n), raw_post_dy(value.n), raw_da(alpha.n), raw_dg(alpha.n), raw_qkv(grad8.n),
+          dpost(eval ? 0 : value.n), attn_dy(dpost.n), dq(eval ? 0 : q.n), dk(dq.n), dv(dpost.n),
+          daux(eval ? 0 : aux.n), dalpha(eval ? 0 : alpha.n), dgate(dalpha.n),
+          dx(eval ? 0 : input.n), dwq0(eval ? 0 : weights.n), dwq(dwq0.n), dwo0(eval ? 0 : wo.n), dwo(dwo0.n),
+          x8(eval ? 0 : input.n), xt8(x8.n), w8(eval ? 0 : weights.n), wt8(w8.n),
+          grad8(eval ? 0 : size_t(t) * f), gradt8(grad8.n),
+          scalars(6), lse(size_t(t) * 6), delta(eval ? 0 : lse.n), side(dpost.n),
+          qpartial(eval ? 0 : (weights.n + projection_elements - 1) / projection_elements),
+          opartial(eval ? 0 : (wo.n + projection_elements - 1) / projection_elements), gains(eval ? 0 : 3),
+          raw_a_y(diagnostics ? value.n : 0), raw_a_dq(diagnostics ? dq.n : 0),
+          raw_a_dk(raw_a_dq.n), raw_a_dv(diagnostics ? dv.n : 0),
+          raw_post(diagnostics ? value.n : 0), raw_post_dy(diagnostics ? dpost.n : 0),
+          raw_da(diagnostics ? dalpha.n : 0), raw_dg(raw_da.n), raw_qkv(diagnostics ? grad8.n : 0),
           seq(layer_sequences(t, pair, sequence_limit)), sequences(seq.size()) {
         sequences.put(seq);
-        for (size_t n : {projected.n, pair ? projected_v.n : dwq0.n, pair ? dwq0.n : dx.n})
-            raw_fp8.push_back(std::make_unique<DeviceBuffer<float>>(n));
-        if (pair) raw_fp8.push_back(std::make_unique<DeviceBuffer<float>>(dx.n));
-        for (size_t n : {output.n, dpost.n, dwo0.n}) raw_bf16.push_back(std::make_unique<DeviceBuffer<float>>(n));
+        for (size_t n : {projected.n, separate ? projected_v.n : dwq0.n, separate ? dwq0.n : dx.n})
+            raw_fp8.push_back(std::make_unique<DeviceBuffer<float>>(diagnostics && !eval ? n : 0));
+        if (separate) raw_fp8.push_back(std::make_unique<DeviceBuffer<float>>(diagnostics && !eval ? dx.n : 0));
+        for (size_t n : {output.n, dpost.n, dwo0.n, projected.n, projected_v.n})
+            raw_bf16.push_back(std::make_unique<DeviceBuffer<float>>(diagnostics ? n : 0));
         std::mt19937 rng(711 + t + d + v);
         std::normal_distribution<float> normal;
         for (auto *b : {&input, &weights, &wo, &dy, &aux, &alpha, &gate}) {
@@ -68,7 +74,6 @@ struct LayerStorage {
         auto w = weights.get();
         for (auto x : w) s[1] = std::max(s[1], std::abs(float(x)));
         s[1] = std::max(s[1], 1e-12f) * (1.0f / 448.0f);
-        scalars.put(s);
         auto quantize = [](const std::vector<bf16> &src, float scale, int rows, int cols,
                            DeviceBuffer<fp8> &row, DeviceBuffer<fp8> &transposed) {
             std::vector<fp8> a(src.size()), b(src.size());
@@ -77,8 +82,13 @@ struct LayerStorage {
                     b[c * rows + r] = a[r * cols + c] = fp8(float(src[r * cols + c]) / scale);
             row.put(a); transposed.put(b);
         };
-        quantize(w, s[1], f, 768, w8, wt8);
-        quantize(input.get(), s[0], t, 768, x8, xt8);
+        if (eval) {
+            s[0] = s[1] = s[2] = NAN;
+        } else {
+            quantize(w, s[1], f, 768, w8, wt8);
+            quantize(input.get(), s[0], t, 768, x8, xt8);
+        }
+        scalars.put(s);
         std::vector<bf16> f1(factors1.n), f2(factors2.n);
         int stride = d * (pair ? 2 : 1);
         for (int token = 0; token < t; ++token)
@@ -92,6 +102,7 @@ struct LayerStorage {
     }
     AttentionLayerBuffers buffers(int window = 31, bool diagnostics = true) {
         AttentionLayerBuffers b{};
+        b.evaluation = evaluation; b.x_bf16 = evaluation ? input.p : nullptr;
         b.tokens = t; b.qk_dim = d; b.value_dim = v; b.documents = int(seq.size()) - 1; b.window = window;
         b.paired = paired; b.key_offset = shifted; b.attention_scale = d == 64 ? 0.13f : 0.085f;
         b.sequences = sequences.p; b.scalars = scalars.p;
@@ -107,6 +118,14 @@ struct LayerStorage {
         b.packed_gradient = grad8.p; b.packed_gradient_transposed = gradt8.p;
         b.lse = lse.p; b.delta = delta.p; b.value_side = side.p;
         b.qkv_partial = qpartial.p; b.o_partial = opartial.p; b.gain_gradients = gains.p;
+        if (evaluation) {
+            b.x = b.x_transposed = b.weight = b.weight_transposed = nullptr;
+            b.dy = nullptr;
+            b.dpost = b.attention_dy = b.dq = b.dk = b.dv = b.daux = b.dalpha = b.dgate = b.dx = nullptr;
+            b.dw_qkv_unscaled = b.dw_qkv = b.dw_o_unscaled = b.dw_o = nullptr;
+            b.packed_gradient = b.packed_gradient_transposed = nullptr;
+            b.delta = b.value_side = b.qkv_partial = b.o_partial = b.gain_gradients = nullptr;
+        }
         if (!diagnostics) return b;
         for (size_t i = 0; i < raw_fp8.size(); ++i) b.fp8_raw[i] = raw_fp8[i]->p;
         for (size_t i = 0; i < raw_bf16.size(); ++i) b.bf16_raw[i] = raw_bf16[i]->p;
@@ -117,28 +136,31 @@ struct LayerStorage {
         return b;
     }
     std::vector<DeviceBuffer<bf16> *> outputs() {
-        std::vector<DeviceBuffer<bf16> *> result = {&projected, &q, &k, &value, &attn_y, &post_y, &output,
-            &dpost, &attn_dy, &dq, &dk, &dv, &dalpha, &dgate, &dx, &dwq0, &dwq, &dwo0, &dwo};
-        if (paired) result.push_back(&projected_v);
-        if (auxiliary) result.push_back(&daux);
+        std::vector<DeviceBuffer<bf16> *> result = {&projected, &q, &k, &value, &attn_y, &post_y, &output};
+        if (separate) result.push_back(&projected_v);
+        if (!evaluation) {
+            result.insert(result.end(), {&dpost, &attn_dy, &dq, &dk, &dv, &dalpha, &dgate, &dx, &dwq0, &dwq, &dwo0, &dwo});
+            if (auxiliary) result.push_back(&daux);
+        }
         return result;
     }
     void poison() {
         for (auto *b : outputs()) CHECK_CUDA(cudaMemset(b->p, 0xff, b->n * sizeof(bf16)));
         for (auto *b : {&lse, &delta, &side, &qpartial, &opartial, &gains, &raw_a_y, &raw_a_dq, &raw_a_dk,
                         &raw_a_dv, &raw_post, &raw_post_dy, &raw_da, &raw_dg, &raw_qkv})
-            CHECK_CUDA(cudaMemset(b->p, 0xff, b->n * sizeof(float)));
-        for (auto &b : raw_fp8) CHECK_CUDA(cudaMemset(b->p, 0xff, b->n * sizeof(float)));
-        for (auto &b : raw_bf16) CHECK_CUDA(cudaMemset(b->p, 0xff, b->n * sizeof(float)));
-        CHECK_CUDA(cudaMemset(grad8.p, 0xff, grad8.n)); CHECK_CUDA(cudaMemset(gradt8.p, 0xff, gradt8.n));
+            if (b->n) CHECK_CUDA(cudaMemset(b->p, 0xff, b->n * sizeof(float)));
+        for (auto &b : raw_fp8) if (b->n) CHECK_CUDA(cudaMemset(b->p, 0xff, b->n * sizeof(float)));
+        for (auto &b : raw_bf16) if (b->n) CHECK_CUDA(cudaMemset(b->p, 0xff, b->n * sizeof(float)));
+        if (grad8.n) CHECK_CUDA(cudaMemset(grad8.p, 0xff, grad8.n));
+        if (gradt8.n) CHECK_CUDA(cudaMemset(gradt8.p, 0xff, gradt8.n));
     }
 };
 
 __global__ void reset_layer(Graph g, int groups) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < g.task_count) g.queue[i] = i == 0 ? 1 : 0;
+    if (i < g.task_count) g.queue[i] = i < g.root_count ? i + 1 : 0;
     if (i < groups) g.counters[i] = 0;
-    if (i < 4) g.state[i] = i == 2 ? g.task_count : i == 3 ? 0 : 1;
+    if (i < 4) g.state[i] = i == 2 ? g.task_count : i == 3 ? 0 : g.root_count;
 }
 
 template <int MinimumBlocks>
@@ -177,7 +199,7 @@ struct LayerSchedule {
     DeviceBuffer<Group> groups;
     DeviceBuffer<int> counters, queue, state, audit;
     explicit LayerSchedule(const AttentionLayerBuffers &b) : plan(b), ops(plan.ops.size()), bf16_ops(plan.bf16_ops.size()),
-        qkv(1), attention(1), post(1), gradient(2), setup(1), tasks(plan.tasks.size()), groups(plan.groups.size()),
+        qkv(1), attention(1), post(1), gradient(plan.gradient.size()), setup(1), tasks(plan.tasks.size()), groups(plan.groups.size()),
         counters(groups.n), queue(tasks.n), state(4), audit(tasks.n + 2) {
         ops.put(plan.ops); bf16_ops.put(plan.bf16_ops); qkv.put({plan.qkv}); attention.put({plan.attention});
         post.put({plan.post}); gradient.put(plan.gradient); setup.put({plan.setup(ops.p, bf16_ops.p, qkv.p)});
@@ -217,7 +239,7 @@ struct LayerSchedule {
 struct LayerGraphControl {
     cudaGraph_t graph;
     cudaGraphExec_t exec;
-    explicit LayerGraphControl(LayerSchedule &schedule, bool four_blocks = false) {
+    template <class Schedule> explicit LayerGraphControl(Schedule &schedule, bool four_blocks = false) {
         CHECK_CUDA(cudaGraphCreate(&graph, 0));
         cudaGraphNode_t previous = nullptr;
         for (const auto &stage : schedule.plan.stages) {
@@ -242,7 +264,10 @@ struct LayerResult {
     std::vector<std::vector<bf16>> values;
     std::vector<float> gains;
     std::vector<fp8> packed, transposed;
-    explicit LayerResult(LayerStorage &b) : gains(b.gains.get()), packed(b.grad8.get()), transposed(b.gradt8.get()) {
+    explicit LayerResult(LayerStorage &b)
+        : gains(b.evaluation ? std::vector<float>{} : b.gains.get()),
+          packed(b.evaluation ? std::vector<fp8>{} : b.grad8.get()),
+          transposed(b.evaluation ? std::vector<fp8>{} : b.gradt8.get()) {
         for (auto *buffer : b.outputs()) {
             values.push_back(buffer->get());
             for (auto x : values.back())
@@ -257,6 +282,7 @@ struct LayerResult {
             if (std::memcmp(actual.data(), values[i].data(), actual.size() * sizeof(bf16)))
                 throw std::runtime_error("layer staged/production mismatch");
         }
+        if (b.evaluation) return;
         auto got = b.gains.get();
         if (std::memcmp(got.data(), gains.data(), gains.size() * sizeof(float)))
             throw std::runtime_error("layer gain replay mismatch");
@@ -280,12 +306,13 @@ void check_layer_step(LayerStorage &b, LayerSchedule &schedule, LayerGraphContro
         CHECK_CUDA(cudaDeviceSynchronize());
         expected.compare(b);
     }
-    printf("LAYER PASS tokens=%d qk=%d v=%d paired=%d xsa=%d gate=%d tasks=%zu gains=%g,%g,%g\n",
-           b.t, b.d, b.v, b.paired, b.xsa, b.gated, schedule.tasks.n,
-           expected.gains[0], expected.gains[1], expected.gains[2]);
+    printf("LAYER PASS evaluation=%d tokens=%d qk=%d v=%d paired=%d xsa=%d gate=%d tasks=%zu",
+           b.evaluation, b.t, b.d, b.v, b.paired, b.xsa, b.gated, schedule.tasks.n);
+    if (!b.evaluation) printf(" gains=%g,%g,%g", expected.gains[0], expected.gains[1], expected.gains[2]);
+    puts("");
 }
 
-void check_layer(LayerStorage &b, int workers, int steps) {
+void check_layer(LayerStorage &b, int workers, int steps, bool extra_output_gain = true) {
     LayerSchedule schedule(b.buffers());
     LayerGraphControl control(schedule);
     LayerGraphControl bounded_control(schedule, true);
@@ -293,6 +320,8 @@ void check_layer(LayerStorage &b, int workers, int steps) {
         auto s = b.scalars.get();
         if (step == 1) { s[2] = 0.0078125f; s[3] = 1.25f; s[4] = 0; s[5] = 0.875f; }
         if (step == 2) { s[2] = 0.001953125f; s[3] = 0; s[4] = -0.5f; s[5] = 1.5f; }
+        if (!extra_output_gain) s[5] = 1.0f;
+        if (b.evaluation) s[0] = s[1] = s[2] = NAN;
         b.scalars.put(s);
         printf("LAYER step=%d grad_scale=%g qkv_gain=%g o_gain=%g extra_gain=%g\n", step, s[2], s[3], s[4], s[5]);
         check_layer_step(b, schedule, control, bounded_control, workers);
@@ -346,17 +375,23 @@ void check_post_floor(int width) {
     }
 }
 
-void benchmark_layer(int d, int v, bool paired, bool profile = false) {
-    LayerStorage b(16384, d, v, paired, d == 128, true, !paired, d == 128, 896);
-    int window = d == 128 ? 384 : 128;
+void benchmark_layer(int d, int v, bool paired, bool profile = false, bool evaluation = false, bool final_evaluation = false) {
+    if (final_evaluation && !evaluation) throw std::runtime_error("final evaluation requires BF16 mode");
+    int tokens = final_evaluation ? frontier::validation_local_tokens : 16384;
+    int layer = d == 128 ? 3 : paired ? 2 : 1;
+    const auto role = frontier::attention_role[layer];
+    LayerStorage b(tokens, d, v, paired, d == 128, role.auxiliary, role.xsa, role.head_gate,
+                   final_evaluation ? 4096 : 896, evaluation, false);
+    int window = final_evaluation ? (d == 128 ? frontier::final_validation_long_window : frontier::final_validation_short_window) :
+                                   (d == 128 ? 384 : 128);
     LayerSchedule schedule(b.buffers(window, false));
     LayerGraphControl control(schedule);
     LayerGraphControl bounded_control(schedule, true);
     cudaDeviceProp properties{};
     CHECK_CUDA(cudaGetDeviceProperties(&properties, 0));
     int workers = properties.multiProcessorCount * 4;
-    printf("LAYER BENCH tokens=%d qk=%d v=%d paired=%d window=%d documents=%zu workers=%d tasks=%zu stages=%zu\n",
-           b.t, d, v, paired, window, b.seq.size() - 1, workers, schedule.tasks.n, schedule.plan.stages.size());
+    printf("LAYER BENCH role=%d evaluation=%d tokens=%d qk=%d v=%d paired=%d window=%d documents=%zu workers=%d tasks=%zu stages=%zu\n",
+           layer, evaluation, b.t, d, v, paired, window, b.seq.size() - 1, workers, schedule.tasks.n, schedule.plan.stages.size());
     if (profile) {
         for (int i = 0; i < 5; ++i) schedule.run(workers, false);
         reset_layer<<<(schedule.tasks.n + 127) / 128, 128>>>(schedule.graph(), int(schedule.groups.n));
@@ -377,7 +412,8 @@ void benchmark_layer(int d, int v, bool paired, bool profile = false) {
         else schedule.run(workers, false);
         CHECK_CUDA(cudaDeviceSynchronize()); expected.compare(b);
     }
-    puts("LAYER main-shape bitwise replay PASS; caches supplied externally, setup and queue reset timed");
+    puts(evaluation ? "LAYER BF16 evaluation bitwise replay PASS; normalized input supplied externally" :
+                      "LAYER training bitwise replay PASS; caches supplied externally, setup and queue reset timed");
     device_time("LAYER separate stages", [&] { schedule.staged(); });
     device_time("LAYER CUDA Graph", [&] { control.run(); });
     device_time("LAYER CUDA Graph four-block occupancy", [&] { bounded_control.run(); });
@@ -388,9 +424,18 @@ void benchmark_layer(int d, int v, bool paired, bool profile = false) {
     }
 }
 
+#ifdef NANO_EVALUATION_ONLY
+#include "mlp_evaluation_check.cuh"
+#endif
+
 int main(int argc, char **argv) {
     try {
         device_info();
+#ifdef NANO_EVALUATION_ONLY
+        constexpr bool evaluation = true;
+#else
+        constexpr bool evaluation = false;
+#endif
         bool quick = false, profile = false;
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
@@ -398,26 +443,33 @@ int main(int argc, char **argv) {
             else if (arg == "--profile") profile = true;
             else if (arg.rfind("--gradient-chunk=", 0) != 0) throw std::runtime_error("unknown argument: " + arg);
         }
-        if (profile) { benchmark_layer(128, 128, false, true); return 0; }
+        if (profile) { benchmark_layer(128, 128, false, true, evaluation); return 0; }
         int steps = quick ? 2 : 3;
-        LayerStorage narrow(16, 64, 64, false, false, false, false, false);
-        check_layer(narrow, 7, steps);
-        LayerStorage paired(32, 64, 128, true, false, true, false, false);
-        check_layer(paired, 3, steps);
-        LayerStorage wide(32, 128, 128, false, true, true, true, true);
-        check_layer(wide, 7, steps);
-        LayerStorage half(80, 64, 64, false, false, true, true, false);
-        check_layer(half, 1, steps);
-        if (!quick) {
-            LayerStorage last(32, 128, 128, false, true, false, false, true);
-            check_layer(last, 17, steps);
+        // Layers 0 and 5 share the same attention-call configuration.
+        for (int layer : {0, 1, 2, 3, 8, 10}) {
+            const auto role = frontier::attention_role[layer];
+            int d = frontier::qk_width[layer], v = frontier::value_width[layer];
+            int tokens = layer == 1 ? 80 : layer == 0 || layer == 8 ? 16 : 32;
+            int workers = layer == 1 ? 1 : layer == 10 ? 17 : 7;
+            printf("LAYER CHECK reference_layer=%d\n", layer);
+            LayerStorage b(tokens, d, v, role.paired, d == 128, role.auxiliary, role.xsa, role.head_gate, 0, evaluation);
+            check_layer(b, workers, steps, role.extra_output_gain);
         }
-        check_post_floor(64); check_post_floor(128);
+        if (!evaluation) { check_post_floor(64); check_post_floor(128); }
+#ifdef NANO_EVALUATION_ONLY
+        check_mlp_evaluation(16, 1, steps);
+        check_mlp_evaluation(80, 7, steps);
+#endif
         puts("PASS: connected attention layer, independent stage references and exact replay");
         if (!quick) {
-            benchmark_layer(64, 128, true);
-            benchmark_layer(64, 64, false);
-            benchmark_layer(128, 128, false);
+            benchmark_layer(64, 128, true, false, evaluation);
+            benchmark_layer(64, 64, false, false, evaluation);
+            benchmark_layer(128, 128, false, false, evaluation);
+#ifdef NANO_EVALUATION_ONLY
+            benchmark_mlp_evaluation(16384);
+            benchmark_mlp_evaluation(frontier::validation_local_tokens);
+            benchmark_layer(128, 128, false, false, true, true);
+#endif
         }
         return 0;
     } catch (const std::exception &error) {

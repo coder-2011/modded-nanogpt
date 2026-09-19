@@ -58,8 +58,8 @@ cached FP8 QKV projections, QK normalization/RoPE, attention, XSA/head gates,
 O projection and backward through every component and gain. Independent CUDA/C++
 references check each materialized boundary; graph reuse changes device gains
 and scales, including zero gains. It still accepts normalized FP8 caches and an
-external output gradient. BF16 evaluation projections, the enclosing model graph,
-and exact pinned compiled-trainer/FA3 parity remain unimplemented or unverified.
+external output gradient. The enclosing model graph and exact pinned
+compiled-trainer/FA3 parity remain unimplemented or unverified.
 Its task graph uses 64x64 matrix tiles and four-token/head tasks with whole-stage
 dependencies. Cooperative queue publication is the layer default. Use
 `--experiment=layer --ablate --sanitize` to compare it with the single-thread
@@ -67,6 +67,17 @@ publication control on the same GPU, including four sanitizers for each.
 `--experiment=layer --profile` captures the combined worker at 16384 tokens.
 The layer benchmark also checks a CUDA-Graph control with the same four-block
 occupancy target. Use the faster control when assessing persistent performance.
+
+`--experiment=evaluation --sanitize` checks BF16 attention forward and the
+2816-wide BF16 MLP forward. Evaluation uses original BF16 weights and normalized
+BF16 activations, with no FP8 caches or backward tasks. The MLP rounds the
+pre-activation before squared ReLU and applies its post-lambda at the enclosing
+residual site. That site is still absent. Tests include repeated graph execution,
+zero/negative gains, zero down-projection weights, and 262144-token shapes.
+The final validation long window is 2560, extended from the last training stage's
+1664 without another Yarn update. Synthetic component checks do not constitute
+full-vocabulary validation or a full-model result. The parent model still owns
+bank views, normalization, prepared scalar inputs and scalar-gradient casts.
 
 `--experiment=anvil --ablate --sanitize` checks the rank-local optimizer update
 body, including velocity state, six matrix maps, lane-energy normalization and
