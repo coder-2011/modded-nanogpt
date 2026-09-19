@@ -196,3 +196,21 @@ validate the production specialization too.
 Keep training data, canonical held-out evaluation, validation target and timing
 accounting intact. No validation leakage, cached answers, selective reporting,
 or relaxed correctness gates to improve a benchmark number.
+
+`--experiment=last_layer --sanitize` connects layer 10's FP8 QKV projections,
+attention, head gate and BF16 O projection to its 14-coefficient MUDD network,
+final FP8 MLP and existing tail/loss/backward. It returns network/projection/MLP
+parameter gradients, bigram and head-gate adjoints, and the summed contributions
+to cache[0], cache[7], cache[9] and layer-10 values. The shared normalized
+cache[7] joins attention and tail consumers before RMS backward. Earlier uses,
+including layer 8, must still contribute when the preceding body is connected.
+The fixture supplies cached states, bigram values, the earlier head-gate network's
+output, rotary factors, weights and scales. It is not a full-model training run.
+Its 83 phases retain 64x64 matrix tiles and explicit joins for shared adjoints;
+many dependencies still wait for complete stages. Native cuBLAS/FP64, rounding,
+poisoned-buffer replay and task audits are hard gates. ATen remains a post-loop
+tail diagnostic only; sanitizers explicitly use the existing native-only scope.
+Use `--experiment=last_layer --ablate --sanitize` to compare the default
+1024 ns idle delay with `last_layer_idle64` on the same GPU. Shorter sleeping and
+three-block occupancy did not improve the first experiments; preserve the
+four-block, 1024 ns default unless a new controlled measurement supports a change.

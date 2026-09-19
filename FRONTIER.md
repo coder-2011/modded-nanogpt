@@ -54,9 +54,9 @@ constants and schedule constructor produce the values below.
 | --- | --- | --- |
 | Residual stream | Width 768, eleven numbered layers, six heads | Eleven-layer BF16 evaluation body connected; full training routing remains |
 | MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | Final FP8 MLP connected to loss/backward; earlier training MLPs remain components; BF16 evaluation branches connected, including parallel layer 8 |
-| Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | FP8 training component; BF16 attention connected through the evaluation body; FA3/compiled-trainer parity unverified |
+| Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | Layer-10 FP8 attention connected to loss/backward; earlier training attention remains a component; BF16 evaluation body connected; FA3/compiled-trainer parity unverified |
 | Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Implemented in the BF16 evaluation body; training remains |
-| MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Four coefficient networks and evaluation routing connected; post-loop MUDD backward connected to the training head, enclosing body backward remains |
+| MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Four evaluation coefficient networks connected; last-layer and post-loop MUDD backward connected to loss with shared-source gradient joins; earlier body/gate-network backward remains |
 | Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Token/value gathers, signed resident-cache combination and smear connected; sparse row resolution/transport and backward remain |
 | Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | Rank-local update body implemented in the persistent worker; training schedules, gradient exchange and model integration remain |
 | Other optimizer state | Parameter-specific Adam rules; sparse touched-row exchange/update; value/n-gram cadence changes at step 336 | Not implemented |
@@ -1555,3 +1555,99 @@ slots 12/13 receive `dcoeff`. Slot gradients from the earlier layer-10 residual
 and value mixes must join them before the shared coefficient-network backward.
 The shared `norm(cache[7])` adjoints from attention and post-loop source 9 must
 also reach their original producer, alongside the earlier layer-8 use.
+
+## Connected last attention layer and coefficient backward
+
+`cuda/last_layer.cu` extends the connected final MLP through layer 10's attention
+and the 14-coefficient MUDD network. The network consumes cache[9], then supplies
+auxiliary values from cache[0]/cache[7]/cache[9] and two groups of layer-10 value
+embeddings; pre-attention residual mixing; post-attention residual/bigram mixing;
+and the last MLP's two coefficients. Its complete backward includes both network
+weights and bias. Attention uses the pinned layer role: six heads, QK/V width
+128, shifted stationary key channels, auxiliary values, a supplied head gate,
+no XSA and no folded post-lambda. Projection gains remain device inputs.
+
+The shared normalized cache[7] feeds FP8 QKV packing and the post-loop MUDD
+source. These two adjoints join before normalization backward. The cache[0],
+cache[7], cache[9] and layer-10 value adjoints also join their direct, attention,
+network and tail contributions before returning to the enclosing body. This is
+only this section's contribution: earlier consumers such as layer 8 still need
+to join when their backward is connected. The incoming head gate was generated
+by an earlier coefficient network; its returned gradient is not yet connected
+to that producer. The other external surfaces are cached activations, bigram
+values, weight caches, scales, rotary factors and sequence/window metadata.
+
+The graph has 83 phases and 44,183 tasks at 256 tokens/full vocabulary. Matrix
+tasks own 64x64 tiles, attention/normalization tasks own four token rows, and
+explicit multi-producer groups release shared gradient consumers. Independent
+weight gradients overlap input-gradient work in both persistent and CUDA-Graph
+controls. Many dependencies still wait for whole stages; this does not establish
+that the persistent schedule is faster or that the full model can train.
+
+The first four-block build passes independent cuBLAS/FP64 equations, cast/FP8
+layout checks, poisoned-buffer Graph and production replay, task visits and all
+four native sanitizers in `cuda-check-20260919T092702884912Z-ef056db5.log`.
+Fixtures cover 16/80/256 tokens, full vocabulary, one/17/528 workers, changed
+positive/negative/zero gains, zero inputs and zero network output weights. The
+ordinary ATen diagnostic remains limited to the post-loop tail; neither that
+diagnostic nor the new mathematical checks establish compiled-Torch/FA3 parity.
+
+On its H100 80GB, the initial 256-token event medians are 4.244304 ms persistent,
+3.648352 ms Graph and 3.616336 ms four-block Graph. The persistent worker uses
+128 registers with 32 spill-store bytes and 112 spill-load bytes, while both
+Graph dispatchers use 96 registers without spills. Its exact SASS contains 28
+LDL and eight STL instructions. This motivates the separate occupancy experiment
+below, rather than a claim that more fusion has produced a training speedup.
+
+The three-block occupancy experiment in
+`cuda-check-20260919T093102040686Z-0c17da1e` removes all stack/spills at 162
+registers. Its persistent median is 4.238496 ms versus 4.107440 ms for the
+four-block control on the same GPU. The samples overlap and do not support
+promoting three blocks; the current last-layer build retains four blocks.
+The experiment's source archive preserves the temporary three-block flags.
+
+The four-block baseline profile is
+`profile-20260919T093010465634Z-7eeac9af.tar.gz`: 25.00% achieved occupancy,
+0.20 eligible warps per scheduler, 85.58% cycles without an eligible warp,
+2.22% tensor-pipe activity and 2.99% DRAM throughput. Its diagnostic duration is
+4.17 ms. Sleeping accounts for 13.23 stall cycles per issued instruction,
+versus 4.31 for barriers and 3.97 for long scoreboards. Source sampling locates
+232,948 sleeping samples at the idle-loop back edge. Register-spill removal
+alone did not improve runtime. These observations suggest that task readiness
+and load latency need attention; they do not prove the idle delay is the cause.
+The worker still
+uses FP16 HMMA after FP8 conversion, not native FP8 WGMMA or tensor-core attention.
+
+The idle-delay comparison in `cuda-check-20260919T093548217106Z-e7f0f1ab`
+records 4.440992 ms with 64 ns versus 4.237296 ms with 1024 ns on the same H100.
+The shorter delay is rejected. The final default keeps four blocks and 1024 ns;
+`last_layer_idle64` and `--experiment=last_layer --ablate` retain the alternative.
+In this historical archive, `last_layer` is the temporary 64 ns candidate and
+`last_layer_control` is the original delay. The final source uses the clearer
+names above. The graph/arithmetic source is unchanged between the two builds.
+
+Both three-/four-block occupancy builds pass all four sanitizers in their
+paired experiment. The existing suffix and attention-layer regressions also
+pass all four in `cuda-check-20260919T092821407453Z-9698f3b3` and
+`cuda-check-20260919T092821407453Z-f4d1eaef`, respectively. The suffix still passes
+numerical/replay gates, but the expanded dispatcher now has register spills in
+its build too; do not carry forward the previous zero-spill claim. These separate
+regressions are not used to claim a performance gain.
+
+The final default passes ordinary checks and all four native sanitizers in
+`cuda-check-20260919T093948040198Z-9eef376e.log`. Its ordinary H100 event medians
+are 4.249024 ms persistent, 3.671392 ms Graph and 3.649888 ms four-block Graph,
+so it remains 16.4% slower than the faster same-work control. No optimization
+claim is made for the rejected occupancy or sleep changes. Compiler resources
+remain 128 registers, 32800 shared bytes, a 32-byte stack, 32 spill-store bytes
+and 112 spill-load bytes in the production last-layer worker.
+
+`last-layer-contract-20260919.log` verifies all 44 CUDA/C++/header/Makefile hashes
+against the final source archive, remote upload and current files; Python glue
+and the frontier lock also match. Every intermediate run's archive independently
+matches its logged remote source hashes. The pinned reference hash check and
+Python syntax check pass. Full preceding-layer backward, optimizer/scale/cache
+updates, distributed execution and canonical validation remain incomplete, and
+no complete training time, convergence result or leaderboard rank is available.
+Both idle-delay builds also pass all four native sanitizers in the paired run;
+the rejected setting is slower, not numerically invalid.

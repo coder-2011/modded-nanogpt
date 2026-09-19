@@ -324,6 +324,7 @@ void check_suffix(int tokens, int vocabulary, int workers, int steps, bool timin
     }
 }
 
+#ifndef NANO_TRAINING_LAST_LAYER
 int main(int argc, char **argv) {
     try {
         device_info(); bool quick = false, profile = false, aten = true;
@@ -352,3 +353,4 @@ int main(int argc, char **argv) {
         puts("PASS: final FP8 MLP, shared normalized-input adjoints, MUDD and head connected; full body and compiled parity remain"); return 0;
     } catch (const std::exception &e) { fprintf(stderr, "FAIL: %s\n", e.what()); return 1; }
 }
+#endif

@@ -45,4 +45,6 @@ cuda/tail
 cuda/tail_reference.o
 cuda/tail_reference_probe
 cuda/suffix
+cuda/last_layer
+cuda/last_layer_idle64
 cuda/training_loss_reference.o

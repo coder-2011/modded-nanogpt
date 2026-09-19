@@ -22,7 +22,7 @@ enum class TaskKind : int {
     matmul, attention_forward, attention_dq, attention_dkv, qkv_forward, qkv_backward, bf16_matmul, anvil,
     layer_setup, attention_post, projection_gradient, residual_mix, residual_norm, gate_transform, embedding_read, evaluation_loss,
     loss_partial, loss_reduce, loss_gradient, head_setup, head_input, tail_backward,
-    activation_pack, mlp_setup, gradient_cast
+    activation_pack, mlp_setup, gradient_cast, gradient_sum, network_backward
 };
 
 __device__ __forceinline__ float attention_sum(float x) {

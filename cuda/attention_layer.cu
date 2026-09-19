@@ -444,6 +444,7 @@ void benchmark_layer(int d, int v, bool paired, bool profile = false, bool evalu
 #include "model_evaluation_check.cuh"
 #endif
 
+#ifndef NANO_EMBED_ATTENTION_DRIVER
 int main(int argc, char **argv) {
     try {
         device_info();
@@ -498,3 +499,4 @@ int main(int argc, char **argv) {
         return 1;
     }
 }
+#endif

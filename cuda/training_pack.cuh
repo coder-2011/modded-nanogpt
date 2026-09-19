@@ -39,11 +39,65 @@ struct GradientCast {
     const float *input;
     __nv_bfloat16 *output;
     int elements, output_stride;
+    int input_stride = 1;
+    float scale = 1;
+    bool round_input = false;
+    const __nv_bfloat16 *rounded_input = nullptr;
 };
 
 __device__ __forceinline__ void gradient_cast(const GradientCast &op, int row) {
     int index = row * 128 + threadIdx.x;
-    if (index < op.elements) op.output[int64_t(index) * op.output_stride] = __float2bfloat16_rn(op.input[index]);
+    if (index < op.elements) {
+        int64_t source = int64_t(index) * op.input_stride;
+        float value = op.rounded_input ? float(op.rounded_input[source]) : op.input[source];
+        if (op.round_input) value = float(__float2bfloat16_rn(value));
+        op.output[int64_t(index) * op.output_stride] = __float2bfloat16_rn(value * op.scale);
+    }
+}
+
+struct GradientSum {
+    const __nv_bfloat16 *input[6];
+    __nv_bfloat16 *output;
+    int elements, count;
+};
+
+__device__ __forceinline__ void gradient_sum(const GradientSum &op, int row) {
+    int index = row * 128 + threadIdx.x;
+    if (index < op.elements) {
+        float sum = 0;
+        for (int i = 0; i < op.count; ++i) sum += float(op.input[i][index]);
+        op.output[index] = __float2bfloat16_rn(sum);
+    }
+}
+
+struct NetworkBackward {
+    const __nv_bfloat16 *pre, *dh, *dmu;
+    __nv_bfloat16 *dpre, *dbias;
+    int tokens, coefficients;
+    float *raw_dpre = nullptr;
+};
+
+__device__ __forceinline__ void network_backward(const NetworkBackward &op, int row, bool bias) {
+    int lane = threadIdx.x % 32, warp = threadIdx.x / 32;
+    if (bias) {
+        for (int col = warp; col < op.coefficients; col += 4) {
+            float sum = 0;
+            for (int t = lane; t < op.tokens; t += 32) sum += float(op.dmu[int64_t(t) * op.coefficients + col]);
+#pragma unroll
+            for (int offset = 16; offset; offset >>= 1) sum += __shfl_xor_sync(0xffffffff, sum, offset);
+            if (!lane) op.dbias[col] = __float2bfloat16_rn(sum);
+        }
+    } else {
+        int token = row * 4 + warp;
+        if (token >= op.tokens) return;
+        for (int col = lane; col < 64; col += 32) {
+            int64_t i = int64_t(token) * 64 + col; float x = float(op.pre[i]);
+            float derivative = 0.5f * (1.0f + erff(x * 0.7071067811865475f)) + x * 0.3989422804014327f * expf(-0.5f * x * x);
+            float value = float(op.dh[i]) * derivative;
+            if (op.raw_dpre) op.raw_dpre[i] = value;
+            op.dpre[i] = __float2bfloat16_rn(value);
+        }
+    }
 }
 
 } // namespace nano

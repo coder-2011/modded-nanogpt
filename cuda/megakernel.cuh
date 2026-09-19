@@ -16,6 +16,10 @@
 #include "tail_backward.cuh"
 #include "training_pack.cuh"
 
+#ifndef NANO_IDLE_NS
+#define NANO_IDLE_NS 1024
+#endif
+
 namespace nano {
 
 #ifndef NANO_ANVIL_IDLE_NS
@@ -172,6 +176,8 @@ struct Graph {
     const ActivationPack *activation_packs = nullptr;
     const MLPSetup *mlp_setups = nullptr;
     const GradientCast *gradient_casts = nullptr;
+    const GradientSum *gradient_sums = nullptr;
+    const NetworkBackward *network_backwards = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -542,7 +548,7 @@ __launch_bounds__(threads)
         if (task_id == -2)
             return;
         if (task_id == -1) {
-            __nanosleep(WithAnvil ? NANO_ANVIL_IDLE_NS : 1024);
+            __nanosleep(WithAnvil ? NANO_ANVIL_IDLE_NS : NANO_IDLE_NS);
             continue;
         }
         const Task task = g.tasks[task_id];
@@ -558,6 +564,10 @@ __launch_bounds__(threads)
             mlp_setup(g.mlp_setups[task.op]);
         } else if (WithLoss && WithRouting && task.kind == TaskKind::gradient_cast) {
             gradient_cast(g.gradient_casts[task.op], task.row);
+        } else if (WithLoss && WithRouting && task.kind == TaskKind::gradient_sum) {
+            gradient_sum(g.gradient_sums[task.op], task.row);
+        } else if (WithLoss && WithRouting && task.kind == TaskKind::network_backward) {
+            network_backward(g.network_backwards[task.op], task.row, task.col != 0);
         } else if (WithLoss && WithRouting && task.kind == TaskKind::tail_backward) {
             tail_backward(g.tail_backward_ops[task.op], task.row, TailStep(task.col));
         } else if (WithLoss && task.kind == TaskKind::head_setup) {
