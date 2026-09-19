@@ -80,6 +80,8 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
     if variant:
         binary = "validate_" + variant
     flags = [] if experiment else (["--main-shapes"] if main_shapes else []) + [f"--gradient-chunk={gradient_chunk}"]
+    if experiment == "body" and main_shapes:
+        flags.append("--main-shapes")
     run = [str(root / binary)] + flags
     if profile:
         run = [str(root / binary), "--profile", f"--gradient-chunk={gradient_chunk}"]
@@ -164,7 +166,7 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
             ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
         subprocess.run(["nvcc"] + build_flags + ["--ptx",
                         str(root / ("attention_layer.cu" if experiment in {"layer", "evaluation"} else
-                                    experiment + ".cu" if experiment in {"attention", "anvil"} else "validate.cu")),
+                                    experiment + ".cu" if experiment in {"attention", "anvil", "routing"} else "validate.cu")),
                         "-o", str(ptx)], check=True)
         artifacts[ptx.name] = ptx.read_bytes()
         command = ["ncu", "--set", "full", "--clock-control", "none", "--cache-control", "none",
@@ -200,13 +202,13 @@ if "--cuda-check" in sys.argv:
     if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
         raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
-    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation"}:
+    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation", "routing", "body"}:
         raise SystemExit("Unknown native experiment")
     if experiment and (wgmma or (ablate and experiment not in {"bf16", "anvil", "layer"})):
         raise SystemExit("Native experiments do not use --ablate or --wgmma")
     if experiment == "tokenizer" and sanitize:
         raise SystemExit("The tokenizer experiment is CPU-only")
-    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation"} or wgmma or ablate):
+    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation", "routing"} or wgmma or ablate):
         raise SystemExit("--profile targets the native MLP, attention, attention layer or ANVIL megakernel")
     if (variant or kernel_compare) and (experiment or wgmma or ablate):
         raise SystemExit("Kernel variants require the native MMA path")

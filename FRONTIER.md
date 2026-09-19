@@ -52,11 +52,11 @@ constants and schedule constructor produce the values below.
 
 | Surface | PR #360 contract | Native status |
 | --- | --- | --- |
-| Residual stream | Width 768, eleven numbered layers, six heads | Dimensions pinned |
-| MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | Individual FP8 training branch and BF16 evaluation forward implemented; full routing absent |
-| Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | Connected FP8 training forward/backward and BF16 evaluation forward, including projections and gates; full routing remains; FA3/compiled-trainer parity unverified |
-| Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Not implemented |
-| MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Not implemented |
+| Residual stream | Width 768, eleven numbered layers, six heads | Eleven-layer BF16 evaluation body connected; full training routing remains |
+| MLP | Hidden width 2816, bank order 0,1,2,3,4,5,6,8,11,9,10; layer 8 has two parallel MLPs sharing its normalized input | FP8 training component; BF16 branches connected in the evaluation body, including parallel layer 8 |
+| Attention | Active at layers 0,1,2,3,5,8,10; QK width 128 at 3/10 and 64 elsewhere; value width 64 at 1/8 and 128 elsewhere | FP8 training component; BF16 attention connected through the evaluation body; FA3/compiled-trainer parity unverified |
+| Skipped layer | Layer 7 omits both sublayers but retains residual scaling/injection and saved state; layers 4/9 omit attention; layer 6 already lacks attention | Implemented in the BF16 evaluation body; training remains |
+| MUDD and gates | Grouped post-loop mixing, learned gates, exact injection sites and saved-activation reuse | Evaluation mixing/routing implemented; coefficients, gates and ordinary auxiliary values are prepared externally |
 | Embeddings | 84,602,880 × 768 logical learned n-gram table, split into bigram/trigram halves; eight shards, 8192 sign rows; four value-embedding planes | Not implemented |
 | Matrix optimizer | ANVIL twin velocity rails, six spectral maps, per-bank grouping/annealing, terminal blends and norm restoration | Rank-local update body implemented in the persistent worker; training schedules, gradient exchange and model integration remain |
 | Other optimizer state | Parameter-specific Adam rules; sparse touched-row exchange/update; value/n-gram cadence changes at step 336 | Not implemented |
@@ -726,3 +726,101 @@ match the CUDA/build files, Python glue and frontier lock exactly. The source
 hash check and local Python/shell syntax checks pass. This checkpoint adds
 evaluation components and faithful role coverage; the full parent routing,
 loss, optimizer integration and distributed training remain unfinished.
+
+## Connected BF16 evaluation body and residual backward primitives
+
+`cuda/model_evaluation.cuh` connects the actual eleven numbered layer positions
+inside one persistent worker. Its 108 stages contain seven attention calls,
+eleven MLP calls, 38 BF16 products, 17 normalizations and 27 weighted mixes.
+Existing attention stage dependencies and each MLP's row-local dependencies
+survive composition; only the previous component's leaves release the next
+component's roots. No host launch is needed between body operations.
+
+The routing preserves the initial n-gram injection and cache 0, the post-layer-3
+and post-layer-7 snapshots, the gated layer-6 skip, and layer 7's residual-only
+path. Layers 4 and 9 omit attention. Layers 8 and 10 share one normalization of
+cache 7; layer 8's two MLPs share one normalized input and use bank slots 8/11.
+Layer 10 mixes its incoming stream and auxiliary V using the fourteen supplied
+MUDD coefficients, then applies dynamic attention/MLP residual coefficients.
+The terminal mix uses the exact ten sources and twelve channel groups, followed
+by RMS normalization. Tests assert shared allocation identities and the expected
+operator counts, in addition to checking the executable graph.
+
+This **is not the full native model**. Its inputs include prepared normalized
+embeddings, n-gram/value tensors, ordinary auxiliary values, compact attention
+gates, packed injection gates, skip coefficients, MUDD coefficients and rotary
+factors. The networks and lookups producing those tensors are not in this graph.
+It also lacks the output head/loss, full-body backward, optimizer and distributed
+execution. The test changes prepared tensors between replays; it does not run
+the pinned compiled Torch model or prove a matching training trajectory.
+
+`cuda/routing.cuh` adds weighted mixing and RMS normalization forward/backward
+to the same worker. Four warps own four 768-channel rows. RMS reductions use
+FP32 and epsilon 2^-23; mixes support scalar, token, pair, head and twelve-group
+coefficient views. Outputs and source gradients round to BF16. Coefficient
+adjoints remain FP32 per-token/group partials: future consumers must aggregate
+shared-source contributions and apply the owning parameter's final cast.
+The backward primitives are validated independently; the body currently wires
+forward tasks only. Mix arithmetic preserves source order with FP32 FMA and
+BF16 output stores; exact pinned compiler materialization remains unverified.
+
+The routing suite covers 17-token partial worker rows, groups 1/2/6/12, up to
+11 sources, zero/tiny/large normalization inputs, changing/zero coefficients,
+poisoned replay and audited task visits. FP64 references check reductions and
+source/coefficient adjoints; finite differences additionally check the smooth
+normalization arithmetic before BF16 output rounding. The existing 2e-4
+relative-L2 or 2e-5 max-absolute gate is unchanged. An initial build failed due to
+missing standard headers and private BF16 representation access; the failed log
+is retained as `cuda-check-20260919T061420163853Z-06249c36`.
+
+The final routing suite passes all four sanitizers in
+`cuda-check-20260919T062426750087Z-e5900318`. Its diagnostic six-stage graph at
+16384 tokens takes 4.363872 ms persistent + reset versus 1.643104 ms for the faster
+native CUDA Graph on H100 80GB HBM3. Both include diagnostic output stores. This
+is a routing component regression relative to the control, not a fusion win.
+The Graph dispatcher needs only 40 registers, while the combined persistent
+worker retains its 128-register, 32800-shared-byte resource footprint.
+
+`profile-20260919T062427979770Z-102e34fd.tar.gz` retains the routing PTX, SASS and
+NCU report. The production worker has no spill in this build (the audited worker
+has a four-byte spill). Achieved occupancy is 24.98%, with 0.20 eligible warps per
+scheduler. Long-scoreboard stalls account for 14.75 of 22.32 warp cycles per
+issued instruction, barriers for 1.90 and sleeping for 0.45. The profile duration
+of 4.38 ms is diagnostic; ordinary event samples above establish the comparison.
+
+The next integration step is the four coefficient-network calls, not a change to
+the recipe: pre-gates from x0, post-gates from the stream entering layer 4,
+14 last-layer coefficients from the stream entering layer 10, and post-loop
+coefficients/group deltas from the final layer output. Their hidden width is 64
+with exact GELU, BF16 matrix weights and the pinned bias/scale behavior. The
+post-loop scalar and twelve-group branches share that hidden activation.
+Ordinary auxiliary-value gates must also be generated from the matching value
+planes and normalized first six channels. The current body caller is responsible
+for those consistent inputs and the unit extra O multiplier at layer 10.
+
+The final small-body suite is
+`cuda-check-20260919T062426385243Z-484251f0`: 16 tokens with one worker and three
+changed-input executions, and 80 tokens with 17 workers and two executions.
+It passes the numerical/boundary checks and all four sanitizers (sanitizers use
+the 16-token case). Shared training attention passes all four in
+`cuda-check-20260919T062447421052Z-670691e9`; the FP8 training MLP, including its
+main shapes, passes all four in `cuda-check-20260919T062520840276Z-fecef6bf`.
+The earlier body snapshot `cuda-check-20260919T062132763974Z-141d1969` also
+passes, but predates the explicit role checks and 128/384 window fixtures.
+
+`--experiment=body --main-shapes` additionally passes at **16384 tokens and 528
+worker blocks**, with 921607 tasks, in
+`cuda-check-20260919T063010157922Z-21270ed6`. All body products, normalizations and
+mixes pass their independent arithmetic checks, and all retained BF16 boundaries
+match bitwise across the audited/production worker and both Graph controls.
+The fixture has three synthetic documents of lengths 4096/4096/8192 and uses
+128/384 attention windows; it tests the batch size and graph, not canonical
+training packing or held-out evaluation. This run records correctness, not body
+latency, and does not extend the sanitizer claim to the large case.
+
+All 30 files in that final source archive match the committed sources exactly.
+Relative to the final small-case sanitizer archive, only the Python launcher,
+`attention_layer.cu` argument handling, and the body test driver's opt-in large
+case changed; the production CUDA math and graph planner are identical. The
+pinned reference hash check and Python/shell syntax checks pass. PR #360 was
+rechecked during this work and remains open at the same approved source commit.

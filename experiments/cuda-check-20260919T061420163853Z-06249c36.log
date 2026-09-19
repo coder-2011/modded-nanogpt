@@ -1,0 +1,101 @@
+sha256 ecba36a5f605f736cfcc0d67a5a3945ca0f479c8820a1e7a57d63b8c05ea3ede Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 8c68a93307bfbd29b85a5f8f38a39a37e8bbb0bb89fb0282eebce7f9b74f0fca attention.cuh
+sha256 b9d3edc8a1b0896fb853e1411606d4eb6059fd0e1d406dfe73743f6069b2ab6e attention_layer.cu
+sha256 5e23df96de295a12c6770293bb3724e58ffee06f6310f0dbf43293c5c377ffac attention_layer.cuh
+sha256 e43b134f524130c5fcc5b7ea3dfca072fed7dfcb72ff0957dbb0bd2e7d4f7733 attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 a3be2ab6c64f030ca01f7d30c6a6bb7604b3bbe62257ba0aad9bb72bca232c76 bench.cuh
+sha256 a1239425b438fa85c0628a25decee76f394162bc6c3aae2cfa03cc6e5fd1c3d9 bf16.cu
+sha256 a221a6525b5565df618f066c3a4267b1702a9bef96f183e104e7974f0ecf7e3a bf16_gemm.cuh
+sha256 d4b3c092f09347b8d6cefd89d84d64bc7bea040a24b64c0dd8614fbfe7c8b621 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 cc6af53d8c683653fe034a8f4b8e5068dbb6bb43e9d6815d22cc532e0107fb1f megakernel.cuh
+sha256 650935fbe0799cec650ebe91331f83e58b23a3461c0a9df0f01a27a6dcebaec7 mlp_evaluation.cuh
+sha256 abc976abdeaa14db113f1e1c880af4aa6b3399bb04b70e1f3718ac8abbc3d888 mlp_evaluation_check.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 3ca1ef15cce9de4dc49f88307c57911ad737f877f43b9781b5419efafb171e5b routing.cu
+sha256 ca484b3e8d99319779949171f011f533443b6cd387ad8d5459fdb676e072f33a routing.cuh
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 06:14:25 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:5B:00.0 Off |                    0 |
+| N/A   45C    P0             76W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda routing
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 -DNANO_COOP_PUBLISH=1 routing.cu -o routing
+routing.cu(30): error: namespace "std" has no member "mt19937"
+          std::mt19937 rng(3029 + step * 97 + t);
+               ^
+
+routing.cu(31): error: namespace "std" has no member "normal_distribution"
+          std::normal_distribution<float> normal;
+               ^
+
+routing.cu(31): error: type name is not allowed
+          std::normal_distribution<float> normal;
+                                   ^
+
+routing.cu(31): error: identifier "normal" is undefined
+          std::normal_distribution<float> normal;
+                                          ^
+
+routing.cu(198): error: member "__nv_bfloat16::__x" (declared at line 4437 of /usr/local/cuda/bin/../targets/x86_64-linux/include/cuda_bf16.h) is inaccessible
+          if (actual[i].__x != bf16(raw[i]).__x) throw std::runtime_error("routing BF16 boundary mismatch");
+                        ^
+
+routing.cu(198): error: member "__nv_bfloat16::__x" (declared at line 4437 of /usr/local/cuda/bin/../targets/x86_64-linux/include/cuda_bf16.h) is inaccessible
+          if (actual[i].__x != bf16(raw[i]).__x) throw std::runtime_error("routing BF16 boundary mismatch");
+                                            ^
+
+routing.cu(240): error: member "__nv_bfloat16::__x" (declared at line 4437 of /usr/local/cuda/bin/../targets/x86_64-linux/include/cuda_bf16.h) is inaccessible
+                  if (gradient[i].__x != bf16(float(weight) * float(dy[i])).__x)
+                                  ^
+
+routing.cu(240): error: member "__nv_bfloat16::__x" (declared at line 4437 of /usr/local/cuda/bin/../targets/x86_64-linux/include/cuda_bf16.h) is inaccessible
+                  if (gradient[i].__x != bf16(float(weight) * float(dy[i])).__x)
+                                                                            ^
+
+routing.cu(266): error: namespace "std" has no member "memcmp"
+              if (std::memcmp(values.data(), outputs[i++].data(), values.size() * sizeof(bf16)))
+                       ^
+
+routing.cu(272): error: namespace "std" has no member "memcmp"
+              if (std::memcmp(values.data(), coefficients[i++].data(), values.size() * sizeof(float)))
+                       ^
+
+10 errors detected in the compilation of "routing.cu".
+make: *** [Makefile:60: routing] Error 2
+make: Leaving directory '/workspace/cuda'

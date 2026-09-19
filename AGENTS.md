@@ -99,6 +99,21 @@ A full-model result requires forward, loss, backward, optimizer, scale updates a
 distributed communication. The six-GEMM MLP and attention graphs are components;
 both still accept externally supplied output gradients.
 
+`--experiment=body --sanitize` runs the connected eleven-layer BF16 evaluation
+body: seven attention calls, eleven MLP calls, residual/skip routing, shared
+layer-8/10 normalization, parallel layer-8 MLPs and post-loop MUDD mixing. It
+accepts prepared normalized embeddings, n-gram/value tensors, gates, auxiliary
+values, MUDD coefficients and rotary factors. Their producers, loss and training
+integration are still missing. Do not describe this body as the full native model.
+Add `--main-shapes` for the 16384-token body check. It uses synthetic documents
+and checks arithmetic/replay, not canonical validation or end-to-end timing.
+`--experiment=routing --sanitize` checks weighted mixing and RMS normalization
+forward/backward, including FP64 references and normalization finite differences.
+Coefficient adjoints are unrounded per-token/group partials; their consumers own
+fan-in reduction and final parameter casts. `--experiment=routing --profile`
+profiles these operations in the combined worker. Its component timing includes
+diagnostic outputs and is not a whole-model timing.
+
 Use `--main-shapes --gradient-chunk=1024 --ablate --sanitize` with the command
 above to check ordered gradient chunks and compare operand-stage sizes, FIFO,
 unsplit gradients, and 4096-token chunks on the same GPU. Preserve the exact

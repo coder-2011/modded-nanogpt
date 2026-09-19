@@ -167,6 +167,13 @@ template <int MinimumBlocks>
 __global__ __launch_bounds__(128, MinimumBlocks) void staged_layer(Graph g, int begin) {
     __shared__ __align__(1024) fp8 scratch[bf16_scratch_bytes];
     const Task task = g.tasks[begin + blockIdx.x];
+#ifdef NANO_EVALUATION_BODY
+    if (task.kind == TaskKind::residual_mix) {
+        residual_mix_forward(g.residual_mix[task.op], task.row);
+    } else if (task.kind == TaskKind::residual_norm) {
+        residual_norm(g.residual_norm[task.op], task.row, false);
+    } else
+#endif
     if (task.kind == TaskKind::layer_setup) {
         const AttentionLayerSetup op = g.layer_setup[task.op]; setup_attention_layer(op);
     } else if (task.kind == TaskKind::attention_post) {
@@ -427,6 +434,9 @@ void benchmark_layer(int d, int v, bool paired, bool profile = false, bool evalu
 #ifdef NANO_EVALUATION_ONLY
 #include "mlp_evaluation_check.cuh"
 #endif
+#ifdef NANO_EVALUATION_BODY
+#include "model_evaluation_check.cuh"
+#endif
 
 int main(int argc, char **argv) {
     try {
@@ -436,13 +446,18 @@ int main(int argc, char **argv) {
 #else
         constexpr bool evaluation = false;
 #endif
-        bool quick = false, profile = false;
+        bool quick = false, profile = false, main_shapes = false;
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg == "--quick") quick = true;
             else if (arg == "--profile") profile = true;
+            else if (arg == "--main-shapes") main_shapes = true;
             else if (arg.rfind("--gradient-chunk=", 0) != 0) throw std::runtime_error("unknown argument: " + arg);
         }
+#ifdef NANO_EVALUATION_BODY
+        if (profile) throw std::runtime_error("evaluation body profiling is not wired yet");
+        return evaluation_body_main(quick, main_shapes);
+#endif
         if (profile) { benchmark_layer(128, 128, false, true, evaluation); return 0; }
         int steps = quick ? 2 : 3;
         // Layers 0 and 5 share the same attention-call configuration.

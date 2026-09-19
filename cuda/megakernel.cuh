@@ -9,6 +9,7 @@
 #include "bf16_gemm.cuh"
 #include "anvil.cuh"
 #include "attention_post.cuh"
+#include "routing.cuh"
 
 namespace nano {
 
@@ -122,6 +123,8 @@ struct Graph {
     const AttentionLayerSetup *layer_setup = nullptr;
     const AttentionPost *attention_post = nullptr;
     const ProjectionGradient *projection_gradient = nullptr;
+    const ResidualMix *residual_mix = nullptr;
+    const ResidualNorm *residual_norm = nullptr;
 };
 
 __device__ __forceinline__ int acquire(const int *p) {
@@ -448,7 +451,7 @@ __device__ __forceinline__ void execute_tile(const Matmul &op, const Task &task,
 }
 
 template <bool Audited = false, bool Full = false, bool WithAttention = false, bool WithBF16 = false,
-          bool WithAnvil = false, bool WithProjection = false>
+          bool WithAnvil = false, bool WithProjection = false, bool WithRouting = false>
 __global__
 #ifdef NANO_MIN_BLOCKS
 __launch_bounds__(threads, NANO_MIN_BLOCKS)
@@ -486,7 +489,13 @@ __launch_bounds__(threads)
                 acquire(g.audit + g.task_count) < g.root_count)
                 atomicAdd(g.audit + g.task_count + 1, 1);
         }
-        if (WithProjection && task.kind == TaskKind::layer_setup) {
+        if (WithRouting && task.kind == TaskKind::residual_mix) {
+            const auto &op = g.residual_mix[task.op];
+            if (task.k_begin) residual_mix_backward(op, task.row, task.col);
+            else residual_mix_forward(op, task.row);
+        } else if (WithRouting && task.kind == TaskKind::residual_norm) {
+            residual_norm(g.residual_norm[task.op], task.row, task.k_begin != 0);
+        } else if (WithProjection && task.kind == TaskKind::layer_setup) {
             const AttentionLayerSetup op = g.layer_setup[task.op];
             setup_attention_layer(op);
         } else if (WithProjection && task.kind == TaskKind::attention_post) {
