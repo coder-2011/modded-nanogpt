@@ -25,6 +25,23 @@ static_assert(k_tile == 32 || k_tile == 64 || k_tile == 128);
 using fp8 = __nv_fp8_e4m3;
 using bf16 = __nv_bfloat16;
 
+// FP8 buffers carry raw bytes; gradient descriptors select E5M2 interpretation.
+__host__ __device__ inline fp8 encode_fp8(float value, bool e5 = false) {
+    if (!e5)
+        return fp8(value);
+    fp8 out;
+    out.__x = __nv_fp8_e5m2(value).__x;
+    return out;
+}
+
+__host__ __device__ inline float decode_fp8(fp8 value, bool e5 = false) {
+    if (!e5)
+        return float(value);
+    __nv_fp8_e5m2 out;
+    out.__x = value.__x;
+    return float(out);
+}
+
 enum class Epilogue : int { linear, relu_square, relu_backward };
 
 // A is logically M x K, B is logically N x K. Strides describe both layouts.
@@ -38,6 +55,7 @@ struct Matmul {
     fp8 *quantized_t = nullptr;
     float *raw = nullptr;
     float *accumulation = nullptr;
+    bool a_e5 = false, b_e5 = false, quantized_e5 = false;
 };
 
 struct Task {
@@ -135,7 +153,24 @@ __device__ __forceinline__ void signal(Graph g, int id) {
     }
 }
 
-__device__ __forceinline__ void mma(float *d, const uint32_t *a, const uint32_t *b) {
+__device__ __forceinline__ void mma(float *d, const uint32_t *a, const uint32_t *b,
+                                    bool a_e5 = false, bool b_e5 = false) {
+#ifdef NANO_FRONTIER
+    if (a_e5) {
+        asm volatile("mma.sync.aligned.m16n8k32.row.col.f32.e5m2.e4m3.f32 "
+                     "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};"
+                     : "+f"(d[0]), "+f"(d[1]), "+f"(d[2]), "+f"(d[3])
+                     : "r"(a[0]), "r"(a[1]), "r"(a[2]), "r"(a[3]), "r"(b[0]), "r"(b[1]));
+        return;
+    }
+    if (b_e5) {
+        asm volatile("mma.sync.aligned.m16n8k32.row.col.f32.e4m3.e5m2.f32 "
+                     "{%0,%1,%2,%3}, {%4,%5,%6,%7}, {%8,%9}, {%0,%1,%2,%3};"
+                     : "+f"(d[0]), "+f"(d[1]), "+f"(d[2]), "+f"(d[3])
+                     : "r"(a[0]), "r"(a[1]), "r"(a[2]), "r"(a[3]), "r"(b[0]), "r"(b[1]));
+        return;
+    }
+#endif
 #ifdef NANO_DIRECT_ACCUM
     uint32_t ah[8], bh[4];
 #pragma unroll
@@ -275,7 +310,7 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                         int k = ki + lane % 4 * 4 + j * 16;
                         b[j] = *reinterpret_cast<const uint32_t *>(sb + operand_index(r, k));
                     }
-                    mma(acc[mi][ni], a, b);
+                    mma(acc[mi][ni], a, b, op.a_e5, op.b_e5);
                 }
             }
         }
@@ -302,14 +337,17 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                         x = fmaxf(round_bf16(x), 0.0f);
                         x = round_bf16(x * x);
                     } else if (op.epilogue == Epilogue::relu_backward) {
-                        float relu = round_bf16(sqrtf(float(op.post[index]) * op.post_scale));
-                        x = round_bf16(2.0f * round_bf16(x) * relu);
+                        float relu = sqrtf(float(op.post[index]) * op.post_scale);
+                        if (op.quantized_e5)
+                            x = round_bf16(2.0f * x * relu);
+                        else
+                            x = round_bf16(2.0f * round_bf16(x) * round_bf16(relu));
                     }
                     if (op.output)
                         op.output[index] = __float2bfloat16_rn(x);
 #ifdef NANO_REUSE_QUANT
                     if (op.quantized || op.quantized_t) {
-                        const fp8 q(x / op.output_scale);
+                        const fp8 q = encode_fp8(x / op.output_scale, op.quantized_e5);
                         if (op.quantized)
                             op.quantized[index] = q;
                         if (op.quantized_t)
@@ -317,10 +355,10 @@ __device__ __forceinline__ void matmul_tile(const Matmul &op, const Task &task, 
                     }
 #else
                     if (op.quantized)
-                        op.quantized[index] = fp8(x / op.output_scale);
+                        op.quantized[index] = encode_fp8(x / op.output_scale, op.quantized_e5);
                     if (op.quantized_t)
                         scratch[(r - row0) * transpose_stride + c - col0] =
-                            fp8(x / op.output_scale);
+                            encode_fp8(x / op.output_scale, op.quantized_e5);
 #endif
                 }
             }

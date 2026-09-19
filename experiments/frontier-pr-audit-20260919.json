@@ -1,0 +1,161 @@
+[
+  {
+    "number": 367,
+    "title": "Track 1: Longest exact-match (74.2s -> 47.2s)",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/367",
+    "head": "3e92b0e28293dcb184197da1a0ce1f543e84f76c",
+    "state": "OPEN",
+    "maintainer_comments": []
+  },
+  {
+    "number": 366,
+    "title": "Track 1: Hashed n-gram rows from host RAM (-6.16s)",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/366",
+    "head": "8e477b5534189d2aadad9bd2271a17248fb5bdf1",
+    "state": "OPEN",
+    "maintainer_comments": []
+  },
+  {
+    "number": 363,
+    "title": "Track 1: FP8 MLP input gradient and kernel tuning by AI System Warpscale (-0.45s)",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/363",
+    "head": "28dd1828ceb2e50a748b2af6a14b478c50faa558",
+    "state": "OPEN",
+    "maintainer_comments": []
+  },
+  {
+    "number": 360,
+    "title": "New Record: 0.665 minutes (39.9 seconds): ANVIL2, Sampled-softmax, New Embedding Table, Full-stack fp8 (-34.0s, -46% same hardware)",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/360",
+    "head": "c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7",
+    "state": "OPEN",
+    "maintainer_comments": [
+      {
+        "author": "KellerJordan",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/360#issuecomment-5565930470",
+        "body": "Personally I would consider all of the changes described here to be 100% legitimate. Both @ClassicLarry and I have the power to accept new records\u2014 for me to accept I\u2019d need to first reproduce this result myself, & I haven\u2019t had time to do so yet."
+      },
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/360#issuecomment-5566828075",
+        "body": "I haven't gone through all the specifics yet, but at a high level I agree it looks great. Hoping to find a block of time soon to look at more closely and refactor the code into something easier to follow, now that we are jumping to 5k+ lines. I'd be curious to understand where the intuition came from on Sampled-softmax training loss and Embeddings, hashed n-gram table. And if any of the results are a joint effort across Social Physics Lab or Autoresearch harness on Codex (in the past groups have set records then after the fact revealed a larger initiative behind it, which is totally fine too). In any case, very impressive!\r\n\r\n"
+      },
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/360#issuecomment-5726720656",
+        "body": "Ok this one is up next. I'll try to merge it in with the latest main, going piece by piece to validate the impact. Hopefully later this weekend. and I'll message you to chat!"
+      }
+    ]
+  },
+  {
+    "number": 348,
+    "title": "Track 1: Topological Layer Dropout (-0.2, +8 steps)",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/348",
+    "head": "8b6a1d72f2e54e63d1c4810060e7b62be1ac0672",
+    "state": "OPEN",
+    "maintainer_comments": [
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/348#issuecomment-5155137734",
+        "body": "Its pretty neat you got this to improve loss. I think the amount of code and conceptual complexity here is not worth the 0.2s gain at this time. Will leave it in the open PR list, so if the repo ever stalls out this can get reconsidered, or perhaps it inspires some follow ons."
+      }
+    ]
+  },
+  {
+    "number": 347,
+    "title": "Track 1: terminal-blended readout TailEMA (1.261 min, -0.895%)",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/347",
+    "head": "fdc7d6eaa3b0525090b03b338f5af8b8f053f075",
+    "state": "OPEN",
+    "maintainer_comments": [
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/347#issuecomment-5155097208",
+        "body": "Cool. Could you please rebase on main, and simplify the PR to just a couple logs and train.py?"
+      }
+    ]
+  },
+  {
+    "number": 346,
+    "title": "New record: 1384 steps / 1.312 min \u2014 Ember optimizer on embedding tables + earlier context window extension",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/346",
+    "head": "6eee389d3176dfbb4c918c6a1ee4d4959f6094ab",
+    "state": "OPEN",
+    "maintainer_comments": [
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/346#issuecomment-5725579415",
+        "body": "I am going to pass on this PR for now. With only 0.28s gain for a new optimizer, higher loss (requires more than 10 runs to hit p value <0.01), and based on an older branch that would need to be revalidated. The PR drops 6 steps to get the speedup, and its not super clear to me I can't get a similar-ish speedup from dropping 6 steps on the baseline and taking a slightly higher loss. Will come back and revisit at a future time once the open PRs are merged to see if there's a cleaner integration point with bigger wins."
+      }
+    ]
+  },
+  {
+    "number": 336,
+    "title": "Improve shifted keys",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/336",
+    "head": "b2ba9839c62eb717cd0b6ad87686ea87d4a9ef2c",
+    "state": "OPEN",
+    "maintainer_comments": [
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/336#issuecomment-5154452382",
+        "body": "This is a pretty creative idea. But I am not seeing an improvement when I run this on the current main. Getting 200ms slower and slightly higher less, at equal step count."
+      }
+    ]
+  },
+  {
+    "number": 335,
+    "title": "Make key-offset shifts deterministic",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/335",
+    "head": "8780bfe0cf59fdde81d2a6b6eac415cd2861283b",
+    "state": "OPEN",
+    "maintainer_comments": []
+  },
+  {
+    "number": 254,
+    "title": "New Record: Polar Express Optimization (~440ms)",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/254",
+    "head": "a1c1da00d6e2b6500de7652ae66cacdd39ba4895",
+    "state": "OPEN",
+    "maintainer_comments": [
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/254#issuecomment-4284689000",
+        "body": "The most recently merged in PR changed the shape of the matrices for Q and K (mentioning in case this impacts this PR). I will look at this one in more detail later, looks like some neat stuff."
+      },
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/254#issuecomment-4316870486",
+        "body": "Reading this more closely. Since it changes the learning algorithm, it needs to show p value <0.01 to be merged."
+      }
+    ]
+  },
+  {
+    "number": 231,
+    "title": "[New Record] Overlap H2D transfers with GPU compute in PrefetchLoader",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/231",
+    "head": "34df44b5199477166769f3fc05c1ae3dd8c93959",
+    "state": "OPEN",
+    "maintainer_comments": [
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/231#issuecomment-3964744035",
+        "body": "I don't have a good read on the timing improvement from this. If its around 40ms, I don't think its worth merging in right now, given the complexity of PrefetchLoader. \r\n\r\nThinking that if we want to hit 60 seconds, having this merged in right now is going to slow down that progression more than it will help due to the added complexity of following the code. Will keep in mind though and may revisit if improvements dry up. "
+      }
+    ]
+  },
+  {
+    "number": 123,
+    "title": "[WIP] Add new record found by automated search",
+    "url": "https://github.com/KellerJordan/modded-nanogpt/pull/123",
+    "head": "3963528b4ddf82acd0e792cc2102a8dd41477467",
+    "state": "OPEN",
+    "maintainer_comments": [
+      {
+        "author": "ClassicLarry",
+        "url": "https://github.com/KellerJordan/modded-nanogpt/pull/123#issuecomment-3316419181",
+        "body": "This direction looks promising to me, but might require Nsight Profiler deep dive to fully understand when these streams are getting scheduled. My concern is that if the hardware is deciding when to prioritize this cpu-to-gpu data transfer stream, it might block the main GPU stream in hard to detect ways. Im not sure on the best way to interleave this with the forward and backwards pass, but ideally we can do it in a way that executes consistently across different GPU providers."
+      }
+    ]
+  }
+]

@@ -4,6 +4,12 @@ Research started 2026-09-18. The objective is the main NanoGPT speedrun: minimum
 training time while preserving its token streams and reaching the validation
 target. A component benchmark is not a speedrun result.
 
+Current target: the maintainer-approved techniques in open PR #360, pinned in
+[FRONTIER.md](FRONTIER.md) and `frontier.lock.json`. Sections below through the
+SASS/PTX optimization describe the older merged-record MLP unless stated
+otherwise. Its 3072-wide E4M3 timings do not apply to the new 2816-wide mixed-FP8
+frontier target. The native full model remains incomplete.
+
 ## Pinned source trees
 
 | Source | Commit | Local checkout |
@@ -618,6 +624,12 @@ Use `--inspect-profile PATH_TO_NCU_REPORT` to regenerate decoded views on a CPU
 Modal container. This requires extracting the compressed profile archive first.
 
 ## Work still required
+
+The architecture/training target has advanced to PR #360. Follow `FRONTIER.md`
+for its mixed-width attention, 2816-wide MLP, E5M2 gradients, sampled loss,
+ANVIL/Adam, sparse n-gram table and exact 1194-step schedule. The older NorMuon
+and 3072-wide contract above is historical control evidence, not the new target.
+
 
 - Finish the Hopper compute pipeline: validated WGMMA/TMA, independent load/compute/
   store roles, and further measured tile/worker choices.

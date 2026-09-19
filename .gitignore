@@ -25,3 +25,5 @@ cuda/validate_control
 cuda/*.ptx
 cuda/*.ncu-rep
 experiments/profile-*/
+
+cuda/validate_merged

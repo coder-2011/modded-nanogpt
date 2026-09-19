@@ -1,4 +1,5 @@
 #include "megakernel.cuh"
+#include "frontier.cuh"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -8,6 +9,7 @@
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 using namespace nano;
@@ -140,10 +142,10 @@ struct DeviceSchedule {
     }
 };
 
-__global__ void unpack(const fp8 *x, float *y, int size) {
+__global__ void unpack(const fp8 *x, float *y, int size, bool e5) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < size)
-        y[i] = float(x[i]);
+        y[i] = decode_fp8(x[i], e5);
 }
 
 __global__ void reference_epilogue(const float *x, Matmul op) {
@@ -157,21 +159,22 @@ __global__ void reference_epilogue(const float *x, Matmul op) {
         value = fmaxf(float(bf16(value)), 0.0f);
         value = float(bf16(value * value));
     } else if (op.epilogue == Epilogue::relu_backward) {
-        float relu = float(bf16(sqrtf(float(op.post[i]) * op.post_scale)));
-        value = float(bf16(2.0f * float(bf16(value)) * relu));
+        float relu = sqrtf(float(op.post[i]) * op.post_scale);
+        value = op.quantized_e5 ? float(bf16(2.0f * value * relu))
+                                : float(bf16(2.0f * float(bf16(value)) * float(bf16(relu))));
     }
     if (op.output)
         op.output[i] = bf16(value);
     if (op.quantized)
-        op.quantized[i] = fp8(value / op.output_scale);
+        op.quantized[i] = encode_fp8(value / op.output_scale, op.quantized_e5);
     if (op.quantized_t)
-        op.quantized_t[(i % op.n) * op.m + i / op.n] = fp8(value / op.output_scale);
+        op.quantized_t[(i % op.n) * op.m + i / op.n] = encode_fp8(value / op.output_scale, op.quantized_e5);
 }
 
 void reference(cublasHandle_t handle, const Matmul &op) {
     Buffer<float> a(size_t(op.m) * op.k), b(size_t(op.n) * op.k), out(size_t(op.m) * op.n);
-    unpack<<<(a.size + 255) / 256, 256>>>(op.a, a.p, int(a.size));
-    unpack<<<(b.size + 255) / 256, 256>>>(op.b, b.p, int(b.size));
+    unpack<<<(a.size + 255) / 256, 256>>>(op.a, a.p, int(a.size), op.a_e5);
+    unpack<<<(b.size + 255) / 256, 256>>>(op.b, b.p, int(b.size), op.b_e5);
     const float alpha = 1, beta = 0;
     const auto ta = op.ak == 1 ? CUBLAS_OP_N : CUBLAS_OP_T;
     const auto tb = op.bk == 1 ? CUBLAS_OP_T : CUBLAS_OP_N;
@@ -183,13 +186,20 @@ void reference(cublasHandle_t handle, const Matmul &op) {
 
 template <class T>
 void compare(const char *name, const Buffer<T> &actual, const Buffer<T> &expected,
-             float relative_limit) {
+             float relative_limit, bool e5 = false) {
     const auto a = actual.get(), e = expected.get();
     double square_error = 0, square_reference = 0;
     float max_abs = 0;
     size_t mismatches = 0;
     for (size_t i = 0; i < a.size(); ++i) {
-        const float av = float(a[i]), ev = float(e[i]);
+        float av, ev;
+        if constexpr (std::is_same_v<T, fp8>) {
+            av = decode_fp8(a[i], e5);
+            ev = decode_fp8(e[i], e5);
+        } else {
+            av = float(a[i]);
+            ev = float(e[i]);
+        }
         if (!std::isfinite(av) || !std::isfinite(ev))
             throw std::runtime_error("nonfinite output");
         float error = std::abs(av - ev);
@@ -255,8 +265,13 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
     std::normal_distribution<float> normal(0, 1);
     for (auto *buffer : {&x, &w1, &w2, &dy}) {
         std::vector<fp8> input(buffer->size);
+#ifdef NANO_FRONTIER
+        const bool e5 = buffer == &dy;
+#else
+        const bool e5 = false;
+#endif
         for (auto &v : input)
-            v = fp8(zeros ? 0.0f : normal(rng));
+            v = encode_fp8(zeros ? 0.0f : normal(rng), e5);
         buffer->put(input);
     }
     auto transpose = [](const Buffer<fp8> &src, Buffer<fp8> &dst, int rows, int cols) {
@@ -285,6 +300,10 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
                                 ds * xs, 0, 0, Epilogue::linear},
                                {postt.p, dyt.p, nullptr, nullptr, dw2.p, h, c, m, m, 1, m, 1,
                                 ps * gs, 0, 0, Epilogue::linear}};
+#ifdef NANO_FRONTIER
+    ops[2].a_e5 = ops[2].quantized_e5 = true;
+    ops[3].a_e5 = ops[4].a_e5 = ops[5].b_e5 = true;
+#endif
     ops[0].quantized_t = postt.p;
     ops[2].quantized_t = dpret.p;
     if (chunk) {
@@ -370,9 +389,9 @@ void validate(int m, int c, int h, int workers, bool timing, unsigned seed = 42,
         if (m < 256)
             compare("raw", raw, rraw, 0.0002f);
         compare("post", post, rpost, 0.0002f);
-        compare("dpre", dpre, rdpre, 0.0002f);
+        compare("dpre", dpre, rdpre, 0.0002f, ops[2].quantized_e5);
         compare("post.T", postt, rpostt, 0.0002f);
-        compare("dpre.T", dpret, rdpret, 0.0002f);
+        compare("dpre.T", dpret, rdpret, 0.0002f, ops[2].quantized_e5);
         compare("y", y, ry, 0.0002f);
         compare("dx", dx, rdx, 0.0002f);
         compare("dw1", dw1, rdw1, 0.0002f);
@@ -526,6 +545,16 @@ int main(int argc, char **argv) {
 #else
         puts("operand_stages=2");
 #endif
+    #ifdef NANO_FRONTIER
+        constexpr int main_mlp_width = frontier::mlp_width;
+        constexpr auto main_token_counts = frontier::unique_local_tokens;
+        printf("target=PR360 commit=%s MLP=E4M3/E5M2 width=%d; component only\n",
+               frontier::commit, main_mlp_width);
+#else
+        constexpr int main_mlp_width = 3072;
+        constexpr std::array<int, 3> main_token_counts{16384, 32768, 49152};
+        puts("target=merged-record MLP=E4M3 width=3072; component only");
+#endif
         bool quick = false, main_shapes = false, profile = false;
 #ifdef NANO_WGMMA
         int gradient_chunk = 0;
@@ -554,7 +583,7 @@ int main(int argc, char **argv) {
         if (gradient_chunk < 0 || gradient_chunk % tile != 0)
             throw std::runtime_error("gradient chunk must be a nonnegative multiple of 64");
         if (profile) {
-            validate(16384, 768, 3072, resident_blocks * prop.multiProcessorCount, true, 42, false,
+            validate(16384, frontier::model_dim, main_mlp_width, resident_blocks * prop.multiProcessorCount, true, 42, false,
                      gradient_chunk, true);
             puts("PASS: profile-region output validation");
             return 0;
@@ -575,14 +604,14 @@ int main(int argc, char **argv) {
             validate(2 * gradient_chunk, 128, 256, 7, false, 1337, false, gradient_chunk);
 #endif
         if (main_shapes) {
-            for (int m : {16384, 32768, 49152})
-                validate(m, 768, 3072, resident_blocks * prop.multiProcessorCount, true, 42, false,
+            for (int m : main_token_counts)
+                validate(m, frontier::model_dim, main_mlp_width, resident_blocks * prop.multiProcessorCount, true, 42, false,
                          gradient_chunk);
         } else if (!quick) {
             for (int blocks_per_sm : {1, 2, 4, resident_blocks}) {
-                validate(256, 768, 3072, blocks_per_sm * prop.multiProcessorCount, true, 42, false,
+                validate(256, frontier::model_dim, main_mlp_width, blocks_per_sm * prop.multiProcessorCount, true, 42, false,
                          gradient_chunk);
-                validate(8192, 768, 3072, blocks_per_sm * prop.multiProcessorCount, true, 42, false,
+                validate(8192, frontier::model_dim, main_mlp_width, blocks_per_sm * prop.multiProcessorCount, true, 42, false,
                          gradient_chunk);
             }
         }

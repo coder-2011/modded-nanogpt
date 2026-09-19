@@ -1,6 +1,41 @@
 import os
 import sys
 
+
+if "--check-frontier" in sys.argv or "--frontier-reference" in sys.argv:
+    import hashlib
+    import json
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent
+    lock = json.loads((root / "frontier.lock.json").read_text())
+    reference = root.parent / "modded-nanogpt-frontier"
+    if not reference.is_dir():
+        raise SystemExit("Missing pinned reference. See FRONTIER.md for the checkout command.")
+    revision = subprocess.check_output(["git", "-C", str(reference), "rev-parse", "HEAD"], text=True).strip()
+    if revision != lock["commit"]:
+        raise SystemExit(f"Frontier reference revision mismatch: {revision}")
+    for name, expected in lock["files"].items():
+        if hashlib.sha256((reference / name).read_bytes()).hexdigest() != expected:
+            raise SystemExit(f"Frontier reference file differs from the pinned source: {name}")
+    print(f"Frontier reference verified: PR #{lock['pr']} at {revision}", flush=True)
+    print(lock["status"], flush=True)
+    print("Native status: " + lock["native_status"], flush=True)
+    if "--check-frontier" in sys.argv:
+        raise SystemExit(0)
+    if os.environ.get("KX_STEPS", "1122") != "1122" or sys.flags.optimize:
+        raise SystemExit("The pinned reference requires KX_STEPS=1122 and enabled assertions.")
+    if "RANK" in os.environ and os.environ.get("WORLD_SIZE") != "8":
+        raise SystemExit("The frontier reference requires eight ranks.")
+    print("Launching the original frontier reference, not the native megakernel.", flush=True)
+    os.environ["DATA_PATH"] = str(Path(os.environ.get("DATA_PATH", str(root))).resolve())
+    os.chdir(reference)
+    if "RANK" in os.environ:
+        os.execv(sys.executable, [sys.executable, str(reference / "train_gpt.py")])
+    os.execvp("torchrun", ["torchrun", "--standalone", "--nproc_per_node=8", "train_gpt.py"])
+
+
 def inspect_profile(data):
     import subprocess
     from pathlib import Path
@@ -75,6 +110,8 @@ def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gra
             commands.append([str(root / binary)] + (["--main-shapes"] if main_shapes else []) +
                             [f"--gradient-chunk={1024 if gradient_chunk == 4096 else 4096}"])
     if kernel_compare:
+        if variant not in {"", "control"}:
+            raise ValueError("--kernel-compare requires matching frontier default/control arithmetic")
         candidates = ("validate",) if variant == "control" else ("validate_control",)
         for candidate in candidates:
             commands.extend([["make", "-C", str(root), candidate],
@@ -148,7 +185,7 @@ if "--cuda-check" in sys.argv:
     profile = "--profile" in sys.argv
     kernel_compare = "--kernel-compare" in sys.argv
     variant = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--variant=")), "")
-    if variant not in {"", "control", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
+    if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
         raise SystemExit("Unknown native kernel variant")
     experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
     if experiment not in {"", "quantize", "transport", "tokenizer"}:
@@ -161,6 +198,8 @@ if "--cuda-check" in sys.argv:
         raise SystemExit("--profile currently targets the native MMA megakernel")
     if (variant or kernel_compare) and (experiment or wgmma or ablate):
         raise SystemExit("Kernel variants require the native MMA path")
+    if kernel_compare and variant not in {"", "control"}:
+        raise SystemExit("--kernel-compare requires the frontier default or --variant=control")
     if kernel_compare and profile:
         raise SystemExit("--kernel-compare runs the timed variants")
     gradient_chunk = next((int(arg.split("=", 1)[1]) for arg in sys.argv
@@ -174,6 +213,7 @@ if "--cuda-check" in sys.argv:
             if source.suffix in {".cu", ".cuh", ".cpp"} or source.name == "Makefile":
                 archive.add(source, arcname=f"cuda/{source.name}")
         archive.add(__file__, arcname="train_gpt.py")
+        archive.add(Path(__file__).parent / "frontier.lock.json", arcname="frontier.lock.json")
     if "--modal" in sys.argv:
         import modal
 
