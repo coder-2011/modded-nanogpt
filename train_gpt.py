@@ -1,6 +1,310 @@
 import os
 import sys
 
+
+if "--check-frontier" in sys.argv or "--frontier-reference" in sys.argv:
+    import hashlib
+    import json
+    import subprocess
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent
+    lock = json.loads((root / "frontier.lock.json").read_text())
+    reference = root.parent / "modded-nanogpt-frontier"
+    if not reference.is_dir():
+        raise SystemExit("Missing pinned reference. See FRONTIER.md for the checkout command.")
+    revision = subprocess.check_output(["git", "-C", str(reference), "rev-parse", "HEAD"], text=True).strip()
+    if revision != lock["commit"]:
+        raise SystemExit(f"Frontier reference revision mismatch: {revision}")
+    for name, expected in lock["files"].items():
+        if hashlib.sha256((reference / name).read_bytes()).hexdigest() != expected:
+            raise SystemExit(f"Frontier reference file differs from the pinned source: {name}")
+    print(f"Frontier reference verified: PR #{lock['pr']} at {revision}", flush=True)
+    print(lock["status"], flush=True)
+    print("Native status: " + lock["native_status"], flush=True)
+    if "--check-frontier" in sys.argv:
+        raise SystemExit(0)
+    if os.environ.get("KX_STEPS", "1122") != "1122" or sys.flags.optimize:
+        raise SystemExit("The pinned reference requires KX_STEPS=1122 and enabled assertions.")
+    if "RANK" in os.environ and os.environ.get("WORLD_SIZE") != "8":
+        raise SystemExit("The frontier reference requires eight ranks.")
+    print("Launching the original frontier reference, not the native megakernel.", flush=True)
+    os.environ["DATA_PATH"] = str(Path(os.environ.get("DATA_PATH", str(root))).resolve())
+    os.chdir(reference)
+    if "RANK" in os.environ:
+        os.execv(sys.executable, [sys.executable, str(reference / "train_gpt.py")])
+    os.execvp("torchrun", ["torchrun", "--standalone", "--nproc_per_node=8", "train_gpt.py"])
+
+
+def inspect_profile(data):
+    import subprocess
+    from pathlib import Path
+    report = Path("/tmp/inspect.ncu-rep")
+    report.write_bytes(data)
+    views = {"details.txt": ["--page", "details", "--print-details", "all"],
+             "metrics.csv": ["--page", "raw", "--csv"],
+             "session.txt": ["--page", "session"],
+             "source.csv": ["--page", "source", "--print-source", "sass", "--csv"]}
+    results = {name: subprocess.check_output(["ncu", "--import", str(report)] + flags)
+               for name, flags in views.items()}
+    results["tool.txt"] = subprocess.check_output(["ncu", "--version"])
+    return results
+
+
+if "--inspect-profile" in sys.argv:
+    from pathlib import Path
+    import modal
+    report = Path(sys.argv[sys.argv.index("--inspect-profile") + 1])
+    image = (modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu24.04", add_python="3.12")
+             .entrypoint([]).apt_install("make", "g++").apt_install("cuda-nsight-compute-12-8"))
+    app = modal.App("nanogpt-profile-inspect")
+    remote = app.function(image=image, cpu=2, timeout=300, serialized=True)(inspect_profile)
+    with modal.enable_output(), app.run():
+        artifacts = remote.remote(report.read_bytes())
+    for name, data in artifacts.items():
+        (report.parent / name).write_bytes(data)
+    print(f"Saved profiler text in {report.parent}")
+    raise SystemExit(0)
+
+
+def cuda_check(sanitize=False, wgmma=False, main_shapes=False, ablate=False, gradient_chunk=4096,
+               experiment="", profile=False, variant="", kernel_compare=False):
+    """Build and validate the native CUDA graph; Python only launches processes."""
+    import subprocess
+    import hashlib
+    import re
+    from pathlib import Path
+
+    root = Path("/workspace/cuda") if Path("/workspace/cuda").exists() else Path(__file__).parent / "cuda"
+    if experiment in {"tail", "tail_reference_probe", "suffix", "last_layer", "layer_nine"}:
+        import torch
+        os.environ["NANO_TORCH_ROOT"] = str(Path(torch.__file__).parent)
+        os.environ["NANO_TORCH_ABI"] = str(int(torch._C._GLIBCXX_USE_CXX11_ABI))
+        print(f"Reference PyTorch={torch.__version__} CUDA={torch.version.cuda}", flush=True)
+    binary = experiment or ("validate_wgmma" if wgmma else "validate")
+    if variant:
+        binary = "validate_" + variant
+    flags = [] if experiment else (["--main-shapes"] if main_shapes else []) + [f"--gradient-chunk={gradient_chunk}"]
+    if experiment == "body" and main_shapes:
+        flags.append("--main-shapes")
+    run = [str(root / binary)] + flags
+    if profile:
+        run = [str(root / binary), "--profile", f"--gradient-chunk={gradient_chunk}"]
+    commands = [["nvidia-smi"], ["nvcc", "--version"], ["make", "-C", str(root), binary], run]
+    if experiment == "transport":
+        commands.insert(1, ["nvidia-smi", "topo", "-m"])
+    if experiment == "tokenizer":
+        import sysconfig
+        library = next(path for path in (Path(sys.base_prefix) / "lib" / sysconfig.get_config_var("LDLIBRARY"),
+                                        Path(sysconfig.get_config_var("LIBDIR")) / sysconfig.get_config_var("LDLIBRARY"))
+                       if path.is_file())
+        commands = [["git", "-C", "/opt/snaptokens", "rev-parse", "HEAD"],
+                    ["curl", "-fL", "https://huggingface.co/openai-community/gpt2/resolve/607a30d783dfa663caf39e06633721c8d4cfcd7e/tokenizer.json", "-o", str(root / "gpt2.json")],
+                    ["sha256sum", str(root / "gpt2.json")],
+                    ["g++", "-std=c++17", "-O3", str(root / "tokenizer.cpp"),
+                     "-I" + sysconfig.get_path("include"), str(library),
+                     "-Wl,-rpath," + str(library.parent), "-o", str(root / binary)],
+                    [str(root / binary), sys.executable, str(root / "gpt2.json")]]
+    if ablate and experiment == "bf16":
+        commands.extend([["make", "-C", str(root), "bf16_control"], [str(root / "bf16_control")]])
+        commands.extend([["make", "-C", str(root), "bf16_async"], [str(root / "bf16_async")]])
+    elif ablate and experiment == "body":
+        commands.extend([["make", "-C", str(root), "body_control"], [str(root / "body_control"), *flags]])
+    elif ablate and experiment == "anvil":
+        commands.extend([["make", "-C", str(root), "anvil_idle64"], [str(root / "anvil_idle64")]])
+    elif ablate and experiment == "layer":
+        commands.extend([["make", "-C", str(root), "layer_serial"], [str(root / "layer_serial")]])
+    elif ablate and experiment == "last_layer":
+        commands.extend([["make", "-C", str(root), "last_layer_idle64"], [str(root / "last_layer_idle64")]])
+    elif ablate:
+        if wgmma:
+            raise ValueError("--ablate compares the accepted MMA implementation only")
+        for variant in ("validate_k32", "validate_k64", "validate_fifo"):
+            commands.extend([["make", "-C", str(root), variant],
+                             [str(root / variant)] + flags])
+        if gradient_chunk:
+            commands.append([str(root / binary)] + (["--main-shapes"] if main_shapes else []) +
+                            ["--gradient-chunk=0"])
+            commands.append([str(root / binary)] + (["--main-shapes"] if main_shapes else []) +
+                            [f"--gradient-chunk={1024 if gradient_chunk == 4096 else 4096}"])
+    if kernel_compare:
+        if variant not in {"", "control"}:
+            raise ValueError("--kernel-compare requires matching frontier default/control arithmetic")
+        candidates = ("validate",) if variant == "control" else ("validate_control",)
+        for candidate in candidates:
+            commands.extend([["make", "-C", str(root), candidate],
+                             [str(root / candidate)] + flags])
+    if sanitize:
+        sanitizer = "compute-sanitizer"
+        commands.append([sanitizer, "--version"])
+        sanitized = [binary]
+        if ablate and experiment == "anvil":
+            sanitized.append("anvil_idle64")
+        if ablate and experiment == "layer":
+            sanitized.append("layer_serial")
+        if ablate and experiment == "bf16":
+            sanitized.append("bf16_async")
+        if ablate and experiment == "body":
+            sanitized.append("body_control")
+        if ablate and experiment == "last_layer":
+            sanitized.append("last_layer_idle64")
+        check_flags = [] if experiment else [f"--gradient-chunk={gradient_chunk}"]
+        if experiment in {"tail", "suffix", "last_layer", "layer_nine"}:
+            check_flags.append("--native-only")
+        for checked_binary in sanitized:
+            for tool in ("memcheck", "initcheck", "racecheck", "synccheck"):
+                commands.append([sanitizer, "--tool", tool, "--error-exitcode", "1",
+                                 str(root / checked_binary), "--quick", *check_flags])
+    hashes = "\n".join(f"sha256 {hashlib.sha256(p.read_bytes()).hexdigest()} {p.name}"
+                       for p in sorted(root.iterdir()) if p.suffix in {".cu", ".cuh", ".cpp", ".h"} or p.name == "Makefile")
+    print(hashes, flush=True)
+    output = [hashes]
+    for command in commands:
+        try:
+            result = subprocess.run(command, text=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, timeout=600)
+        except subprocess.TimeoutExpired as error:
+            captured = error.stdout or ""
+            if isinstance(captured, bytes):
+                captured = captured.decode(errors="replace")
+            text = "$ " + " ".join(command) + "\n" + captured + "\nTIMEOUT after 600 seconds\n"
+            print(text, flush=True)
+            output.append(text)
+            return 124, "\n".join(output), {}
+        text = "$ " + " ".join(command) + "\n" + result.stdout
+        print(text, flush=True)
+        output.append(text)
+        if result.returncode:
+            if command == ["nvidia-smi", "topo", "-m"]:
+                output.append("Topology diagnostic unavailable; native peer-access checks remain required.")
+                continue
+            return result.returncode, "\n".join(output), {}
+    if experiment in {"tokenizer", "transport"}:
+        return 0, "\n".join(output), {}
+    sass = subprocess.check_output(["cuobjdump", "--dump-sass", str(root / binary)], text=True)
+    tag = "scaled_gemm" if experiment == "quantize" else "nano10megakernelILb0"
+    for kernel in (section for section in sass.split("Function : ")
+                   if section.splitlines() and tag in section.splitlines()[0]):
+        counts = {instruction: len(re.findall(r"\b" + instruction + r"\b", kernel))
+                  for instruction in ("HMMA", "HGMMA", "LDGSTS", "LDL", "STL")}
+        summary = f"Static SASS instruction counts for {kernel.splitlines()[0]}: {counts}"
+        print(summary, flush=True)
+        output.append(summary)
+    artifacts = {}
+    if profile:
+        artifacts[binary + ".sass"] = sass.encode()
+        ptx = root / (binary + ".ptx")
+        import shlex
+        build_flags = shlex.split(subprocess.check_output(
+            ["make", "-s", "-C", str(root), "print-flags", f"BIN={binary}"], text=True))
+        subprocess.run(["nvcc"] + build_flags + ["--ptx",
+                        str(root / ("attention_layer.cu" if experiment in {"layer", "evaluation", "body"} else
+                                    experiment + ".cu" if experiment in {"attention", "anvil", "routing", "loss", "head", "tail", "suffix", "last_layer", "layer_nine"} else "validate.cu")),
+                        "-o", str(ptx)], check=True)
+        artifacts[ptx.name] = ptx.read_bytes()
+        command = ["ncu", "--set", "full", "--clock-control", "none", "--cache-control", "none",
+                   "--profile-from-start", "off", "--launch-count", "1", "--export",
+                   str(root / "profile"), "--force-overwrite"] + run
+        result = subprocess.run(command, text=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, timeout=600)
+        report = "$ " + " ".join(command) + f"\nexit_status={result.returncode}\n" + result.stdout
+        print(report, flush=True)
+        output.append(report)
+        artifacts["ncu.txt"] = report.encode()
+        if result.returncode:
+            return result.returncode, "\n".join(output), artifacts
+        if result.returncode == 0 and (root / "profile.ncu-rep").exists():
+            artifacts["profile.ncu-rep"] = (root / "profile.ncu-rep").read_bytes()
+            artifacts.update(inspect_profile(artifacts["profile.ncu-rep"]))
+    return 0, "\n".join(output), artifacts
+
+
+if "--cuda-check" in sys.argv:
+    from pathlib import Path
+    import datetime
+    import tarfile
+    import uuid
+
+    sanitize = "--sanitize" in sys.argv
+    wgmma = "--wgmma" in sys.argv
+    main_shapes = "--main-shapes" in sys.argv
+    ablate = "--ablate" in sys.argv
+    profile = "--profile" in sys.argv
+    kernel_compare = "--kernel-compare" in sys.argv
+    variant = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--variant=")), "")
+    if variant not in {"", "control", "merged", "pad", "direct", "resident", "reuse", "aligned", "aligned_k64", "aligned_loop"}:
+        raise SystemExit("Unknown native kernel variant")
+    experiment = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--experiment=")), "")
+    if experiment not in {"", "quantize", "transport", "tokenizer", "attention", "bf16", "anvil", "layer", "evaluation", "routing", "body", "loss", "head", "tail", "tail_reference_probe", "suffix", "last_layer", "layer_nine"}:
+        raise SystemExit("Unknown native experiment")
+    if experiment and (wgmma or (ablate and experiment not in {"bf16", "anvil", "layer", "body", "last_layer"})):
+        raise SystemExit("Native experiments do not use --ablate or --wgmma")
+    if experiment == "tokenizer" and sanitize:
+        raise SystemExit("The tokenizer experiment is CPU-only")
+    if profile and (experiment not in {"", "attention", "anvil", "layer", "evaluation", "routing", "body", "loss", "head", "tail", "suffix", "last_layer", "layer_nine"} or wgmma or ablate):
+        raise SystemExit("--profile targets the native MLP, attention, attention layer or ANVIL megakernel")
+    if (variant or kernel_compare) and (experiment or wgmma or ablate):
+        raise SystemExit("Kernel variants require the native MMA path")
+    if kernel_compare and variant not in {"", "control"}:
+        raise SystemExit("--kernel-compare requires the frontier default or --variant=control")
+    if kernel_compare and profile:
+        raise SystemExit("--kernel-compare runs the timed variants")
+    gradient_chunk = next((int(arg.split("=", 1)[1]) for arg in sys.argv
+                           if arg.startswith("--gradient-chunk=")),
+                          1024 if "--stream-gradients" in sys.argv else 0 if wgmma else 4096)
+    folder = Path(__file__).parent / "experiments"
+    folder.mkdir(exist_ok=True)
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid.uuid4().hex[:8]
+    with tarfile.open(folder / f"cuda-check-{stamp}-source.tar.gz", "w:gz") as archive:
+        for source in sorted((Path(__file__).parent / "cuda").iterdir()):
+            if source.suffix in {".cu", ".cuh", ".cpp", ".h"} or source.name == "Makefile":
+                archive.add(source, arcname=f"cuda/{source.name}")
+        archive.add(__file__, arcname="train_gpt.py")
+        archive.add(Path(__file__).parent / "frontier.lock.json", arcname="frontier.lock.json")
+    if "--modal" in sys.argv:
+        import modal
+
+        if sys.version_info[:2] != (3, 12):
+            raise SystemExit("Use uv run --no-project --python 3.12 --with modal==1.2.6 train_gpt.py --cuda-check --modal")
+
+        image = (modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu24.04", add_python="3.12")
+                 .entrypoint([]).apt_install("make", "g++"))
+        if experiment in {"tail", "tail_reference_probe", "suffix", "last_layer", "layer_nine"}:
+            image = image.pip_install("torch==2.10.0", index_url="https://download.pytorch.org/whl/cu128")
+        if experiment == "tokenizer":
+            image = (image.apt_install("git", "curl", "pkg-config")
+                     .run_commands("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.91.1")
+                     .run_commands("git clone https://github.com/coder-2011/snaptokens.git /opt/snaptokens",
+                                   "git -C /opt/snaptokens checkout 2d0f8695f21688a35dd79f3c38372c847c159a99",
+                                   "PATH=/root/.cargo/bin:$PATH python -m pip install /opt/snaptokens tiktoken==0.12.0")
+                     .env({"RAYON_NUM_THREADS": "4"}))
+        if experiment == "transport":
+            image = image.apt_install("libnccl-dev=2.25.1-1+cuda12.8")
+        if profile:
+            image = image.apt_install("cuda-nsight-compute-12-8")
+        image = image.add_local_dir(Path(__file__).parent / "cuda", "/workspace/cuda")
+        app = modal.App("nanogpt-cuda-megakernel")
+        gpu = None if experiment == "tokenizer" else "H100:2" if experiment == "transport" else "H100"
+        remote_check = app.function(image=image, gpu=gpu, cpu=4, timeout=1800,
+                                    serialized=True)(cuda_check)
+        with modal.enable_output(), app.run():
+            status, output, artifacts = remote_check.remote(sanitize, wgmma, main_shapes, ablate, gradient_chunk, experiment, profile, variant, kernel_compare)
+    else:
+        status, output, artifacts = cuda_check(sanitize, wgmma, main_shapes, ablate, gradient_chunk, experiment, profile, variant, kernel_compare)
+    log = folder / f"cuda-check-{stamp}.log"
+    log.write_text(output)
+    if artifacts:
+        artifact_dir = folder / f"profile-{stamp}"
+        artifact_dir.mkdir()
+        for name, data in artifacts.items():
+            (artifact_dir / name).write_bytes(data)
+        with tarfile.open(artifact_dir.with_suffix(".tar.gz"), "w:gz") as archive:
+            for source in sorted(artifact_dir.iterdir()):
+                archive.add(source, arcname=source.name)
+        print(f"Saved {artifact_dir}")
+    print(f"Saved {log}")
+    raise SystemExit(status)
+
 # Read the current file and the kernels file code ASAP, for logging
 with open(sys.argv[0], 'r') as f:
     code = f.read()

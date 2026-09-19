@@ -1,0 +1,43 @@
+✓ Initialized. View run at 
+https://modal.com/apps/naman-chetwani/main/ap-ojvQSHzgRXL7cAwk1ske5h
+✓ Created objects.
+├── 🔨 Created mount /Users/namanchetwani/Projects/modded-nanogpt/cuda
+└── 🔨 Created function cuda_check.
+sha256 29c3709d1af844971813a226d6c9cb190e20f3f95729233518fc566f078fd6de Makefile
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 85a48816328b4330d2e63b18d711f198b93337cff64025ce59f447a18b8194d8 megakernel.cuh
+sha256 de972b19a4ff4d2dc4bbf344bfa57126017ca405789b5dda8b49d470310d7508 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 9716a415e381593a50b27ac83ebe9415758ae3b957609c91ac04c0be54e4ab01 transport.cu
+sha256 8bb828361e7996398fbc73631ca172fa04d0d11e53f51e002067e5e81ea760a0 validate.cu
+$ git -C /opt/snaptokens rev-parse HEAD
+2d0f8695f21688a35dd79f3c38372c847c159a99
+
+$ curl -fL https://huggingface.co/openai-community/gpt2/resolve/607a30d783dfa663caf39e06633721c8d4cfcd7e/tokenizer.json -o /workspace/cuda/gpt2.json
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100   288  100   288    0     0   2067      0 --:--:-- --:--:-- --:--:--  2086
+
+100 1323k  100 1323k    0     0  8623k      0 --:--:-- --:--:-- --:--:-- 8623k
+
+$ sha256sum /workspace/cuda/gpt2.json
+8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6  /workspace/cuda/gpt2.json
+
+$ g++ -std=c++17 -O3 /workspace/cuda/tokenizer.cpp -I/usr/local/include/python3.12 /usr/local/lib/libpython3.12.so -Wl,-rpath,/usr/local/lib -o /workspace/cuda/tokenizer
+
+$ /workspace/cuda/tokenizer /usr/local/bin/python /workspace/cuda/gpt2.json
+exact GPT-2 parity: documents=2058 bytes=1436446 tokens=604224
+snaptokens_flat median_ms=8.5346 MB_per_s=168.308 samples_ms= 9.27414 8.78879 8.57695 8.26844 8.77495 9.00631 8.49225 8.39855 8.3398 8.45984
+tiktoken_batch median_ms=207.483 MB_per_s=6.92321 samples_ms= 212.995 219.669 209.984 199.67 210.169 205.439 203.494 209.527 181.789 193.25
+tiktoken_serial median_ms=179.056 MB_per_s=8.02233 samples_ms= 179.064 180.553 182.445 182.084 179.048 179.153 179.005 178.918 178.531 178.01
+preprocessing_speed_ratio=20.98 against fastest tiktoken control; warm repeated synthetic corpus, includes C++ ID materialization, 4 allocated CPUs
+wrote /tmp/nanogpt-snaptokens-check.bin tokens=606282 documents=2058
+PASS: Snaptokens preprocessing; official pretokenized benchmark shards unchanged
+Stopping app - local entrypoint completed.
+
+✓ App completed. View run at 
+https://modal.com/apps/naman-chetwani/main/ap-ojvQSHzgRXL7cAwk1ske5h
+Saved /Users/namanchetwani/Projects/modded-nanogpt/experiments/cuda-check-20260919T005444Z.log

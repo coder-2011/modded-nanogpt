@@ -1,0 +1,539 @@
+sha256 64f818adabdb8c38a4adfa05962dfe770cfae43ff5136aa8b3ddcc6e0e9e2de6 Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 0d090ec6a3304f2561254cdd5f8e218cf02a81161d1c25f6d3a089ef5c4c9159 attention.cuh
+sha256 0e9840cc04a7db95bc5d2a11aa480020120d5a10e6d7e218fd3c4b6f8a4fcc37 attention_layer.cu
+sha256 5e23df96de295a12c6770293bb3724e58ffee06f6310f0dbf43293c5c377ffac attention_layer.cuh
+sha256 e43b134f524130c5fcc5b7ea3dfca072fed7dfcb72ff0957dbb0bd2e7d4f7733 attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 a3be2ab6c64f030ca01f7d30c6a6bb7604b3bbe62257ba0aad9bb72bca232c76 bench.cuh
+sha256 a1239425b438fa85c0628a25decee76f394162bc6c3aae2cfa03cc6e5fd1c3d9 bf16.cu
+sha256 a221a6525b5565df618f066c3a4267b1702a9bef96f183e104e7974f0ecf7e3a bf16_gemm.cuh
+sha256 b6013fa23a801d8e288bf261029957d6931556cc18d7e7fc2de9974ad7887d6d embeddings.cuh
+sha256 d4b3c092f09347b8d6cefd89d84d64bc7bea040a24b64c0dd8614fbfe7c8b621 frontier.cuh
+sha256 75c4137f95d8b352fb02671ea4995ab6d8857390eb27d11479f7d6e628f02ce5 gates.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 c2a8201d033706b827ca29543687aa123992fef4cbc3d11c696184d785e6cce4 megakernel.cuh
+sha256 650935fbe0799cec650ebe91331f83e58b23a3461c0a9df0f01a27a6dcebaec7 mlp_evaluation.cuh
+sha256 abc976abdeaa14db113f1e1c880af4aa6b3399bb04b70e1f3718ac8abbc3d888 mlp_evaluation_check.cuh
+sha256 4bc3d930500e484173f231ef38cc65e1af8e646ecb65e3e8c37100e62930de7d model_evaluation.cuh
+sha256 0f480cfe01d83bd2824f69a5ff53b0ba909e30d555a21f244ec5e124592a8fe6 model_evaluation_check.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 9075da55b9c101c83b3683c723f318808b2655b7b2b7219976b812520dc6deb2 routing.cu
+sha256 ca484b3e8d99319779949171f011f533443b6cd387ad8d5459fdb676e072f33a routing.cuh
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 06:49:59 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:0C:00.0 Off |                    0 |
+| N/A   58C    P0             80W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda routing
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 -DNANO_COOP_PUBLISH=1 routing.cu -o routing
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE', 8 bytes spill stores, 8 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32800 bytes smem
+ptxas info    : Compile time = 1671.730 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 8 bytes spill stores, 8 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1684.816 ms
+ptxas info    : Compiling entry function '_Z13routing_stageILi1EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z13routing_stageILi1EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 40 registers, used 0 barriers
+ptxas info    : Compile time = 40.346 ms
+ptxas info    : Compiling entry function '_Z13routing_stageILi4EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z13routing_stageILi4EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 40 registers, used 0 barriers
+ptxas info    : Compile time = 39.725 ms
+ptxas info    : Compiling entry function '_Z13reset_routingN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z13reset_routingN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.966 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/routing
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ROUTING RMS forward rel_l2=4.09051635e-08 max_abs=2.63531696e-07
+ROUTING RMS backward rel_l2=1.06050544e-07 max_abs=0.0250458861
+ROUTING RMS forward rel_l2=3.85891851e-08 max_abs=3.05115409e-07
+ROUTING RMS backward rel_l2=4.5098335e-08 max_abs=5.06787523e-06
+ROUTING coefficient row/group adjoints rel_l2=1.39962409e-06 max_abs=7.7066943e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71661052e-07 max_abs=2.38418579e-06
+ROUTING weighted mix rel_l2=1.59635081e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=0 tasks=35
+ROUTING RMS forward rel_l2=4.79009635e-08 max_abs=4.32056991e-07
+ROUTING RMS backward rel_l2=6.51841048e-08 max_abs=0.00912723843
+ROUTING RMS forward rel_l2=4.65554874e-08 max_abs=3.7727868e-07
+ROUTING RMS backward rel_l2=3.7321081e-08 max_abs=2.00875475e-06
+ROUTING coefficient row/group adjoints rel_l2=5.73874433e-07 max_abs=1.01566548e-06
+ROUTING coefficient row/group adjoints rel_l2=1.5176673e-07 max_abs=1.25169754e-06
+ROUTING weighted mix rel_l2=1.87889025e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=1 tasks=35
+ROUTING RMS forward rel_l2=5.37262525e-08 max_abs=4.29121348e-07
+ROUTING RMS backward rel_l2=5.98924642e-08 max_abs=4.36312742e-07
+ROUTING RMS forward rel_l2=4.66570409e-08 max_abs=4.16520491e-07
+ROUTING RMS backward rel_l2=5.24088545e-08 max_abs=7.58326177e-08
+ROUTING coefficient row/group adjoints rel_l2=2.4693764e-06 max_abs=4.69386578e-07
+ROUTING coefficient row/group adjoints rel_l2=4.20135847e-08 max_abs=1.35973096e-07
+ROUTING weighted mix rel_l2=1.50121898e-08 max_abs=1.1920929e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=2 tasks=35
+ROUTING RMS forward rel_l2=4.75231044e-08 max_abs=3.61937737e-07
+ROUTING RMS backward rel_l2=1.02751461e-07 max_abs=0.00264164503
+ROUTING RMS forward rel_l2=4.78946409e-08 max_abs=3.98098146e-07
+ROUTING RMS backward rel_l2=8.85655425e-08 max_abs=8.76770699e-07
+ROUTING coefficient row/group adjoints rel_l2=7.19313119e-08 max_abs=6.14672899e-07
+ROUTING coefficient row/group adjoints rel_l2=7.29091505e-08 max_abs=4.13507223e-07
+ROUTING coefficient row/group adjoints rel_l2=1.11161693e-07 max_abs=1.92224979e-06
+ROUTING coefficient row/group adjoints rel_l2=3.30604962e-08 max_abs=1.67638063e-07
+ROUTING weighted mix rel_l2=2.62596348e-08 max_abs=4.76837158e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=0 tasks=72
+ROUTING RMS forward rel_l2=5.38506114e-08 max_abs=4.01613372e-07
+ROUTING RMS backward rel_l2=6.61979789e-08 max_abs=0.00204659724
+ROUTING RMS forward rel_l2=4.23188082e-08 max_abs=3.00248566e-07
+ROUTING RMS backward rel_l2=4.2147278e-08 max_abs=3.82124139e-07
+ROUTING coefficient row/group adjoints rel_l2=6.66978053e-08 max_abs=6.23054802e-07
+ROUTING coefficient row/group adjoints rel_l2=6.5260729e-08 max_abs=8.90344381e-07
+ROUTING coefficient row/group adjoints rel_l2=5.5162974e-08 max_abs=2.22586095e-07
+ROUTING coefficient row/group adjoints rel_l2=8.38406789e-08 max_abs=1.01700425e-06
+ROUTING weighted mix rel_l2=2.65772059e-08 max_abs=3.57627869e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=1 tasks=72
+ROUTING RMS forward rel_l2=4.0192747e-08 max_abs=3.29260358e-07
+ROUTING RMS backward rel_l2=4.7578062e-08 max_abs=3.40297386e-07
+ROUTING RMS forward rel_l2=4.81181412e-08 max_abs=4.127303e-07
+ROUTING RMS backward rel_l2=5.50260686e-08 max_abs=1.01783209e-07
+ROUTING coefficient row/group adjoints rel_l2=4.57807368e-08 max_abs=4.09781933e-07
+ROUTING coefficient row/group adjoints rel_l2=6.31311075e-08 max_abs=2.59838998e-07
+ROUTING coefficient row/group adjoints rel_l2=6.28020108e-08 max_abs=2.21654773e-07
+ROUTING coefficient row/group adjoints rel_l2=5.97702067e-08 max_abs=1.49011612e-07
+ROUTING weighted mix rel_l2=2.69744243e-08 max_abs=3.42726707e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=2 tasks=72
+ROUTING RMS forward rel_l2=4.88509135e-08 max_abs=4.25014285e-07
+ROUTING RMS backward rel_l2=1.0407388e-07 max_abs=0.00254401191
+ROUTING RMS forward rel_l2=4.27505986e-08 max_abs=3.73514414e-07
+ROUTING RMS backward rel_l2=4.46830758e-08 max_abs=3.60436115e-07
+ROUTING coefficient row/group adjoints rel_l2=3.89380975e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=4.01599134e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.69532426e-08 max_abs=2.08616257e-07
+ROUTING coefficient row/group adjoints rel_l2=3.99326678e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.13827022e-08 max_abs=5.06639481e-07
+ROUTING coefficient row/group adjoints rel_l2=4.33914816e-08 max_abs=4.47034836e-07
+ROUTING coefficient row/group adjoints rel_l2=4.30766057e-08 max_abs=7.82310963e-07
+ROUTING coefficient row/group adjoints rel_l2=5.2390848e-08 max_abs=6.01634383e-07
+ROUTING coefficient row/group adjoints rel_l2=3.90231318e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=3.86526551e-08 max_abs=3.94880772e-07
+ROUTING coefficient row/group adjoints rel_l2=3.24889005e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.2228761e-08 max_abs=8.94069672e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=0 tasks=320
+ROUTING RMS forward rel_l2=4.86364054e-08 max_abs=4.01875629e-07
+ROUTING RMS backward rel_l2=6.54662689e-08 max_abs=0.000581360775
+ROUTING RMS forward rel_l2=4.66059969e-08 max_abs=4.26160276e-07
+ROUTING RMS backward rel_l2=5.38133949e-08 max_abs=2.53781228e-07
+ROUTING coefficient row/group adjoints rel_l2=3.76710518e-08 max_abs=3.57627869e-07
+ROUTING coefficient row/group adjoints rel_l2=3.96031031e-08 max_abs=1.63912773e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85165811e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.54917168e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85335524e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.8316601e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71799043e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.18666309e-08 max_abs=2.98023224e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85746944e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=4.29167881e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.53296912e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.11563942e-08 max_abs=8.40285793e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=1 tasks=320
+ROUTING RMS forward rel_l2=4.98276801e-08 max_abs=4.35004686e-07
+ROUTING RMS backward rel_l2=5.56057233e-08 max_abs=4.55027075e-07
+ROUTING RMS forward rel_l2=4.902139e-08 max_abs=4.58477047e-07
+ROUTING RMS backward rel_l2=5.56948368e-08 max_abs=1.15740177e-07
+ROUTING coefficient row/group adjoints rel_l2=3.96871458e-08 max_abs=3.57627869e-07
+ROUTING coefficient row/group adjoints rel_l2=4.25483679e-08 max_abs=1.34110451e-07
+ROUTING coefficient row/group adjoints rel_l2=3.98501622e-08 max_abs=8.94069672e-08
+ROUTING coefficient row/group adjoints rel_l2=4.09567285e-08 max_abs=1.08033419e-07
+ROUTING coefficient row/group adjoints rel_l2=4.08942213e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.88297938e-08 max_abs=1.04308128e-07
+ROUTING coefficient row/group adjoints rel_l2=4.12855925e-08 max_abs=1.04308128e-07
+ROUTING coefficient row/group adjoints rel_l2=3.88495648e-08 max_abs=1.04308128e-07
+ROUTING coefficient row/group adjoints rel_l2=3.90048916e-08 max_abs=1.00582838e-07
+ROUTING coefficient row/group adjoints rel_l2=3.91033888e-08 max_abs=1.34110451e-07
+ROUTING coefficient row/group adjoints rel_l2=3.81138802e-08 max_abs=1.04308128e-07
+ROUTING weighted mix rel_l2=4.67591358e-08 max_abs=7.00354576e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=2 tasks=320
+ROUTING RMS forward rel_l2=4.05975124e-08 max_abs=2.51453772e-07
+ROUTING RMS backward rel_l2=1.03862767e-07 max_abs=0.00176132797
+ROUTING RMS forward rel_l2=5.24736403e-08 max_abs=4.03221897e-07
+ROUTING RMS backward rel_l2=4.65019043e-08 max_abs=2.20838062e-07
+ROUTING coefficient row/group adjoints rel_l2=4.53511176e-08 max_abs=3.50177288e-07
+ROUTING coefficient row/group adjoints rel_l2=6.32447361e-08 max_abs=5.76488674e-07
+ROUTING coefficient row/group adjoints rel_l2=5.39187199e-08 max_abs=5.96046448e-07
+ROUTING coefficient row/group adjoints rel_l2=5.02697101e-08 max_abs=4.24683094e-07
+ROUTING weighted mix rel_l2=2.81614828e-08 max_abs=3.57627869e-07
+ROUTING PASS tokens=16 terms=4 groups=6 workers=7 step=0 tasks=36
+ROUTING RMS forward rel_l2=3.92320773e-08 max_abs=2.95788806e-07
+ROUTING RMS backward rel_l2=6.16804097e-08 max_abs=0.00105809067
+ROUTING RMS forward rel_l2=4.43689648e-08 max_abs=3.04729789e-07
+ROUTING RMS backward rel_l2=7.14134033e-08 max_abs=5.56477608e-07
+ROUTING coefficient row/group adjoints rel_l2=5.06726049e-08 max_abs=4.02331352e-07
+ROUTING coefficient row/group adjoints rel_l2=5.16174825e-08 max_abs=4.76837158e-07
+ROUTING coefficient row/group adjoints rel_l2=5.01033227e-08 max_abs=4.76837158e-07
+ROUTING coefficient row/group adjoints rel_l2=4.13549082e-08 max_abs=2.38418579e-07
+ROUTING weighted mix rel_l2=2.80684888e-08 max_abs=3.57627869e-07
+ROUTING PASS tokens=16 terms=4 groups=6 workers=7 step=1 tasks=36
+ROUTING RMS forward rel_l2=4.86022438e-08 max_abs=3.37986517e-07
+ROUTING RMS backward rel_l2=5.64063644e-08 max_abs=4.60678338e-07
+ROUTING RMS forward rel_l2=4.90773691e-08 max_abs=4.09740617e-07
+ROUTING RMS backward rel_l2=5.4150757e-08 max_abs=8.98045344e-08
+ROUTING coefficient row/group adjoints rel_l2=4.78004886e-08 max_abs=4.99654561e-07
+ROUTING coefficient row/group adjoints rel_l2=4.63188469e-08 max_abs=8.56816769e-08
+ROUTING coefficient row/group adjoints rel_l2=4.99162227e-08 max_abs=9.68575478e-08
+ROUTING coefficient row/group adjoints rel_l2=4.59626249e-08 max_abs=1.15483999e-07
+ROUTING weighted mix rel_l2=2.55028802e-08 max_abs=3.57627869e-07
+ROUTING PASS tokens=16 terms=4 groups=6 workers=7 step=2 tasks=36
+ROUTING PASS tokens=16384 terms=11 groups=12 workers=528 step=0 tasks=65536
+ROUTING CUDA Graph median_ms=1.648464 samples_ms= 1.649024 1.644992 1.650208 1.646880 1.649312 1.641728 1.649472 1.645568 1.648672 1.648256
+ROUTING CUDA Graph four-block occupancy median_ms=1.649024 samples_ms= 1.648384 1.648928 1.648032 1.650304 1.645472 1.649792 1.664672 1.649120 1.650080 1.646720
+ROUTING persistent+reset median_ms=4.396848 samples_ms= 4.400576 4.400192 4.398848 4.392832 4.397184 4.392192 4.394304 4.396512 4.397184 4.396192
+PASS: residual mixing and RMS normalization forward/backward; model integration remains
+
+$ make -C /workspace/cuda sanitize BIN=routing CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./routing --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ROUTING RMS forward rel_l2=4.09051635e-08 max_abs=2.63531696e-07
+ROUTING RMS backward rel_l2=1.06050544e-07 max_abs=0.0250458861
+ROUTING RMS forward rel_l2=3.85891851e-08 max_abs=3.05115409e-07
+ROUTING RMS backward rel_l2=4.5098335e-08 max_abs=5.06787523e-06
+ROUTING coefficient row/group adjoints rel_l2=1.39962409e-06 max_abs=7.7066943e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71661052e-07 max_abs=2.38418579e-06
+ROUTING weighted mix rel_l2=1.59635081e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=0 tasks=35
+ROUTING RMS forward rel_l2=4.79009635e-08 max_abs=4.32056991e-07
+ROUTING RMS backward rel_l2=6.51841048e-08 max_abs=0.00912723843
+ROUTING RMS forward rel_l2=4.65554874e-08 max_abs=3.7727868e-07
+ROUTING RMS backward rel_l2=3.7321081e-08 max_abs=2.00875475e-06
+ROUTING coefficient row/group adjoints rel_l2=5.73874433e-07 max_abs=1.01566548e-06
+ROUTING coefficient row/group adjoints rel_l2=1.5176673e-07 max_abs=1.25169754e-06
+ROUTING weighted mix rel_l2=1.87889025e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=1 tasks=35
+ROUTING RMS forward rel_l2=4.75231044e-08 max_abs=3.61937737e-07
+ROUTING RMS backward rel_l2=1.02751461e-07 max_abs=0.00264164503
+ROUTING RMS forward rel_l2=4.78946409e-08 max_abs=3.98098146e-07
+ROUTING RMS backward rel_l2=8.85655425e-08 max_abs=8.76770699e-07
+ROUTING coefficient row/group adjoints rel_l2=7.19313119e-08 max_abs=6.14672899e-07
+ROUTING coefficient row/group adjoints rel_l2=7.29091505e-08 max_abs=4.13507223e-07
+ROUTING coefficient row/group adjoints rel_l2=1.11161693e-07 max_abs=1.92224979e-06
+ROUTING coefficient row/group adjoints rel_l2=3.30604962e-08 max_abs=1.67638063e-07
+ROUTING weighted mix rel_l2=2.62596348e-08 max_abs=4.76837158e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=0 tasks=72
+ROUTING RMS forward rel_l2=5.38506114e-08 max_abs=4.01613372e-07
+ROUTING RMS backward rel_l2=6.61979789e-08 max_abs=0.00204659724
+ROUTING RMS forward rel_l2=4.23188082e-08 max_abs=3.00248566e-07
+ROUTING RMS backward rel_l2=4.2147278e-08 max_abs=3.82124139e-07
+ROUTING coefficient row/group adjoints rel_l2=6.66978053e-08 max_abs=6.23054802e-07
+ROUTING coefficient row/group adjoints rel_l2=6.5260729e-08 max_abs=8.90344381e-07
+ROUTING coefficient row/group adjoints rel_l2=5.5162974e-08 max_abs=2.22586095e-07
+ROUTING coefficient row/group adjoints rel_l2=8.38406789e-08 max_abs=1.01700425e-06
+ROUTING weighted mix rel_l2=2.65772059e-08 max_abs=3.57627869e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=1 tasks=72
+ROUTING RMS forward rel_l2=4.88509135e-08 max_abs=4.25014285e-07
+ROUTING RMS backward rel_l2=1.0407388e-07 max_abs=0.00254401191
+ROUTING RMS forward rel_l2=4.27505986e-08 max_abs=3.73514414e-07
+ROUTING RMS backward rel_l2=4.46830758e-08 max_abs=3.60436115e-07
+ROUTING coefficient row/group adjoints rel_l2=3.89380975e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=4.01599134e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.69532426e-08 max_abs=2.08616257e-07
+ROUTING coefficient row/group adjoints rel_l2=3.99326678e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.13827022e-08 max_abs=5.06639481e-07
+ROUTING coefficient row/group adjoints rel_l2=4.33914816e-08 max_abs=4.47034836e-07
+ROUTING coefficient row/group adjoints rel_l2=4.30766057e-08 max_abs=7.82310963e-07
+ROUTING coefficient row/group adjoints rel_l2=5.2390848e-08 max_abs=6.01634383e-07
+ROUTING coefficient row/group adjoints rel_l2=3.90231318e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=3.86526551e-08 max_abs=3.94880772e-07
+ROUTING coefficient row/group adjoints rel_l2=3.24889005e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.2228761e-08 max_abs=8.94069672e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=0 tasks=320
+ROUTING RMS forward rel_l2=4.86364054e-08 max_abs=4.01875629e-07
+ROUTING RMS backward rel_l2=6.54662689e-08 max_abs=0.000581360775
+ROUTING RMS forward rel_l2=4.66059969e-08 max_abs=4.26160276e-07
+ROUTING RMS backward rel_l2=5.38133949e-08 max_abs=2.53781228e-07
+ROUTING coefficient row/group adjoints rel_l2=3.76710518e-08 max_abs=3.57627869e-07
+ROUTING coefficient row/group adjoints rel_l2=3.96031031e-08 max_abs=1.63912773e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85165811e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.54917168e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85335524e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.8316601e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71799043e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.18666309e-08 max_abs=2.98023224e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85746944e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=4.29167881e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.53296912e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.11563942e-08 max_abs=8.40285793e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=1 tasks=320
+PASS: residual mixing and RMS normalization forward/backward; model integration remains
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./routing --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ROUTING RMS forward rel_l2=4.09051635e-08 max_abs=2.63531696e-07
+ROUTING RMS backward rel_l2=1.06050544e-07 max_abs=0.0250458861
+ROUTING RMS forward rel_l2=3.85891851e-08 max_abs=3.05115409e-07
+ROUTING RMS backward rel_l2=4.5098335e-08 max_abs=5.06787523e-06
+ROUTING coefficient row/group adjoints rel_l2=1.39962409e-06 max_abs=7.7066943e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71661052e-07 max_abs=2.38418579e-06
+ROUTING weighted mix rel_l2=1.59635081e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=0 tasks=35
+ROUTING RMS forward rel_l2=4.79009635e-08 max_abs=4.32056991e-07
+ROUTING RMS backward rel_l2=6.51841048e-08 max_abs=0.00912723843
+ROUTING RMS forward rel_l2=4.65554874e-08 max_abs=3.7727868e-07
+ROUTING RMS backward rel_l2=3.7321081e-08 max_abs=2.00875475e-06
+ROUTING coefficient row/group adjoints rel_l2=5.73874433e-07 max_abs=1.01566548e-06
+ROUTING coefficient row/group adjoints rel_l2=1.5176673e-07 max_abs=1.25169754e-06
+ROUTING weighted mix rel_l2=1.87889025e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=1 tasks=35
+ROUTING RMS forward rel_l2=4.75231044e-08 max_abs=3.61937737e-07
+ROUTING RMS backward rel_l2=1.02751461e-07 max_abs=0.00264164503
+ROUTING RMS forward rel_l2=4.78946409e-08 max_abs=3.98098146e-07
+ROUTING RMS backward rel_l2=8.85655425e-08 max_abs=8.76770699e-07
+ROUTING coefficient row/group adjoints rel_l2=7.19313119e-08 max_abs=6.14672899e-07
+ROUTING coefficient row/group adjoints rel_l2=7.29091505e-08 max_abs=4.13507223e-07
+ROUTING coefficient row/group adjoints rel_l2=1.11161693e-07 max_abs=1.92224979e-06
+ROUTING coefficient row/group adjoints rel_l2=3.30604962e-08 max_abs=1.67638063e-07
+ROUTING weighted mix rel_l2=2.62596348e-08 max_abs=4.76837158e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=0 tasks=72
+ROUTING RMS forward rel_l2=5.38506114e-08 max_abs=4.01613372e-07
+ROUTING RMS backward rel_l2=6.61979789e-08 max_abs=0.00204659724
+ROUTING RMS forward rel_l2=4.23188082e-08 max_abs=3.00248566e-07
+ROUTING RMS backward rel_l2=4.2147278e-08 max_abs=3.82124139e-07
+ROUTING coefficient row/group adjoints rel_l2=6.66978053e-08 max_abs=6.23054802e-07
+ROUTING coefficient row/group adjoints rel_l2=6.5260729e-08 max_abs=8.90344381e-07
+ROUTING coefficient row/group adjoints rel_l2=5.5162974e-08 max_abs=2.22586095e-07
+ROUTING coefficient row/group adjoints rel_l2=8.38406789e-08 max_abs=1.01700425e-06
+ROUTING weighted mix rel_l2=2.65772059e-08 max_abs=3.57627869e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=1 tasks=72
+ROUTING RMS forward rel_l2=4.88509135e-08 max_abs=4.25014285e-07
+ROUTING RMS backward rel_l2=1.0407388e-07 max_abs=0.00254401191
+ROUTING RMS forward rel_l2=4.27505986e-08 max_abs=3.73514414e-07
+ROUTING RMS backward rel_l2=4.46830758e-08 max_abs=3.60436115e-07
+ROUTING coefficient row/group adjoints rel_l2=3.89380975e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=4.01599134e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.69532426e-08 max_abs=2.08616257e-07
+ROUTING coefficient row/group adjoints rel_l2=3.99326678e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.13827022e-08 max_abs=5.06639481e-07
+ROUTING coefficient row/group adjoints rel_l2=4.33914816e-08 max_abs=4.47034836e-07
+ROUTING coefficient row/group adjoints rel_l2=4.30766057e-08 max_abs=7.82310963e-07
+ROUTING coefficient row/group adjoints rel_l2=5.2390848e-08 max_abs=6.01634383e-07
+ROUTING coefficient row/group adjoints rel_l2=3.90231318e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=3.86526551e-08 max_abs=3.94880772e-07
+ROUTING coefficient row/group adjoints rel_l2=3.24889005e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.2228761e-08 max_abs=8.94069672e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=0 tasks=320
+ROUTING RMS forward rel_l2=4.86364054e-08 max_abs=4.01875629e-07
+ROUTING RMS backward rel_l2=6.54662689e-08 max_abs=0.000581360775
+ROUTING RMS forward rel_l2=4.66059969e-08 max_abs=4.26160276e-07
+ROUTING RMS backward rel_l2=5.38133949e-08 max_abs=2.53781228e-07
+ROUTING coefficient row/group adjoints rel_l2=3.76710518e-08 max_abs=3.57627869e-07
+ROUTING coefficient row/group adjoints rel_l2=3.96031031e-08 max_abs=1.63912773e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85165811e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.54917168e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85335524e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.8316601e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71799043e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.18666309e-08 max_abs=2.98023224e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85746944e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=4.29167881e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.53296912e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.11563942e-08 max_abs=8.40285793e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=1 tasks=320
+PASS: residual mixing and RMS normalization forward/backward; model integration remains
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./routing --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ROUTING RMS forward rel_l2=4.09051635e-08 max_abs=2.63531696e-07
+ROUTING RMS backward rel_l2=1.06050544e-07 max_abs=0.0250458861
+ROUTING RMS forward rel_l2=3.85891851e-08 max_abs=3.05115409e-07
+ROUTING RMS backward rel_l2=4.5098335e-08 max_abs=5.06787523e-06
+ROUTING coefficient row/group adjoints rel_l2=1.39962409e-06 max_abs=7.7066943e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71661052e-07 max_abs=2.38418579e-06
+ROUTING weighted mix rel_l2=1.59635081e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=0 tasks=35
+ROUTING RMS forward rel_l2=4.79009635e-08 max_abs=4.32056991e-07
+ROUTING RMS backward rel_l2=6.51841048e-08 max_abs=0.00912723843
+ROUTING RMS forward rel_l2=4.65554874e-08 max_abs=3.7727868e-07
+ROUTING RMS backward rel_l2=3.7321081e-08 max_abs=2.00875475e-06
+ROUTING coefficient row/group adjoints rel_l2=5.73874433e-07 max_abs=1.01566548e-06
+ROUTING coefficient row/group adjoints rel_l2=1.5176673e-07 max_abs=1.25169754e-06
+ROUTING weighted mix rel_l2=1.87889025e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=1 tasks=35
+ROUTING RMS forward rel_l2=4.75231044e-08 max_abs=3.61937737e-07
+ROUTING RMS backward rel_l2=1.02751461e-07 max_abs=0.00264164503
+ROUTING RMS forward rel_l2=4.78946409e-08 max_abs=3.98098146e-07
+ROUTING RMS backward rel_l2=8.85655425e-08 max_abs=8.76770699e-07
+ROUTING coefficient row/group adjoints rel_l2=7.19313119e-08 max_abs=6.14672899e-07
+ROUTING coefficient row/group adjoints rel_l2=7.29091505e-08 max_abs=4.13507223e-07
+ROUTING coefficient row/group adjoints rel_l2=1.11161693e-07 max_abs=1.92224979e-06
+ROUTING coefficient row/group adjoints rel_l2=3.30604962e-08 max_abs=1.67638063e-07
+ROUTING weighted mix rel_l2=2.62596348e-08 max_abs=4.76837158e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=0 tasks=72
+ROUTING RMS forward rel_l2=5.38506114e-08 max_abs=4.01613372e-07
+ROUTING RMS backward rel_l2=6.61979789e-08 max_abs=0.00204659724
+ROUTING RMS forward rel_l2=4.23188082e-08 max_abs=3.00248566e-07
+ROUTING RMS backward rel_l2=4.2147278e-08 max_abs=3.82124139e-07
+ROUTING coefficient row/group adjoints rel_l2=6.66978053e-08 max_abs=6.23054802e-07
+ROUTING coefficient row/group adjoints rel_l2=6.5260729e-08 max_abs=8.90344381e-07
+ROUTING coefficient row/group adjoints rel_l2=5.5162974e-08 max_abs=2.22586095e-07
+ROUTING coefficient row/group adjoints rel_l2=8.38406789e-08 max_abs=1.01700425e-06
+ROUTING weighted mix rel_l2=2.65772059e-08 max_abs=3.57627869e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=1 tasks=72
+ROUTING RMS forward rel_l2=4.88509135e-08 max_abs=4.25014285e-07
+ROUTING RMS backward rel_l2=1.0407388e-07 max_abs=0.00254401191
+ROUTING RMS forward rel_l2=4.27505986e-08 max_abs=3.73514414e-07
+ROUTING RMS backward rel_l2=4.46830758e-08 max_abs=3.60436115e-07
+ROUTING coefficient row/group adjoints rel_l2=3.89380975e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=4.01599134e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.69532426e-08 max_abs=2.08616257e-07
+ROUTING coefficient row/group adjoints rel_l2=3.99326678e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.13827022e-08 max_abs=5.06639481e-07
+ROUTING coefficient row/group adjoints rel_l2=4.33914816e-08 max_abs=4.47034836e-07
+ROUTING coefficient row/group adjoints rel_l2=4.30766057e-08 max_abs=7.82310963e-07
+ROUTING coefficient row/group adjoints rel_l2=5.2390848e-08 max_abs=6.01634383e-07
+ROUTING coefficient row/group adjoints rel_l2=3.90231318e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=3.86526551e-08 max_abs=3.94880772e-07
+ROUTING coefficient row/group adjoints rel_l2=3.24889005e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.2228761e-08 max_abs=8.94069672e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=0 tasks=320
+ROUTING RMS forward rel_l2=4.86364054e-08 max_abs=4.01875629e-07
+ROUTING RMS backward rel_l2=6.54662689e-08 max_abs=0.000581360775
+ROUTING RMS forward rel_l2=4.66059969e-08 max_abs=4.26160276e-07
+ROUTING RMS backward rel_l2=5.38133949e-08 max_abs=2.53781228e-07
+ROUTING coefficient row/group adjoints rel_l2=3.76710518e-08 max_abs=3.57627869e-07
+ROUTING coefficient row/group adjoints rel_l2=3.96031031e-08 max_abs=1.63912773e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85165811e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.54917168e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85335524e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.8316601e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71799043e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.18666309e-08 max_abs=2.98023224e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85746944e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=4.29167881e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.53296912e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.11563942e-08 max_abs=8.40285793e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=1 tasks=320
+PASS: residual mixing and RMS normalization forward/backward; model integration remains
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./routing --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+ROUTING RMS forward rel_l2=4.09051635e-08 max_abs=2.63531696e-07
+ROUTING RMS backward rel_l2=1.06050544e-07 max_abs=0.0250458861
+ROUTING RMS forward rel_l2=3.85891851e-08 max_abs=3.05115409e-07
+ROUTING RMS backward rel_l2=4.5098335e-08 max_abs=5.06787523e-06
+ROUTING coefficient row/group adjoints rel_l2=1.39962409e-06 max_abs=7.7066943e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71661052e-07 max_abs=2.38418579e-06
+ROUTING weighted mix rel_l2=1.59635081e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=0 tasks=35
+ROUTING RMS forward rel_l2=4.79009635e-08 max_abs=4.32056991e-07
+ROUTING RMS backward rel_l2=6.51841048e-08 max_abs=0.00912723843
+ROUTING RMS forward rel_l2=4.65554874e-08 max_abs=3.7727868e-07
+ROUTING RMS backward rel_l2=3.7321081e-08 max_abs=2.00875475e-06
+ROUTING coefficient row/group adjoints rel_l2=5.73874433e-07 max_abs=1.01566548e-06
+ROUTING coefficient row/group adjoints rel_l2=1.5176673e-07 max_abs=1.25169754e-06
+ROUTING weighted mix rel_l2=1.87889025e-08 max_abs=2.38418579e-07
+ROUTING PASS tokens=17 terms=2 groups=1 workers=1 step=1 tasks=35
+ROUTING RMS forward rel_l2=4.75231044e-08 max_abs=3.61937737e-07
+ROUTING RMS backward rel_l2=1.02751461e-07 max_abs=0.00264164503
+ROUTING RMS forward rel_l2=4.78946409e-08 max_abs=3.98098146e-07
+ROUTING RMS backward rel_l2=8.85655425e-08 max_abs=8.76770699e-07
+ROUTING coefficient row/group adjoints rel_l2=7.19313119e-08 max_abs=6.14672899e-07
+ROUTING coefficient row/group adjoints rel_l2=7.29091505e-08 max_abs=4.13507223e-07
+ROUTING coefficient row/group adjoints rel_l2=1.11161693e-07 max_abs=1.92224979e-06
+ROUTING coefficient row/group adjoints rel_l2=3.30604962e-08 max_abs=1.67638063e-07
+ROUTING weighted mix rel_l2=2.62596348e-08 max_abs=4.76837158e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=0 tasks=72
+ROUTING RMS forward rel_l2=5.38506114e-08 max_abs=4.01613372e-07
+ROUTING RMS backward rel_l2=6.61979789e-08 max_abs=0.00204659724
+ROUTING RMS forward rel_l2=4.23188082e-08 max_abs=3.00248566e-07
+ROUTING RMS backward rel_l2=4.2147278e-08 max_abs=3.82124139e-07
+ROUTING coefficient row/group adjoints rel_l2=6.66978053e-08 max_abs=6.23054802e-07
+ROUTING coefficient row/group adjoints rel_l2=6.5260729e-08 max_abs=8.90344381e-07
+ROUTING coefficient row/group adjoints rel_l2=5.5162974e-08 max_abs=2.22586095e-07
+ROUTING coefficient row/group adjoints rel_l2=8.38406789e-08 max_abs=1.01700425e-06
+ROUTING weighted mix rel_l2=2.65772059e-08 max_abs=3.57627869e-07
+ROUTING PASS tokens=32 terms=4 groups=2 workers=7 step=1 tasks=72
+ROUTING RMS forward rel_l2=4.88509135e-08 max_abs=4.25014285e-07
+ROUTING RMS backward rel_l2=1.0407388e-07 max_abs=0.00254401191
+ROUTING RMS forward rel_l2=4.27505986e-08 max_abs=3.73514414e-07
+ROUTING RMS backward rel_l2=4.46830758e-08 max_abs=3.60436115e-07
+ROUTING coefficient row/group adjoints rel_l2=3.89380975e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=4.01599134e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.69532426e-08 max_abs=2.08616257e-07
+ROUTING coefficient row/group adjoints rel_l2=3.99326678e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.13827022e-08 max_abs=5.06639481e-07
+ROUTING coefficient row/group adjoints rel_l2=4.33914816e-08 max_abs=4.47034836e-07
+ROUTING coefficient row/group adjoints rel_l2=4.30766057e-08 max_abs=7.82310963e-07
+ROUTING coefficient row/group adjoints rel_l2=5.2390848e-08 max_abs=6.01634383e-07
+ROUTING coefficient row/group adjoints rel_l2=3.90231318e-08 max_abs=3.87430191e-07
+ROUTING coefficient row/group adjoints rel_l2=3.86526551e-08 max_abs=3.94880772e-07
+ROUTING coefficient row/group adjoints rel_l2=3.24889005e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.2228761e-08 max_abs=8.94069672e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=0 tasks=320
+ROUTING RMS forward rel_l2=4.86364054e-08 max_abs=4.01875629e-07
+ROUTING RMS backward rel_l2=6.54662689e-08 max_abs=0.000581360775
+ROUTING RMS forward rel_l2=4.66059969e-08 max_abs=4.26160276e-07
+ROUTING RMS backward rel_l2=5.38133949e-08 max_abs=2.53781228e-07
+ROUTING coefficient row/group adjoints rel_l2=3.76710518e-08 max_abs=3.57627869e-07
+ROUTING coefficient row/group adjoints rel_l2=3.96031031e-08 max_abs=1.63912773e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85165811e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.54917168e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85335524e-08 max_abs=1.1920929e-07
+ROUTING coefficient row/group adjoints rel_l2=3.8316601e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=3.71799043e-08 max_abs=2.38418579e-07
+ROUTING coefficient row/group adjoints rel_l2=4.18666309e-08 max_abs=2.98023224e-07
+ROUTING coefficient row/group adjoints rel_l2=3.85746944e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=4.29167881e-08 max_abs=1.78813934e-07
+ROUTING coefficient row/group adjoints rel_l2=3.53296912e-08 max_abs=1.78813934e-07
+ROUTING weighted mix rel_l2=5.11563942e-08 max_abs=8.40285793e-07
+ROUTING PASS tokens=80 terms=11 groups=12 workers=17 step=1 tasks=320
+PASS: residual mixing and RMS normalization forward/backward; model integration remains
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 0, 'STL': 0}

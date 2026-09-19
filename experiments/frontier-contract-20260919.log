@@ -1,0 +1,19 @@
+Frontier reference verified: PR #360 at c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7
+maintainer-approved techniques; open submission; not locally reproduced
+Native status: MLP component only; full architecture, optimizer, loss and training loop are not implemented
+Target c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7
+Legality https://github.com/KellerJordan/modded-nanogpt/pull/360#issuecomment-5565930470
+Source verification:
+Frontier reference verified: PR #360 at c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7
+maintainer-approved techniques; open submission; not locally reproduced
+Native status: MLP component only; full architecture, optimizer, loss and training loop are not implemented
+Launching the original frontier reference, not the native megakernel.
+PASS reference launch dispatch: eight-rank launcher data path preserved
+Frontier reference verified: PR #360 at c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7
+maintainer-approved techniques; open submission; not locally reproduced
+Native status: MLP component only; full architecture, optimizer, loss and training loop are not implemented
+Launching the original frontier reference, not the native megakernel.
+PASS reference launch dispatch: existing rank data path preserved
+PASS native layer layouts, MLP bank order, all schedule bounds and unique batch sizes agree with the pinned contract
+PASS legacy reference body unchanged and Python syntax valid
+GPU reference trainer was not executed by this dispatch test; process execution was intercepted.

@@ -1,0 +1,280 @@
+sha256 6108403faeaf7cc9558767c84a63c2df37d3f67496d2ad19ac292c5bd75a4cf8 Makefile
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 26ab14a983e3b8f062e5bbf449c718e67feae948d6bb8458aa27cebe71c1487e megakernel.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 183cbea539692c90d14366932c7f3fb43bc321056002e6883e2eb008056aa95e validate.cu
+$ nvidia-smi
+Sat Sep 19 01:33:10 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000001:24:00.0 Off |                    0 |
+| N/A   30C    P0             69W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda quantize
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills quantize.cu -lcublas -o quantize
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_Z11scaled_gemmILb1EEv9QuantizedS0_P13__nv_bfloat16' for 'sm_90a'
+ptxas info    : Function properties for _Z11scaled_gemmILb1EEv9QuantizedS0_P13__nv_bfloat16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 153 registers, used 1 barriers, 16432 bytes smem
+ptxas info    : Compile time = 45.549 ms
+ptxas info    : Compiling entry function '_Z11scaled_gemmILb0EEv9QuantizedS0_P13__nv_bfloat16' for 'sm_90a'
+ptxas info    : Function properties for _Z11scaled_gemmILb0EEv9QuantizedS0_P13__nv_bfloat16
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 169 registers, used 1 barriers, 16384 bytes smem
+ptxas info    : Compile time = 389.136 ms
+ptxas info    : Compiling entry function '_Z16unpack_quantized9QuantizedPfb' for 'sm_90a'
+ptxas info    : Function properties for _Z16unpack_quantized9QuantizedPfb
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 21 registers, used 0 barriers
+ptxas info    : Compile time = 10.515 ms
+ptxas info    : Compiling entry function '_Z8quantize9Quantized' for 'sm_90a'
+ptxas info    : Function properties for _Z8quantize9Quantized
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 20 registers, used 0 barriers
+ptxas info    : Compile time = 10.312 ms
+ptxas info    : Compiling entry function '_Z6minmax9Quantized' for 'sm_90a'
+ptxas info    : Function properties for _Z6minmax9Quantized
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 22 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 7.847 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/quantize
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+inline_quant registers=153 static_shared=16432 dynamic_shared=32768 blocks_per_sm=3
+screening: worst 64x128 input tile relative L2 <=0.04; output relative L2 <=0.06; arithmetic <=0.0002
+quantization shape=65x97x160 distribution=0
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0.037449511 worst_tile_rel_l2=0.026889597 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=1.9043007e-09 original_rel_l2=0.036082026 worst_tile_rel_l2=0.033879262 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=9.7589747e-07 original_rel_l2=0.035446688 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0.036834098 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.037292218 worst_tile_rel_l2=0.033879262 admissible=1
+quantization shape=65x97x160 distribution=1
+mode=layer scale_bytes=8 math_rel_l2=1.535788e-09 original_rel_l2=0.029929443 worst_tile_rel_l2=0.028348872 admissible=1
+bf16_cublas_rel_l2=1.204044e-11
+mode=row scale_bytes=648 math_rel_l2=3.1371235e-06 original_rel_l2=0.029098309 worst_tile_rel_l2=0.028348872 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0.024880192 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=7.6685634e-10 original_rel_l2=0.029856064 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.029937086 worst_tile_rel_l2=0.028348872 admissible=1
+quantization shape=65x97x160 distribution=2
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+quantization shape=16384x3072x768 distribution=0
+mode=layer scale_bytes=8 math_rel_l2=4.6545249e-05 original_rel_l2=0.037484341 worst_tile_rel_l2=0.027354005 admissible=1
+bf16_cublas_rel_l2=6.2038122e-05
+bf16_cublas_gemm median_ms=0.124304 samples_ms= 0.124928 0.125920 0.124384 0.125024 0.124224 0.123584 0.123872 0.124160 0.123744 0.125088
+layer_quant median_ms=0.139152 samples_ms= 0.138720 0.138080 0.138336 0.140480 0.139488 0.139552 0.139936 0.138816 0.138784 0.140000
+layer_gemm median_ms=1.151808 samples_ms= 1.162560 1.155168 1.149952 1.153568 1.150560 1.153056 1.148416 1.148512 1.153056 1.149664
+layer_total median_ms=1.292928 samples_ms= 1.291488 1.292416 1.293024 1.292096 1.295200 1.297952 1.293664 1.292832 1.291808 1.293600
+mode=row scale_bytes=77824 math_rel_l2=4.577082e-05 original_rel_l2=0.037334652 worst_tile_rel_l2=0.02724992 admissible=1
+row_quant median_ms=0.215248 samples_ms= 0.215232 0.214976 0.216128 0.215264 0.215360 0.214592 0.216512 0.215392 0.215232 0.214432
+row_gemm median_ms=1.206384 samples_ms= 1.205120 1.203648 1.206336 1.203936 1.207584 1.206528 1.206528 1.207424 1.205024 1.206432
+row_total median_ms=1.424560 samples_ms= 1.425696 1.424000 1.425600 1.423360 1.422400 1.424224 1.424896 1.425664 1.428896 1.421600
+mode=row128 scale_bytes=466944 math_rel_l2=4.5083577e-05 original_rel_l2=0.036417124 worst_tile_rel_l2=0.026709751 admissible=1
+row128_quant median_ms=0.214608 samples_ms= 0.215328 0.214144 0.215520 0.213728 0.215328 0.214144 0.214944 0.214272 0.215008 0.212928
+row128_gemm median_ms=4.374784 samples_ms= 4.406240 4.374592 4.357216 4.352128 4.368704 4.385056 4.332704 4.379968 4.380928 4.374976
+row128_total median_ms=4.571328 samples_ms= 4.586944 4.574976 4.564224 4.571264 4.573120 4.579840 4.571392 4.559776 4.449728 4.444736
+mode=tile64x128 scale_bytes=7296 math_rel_l2=4.6299762e-05 original_rel_l2=0.037466262 worst_tile_rel_l2=0.027400988 admissible=1
+inline_tile64x128: exact BF16 output match
+inline_tile64x128_total median_ms=6.105360 samples_ms= 6.106144 6.093536 6.104352 6.110688 6.097856 6.120512 6.121248 6.117216 6.103776 6.104576
+tile64x128_quant median_ms=0.138224 samples_ms= 0.136192 0.138528 0.138336 0.138208 0.137344 0.140288 0.140256 0.137728 0.135840 0.138240
+tile64x128_gemm median_ms=4.092864 samples_ms= 4.139968 4.096320 4.095392 4.089760 4.069632 4.071936 4.091680 4.086048 4.110240 4.094048
+tile64x128_total median_ms=4.231120 samples_ms= 4.241024 4.234528 4.203040 4.227712 4.254144 4.256672 4.221632 4.226208 4.203264 4.256480
+mode=rows64 scale_bytes=1216 math_rel_l2=4.3074011e-05 original_rel_l2=0.037462686 worst_tile_rel_l2=0.027366056 admissible=1
+rows64_quant median_ms=0.138608 samples_ms= 0.139744 0.138336 0.139392 0.138208 0.139072 0.138464 0.138720 0.138592 0.138432 0.138624
+rows64_gemm median_ms=1.164240 samples_ms= 1.167936 1.166688 1.163392 1.167200 1.163200 1.164640 1.167136 1.161888 1.163840 1.161888
+rows64_total median_ms=1.306512 samples_ms= 1.307040 1.304928 1.307168 1.305120 1.303104 1.306720 1.306880 1.309984 1.306304 1.304864
+fastest_admissible=layer median_ms=1.292928 (synthetic screening, not convergence)
+quantization shape=16384x3072x768 distribution=1
+mode=layer scale_bytes=8 math_rel_l2=2.6410379e-05 original_rel_l2=0.037607302 worst_tile_rel_l2=1 admissible=0
+bf16_cublas_rel_l2=3.4028864e-05
+bf16_cublas_gemm median_ms=0.123648 samples_ms= 0.123936 0.123648 0.122336 0.123712 0.123776 0.122880 0.123552 0.122368 0.124384 0.123648
+layer_quant median_ms=0.137664 samples_ms= 0.136832 0.138336 0.136864 0.139040 0.137216 0.137824 0.137504 0.138848 0.137440 0.138944
+layer_gemm median_ms=1.159664 samples_ms= 1.162400 1.159488 1.159840 1.159168 1.157952 1.161248 1.160096 1.158208 1.162944 1.148800
+layer_total median_ms=1.283056 samples_ms= 1.287296 1.282688 1.281440 1.284672 1.283328 1.282560 1.283424 1.281408 1.282880 1.283232
+mode=row scale_bytes=77824 math_rel_l2=2.4437969e-05 original_rel_l2=0.036689185 worst_tile_rel_l2=1 admissible=0
+row_quant median_ms=0.215600 samples_ms= 0.215584 0.215936 0.215104 0.215616 0.214464 0.215936 0.215648 0.214528 0.215200 0.215712
+row_gemm median_ms=1.203600 samples_ms= 1.203072 1.203040 1.206848 1.202624 1.204288 1.201536 1.205184 1.205984 1.204128 1.202912
+row_total median_ms=1.422832 samples_ms= 1.420224 1.423488 1.422656 1.421600 1.425440 1.421824 1.424096 1.426688 1.420736 1.423008
+mode=row128 scale_bytes=466944 math_rel_l2=2.2933955e-05 original_rel_l2=0.036439812 worst_tile_rel_l2=0.026709751 admissible=1
+row128_quant median_ms=0.216352 samples_ms= 0.219776 0.216384 0.215488 0.216576 0.215392 0.216384 0.215648 0.216320 0.215040 0.217056
+row128_gemm median_ms=4.418688 samples_ms= 4.427872 4.404544 4.449664 4.423264 4.415200 4.461280 4.399264 4.409504 4.422176 4.412128
+row128_total median_ms=4.445056 samples_ms= 4.449184 4.451360 4.468224 4.427712 4.451488 4.440928 4.439808 4.434912 4.452064 4.438144
+mode=tile64x128 scale_bytes=7296 math_rel_l2=3.9612179e-05 original_rel_l2=0.037535651 worst_tile_rel_l2=0.027400988 admissible=1
+inline_tile64x128: exact BF16 output match
+inline_tile64x128_total median_ms=6.144368 samples_ms= 6.177600 6.147168 6.163616 6.179232 6.157504 6.141568 6.132000 6.012000 6.019264 6.049216
+tile64x128_quant median_ms=0.134992 samples_ms= 0.134272 0.135520 0.134656 0.136320 0.136224 0.134592 0.134976 0.135552 0.134336 0.135008
+tile64x128_gemm median_ms=4.119472 samples_ms= 4.122880 4.112768 4.135008 4.102944 4.106592 4.140832 4.152448 4.129696 4.111008 4.116064
+tile64x128_total median_ms=4.195920 samples_ms= 4.189984 4.174208 4.216160 4.235968 4.198688 4.198784 4.198336 4.191008 4.193504 4.188192
+mode=rows64 scale_bytes=1216 math_rel_l2=2.7818356e-05 original_rel_l2=0.037549882 worst_tile_rel_l2=1 admissible=0
+rows64_quant median_ms=0.138016 samples_ms= 0.138432 0.138592 0.137600 0.138752 0.138016 0.137376 0.137984 0.137888 0.138496 0.138016
+rows64_gemm median_ms=1.163888 samples_ms= 1.160352 1.164352 1.164480 1.162592 1.163040 1.163552 1.162944 1.164608 1.164224 1.167072
+rows64_total median_ms=1.304624 samples_ms= 1.303136 1.308000 1.305888 1.304064 1.308384 1.304160 1.302048 1.303648 1.305088 1.306496
+fastest_admissible=tile64x128 median_ms=4.195920 (synthetic screening, not convergence)
+PASS: scale-granularity experiment; no full-model quality or speedup claim
+
+$ make -C /workspace/cuda sanitize BIN=quantize CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./quantize --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+inline_quant registers=153 static_shared=16432 dynamic_shared=32768 blocks_per_sm=3
+screening: worst 64x128 input tile relative L2 <=0.04; output relative L2 <=0.06; arithmetic <=0.0002
+quantization shape=65x97x160 distribution=0
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0.037449511 worst_tile_rel_l2=0.026889597 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=1.9043007e-09 original_rel_l2=0.036082026 worst_tile_rel_l2=0.033879262 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=9.7589747e-07 original_rel_l2=0.035446688 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0.036834098 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.037292218 worst_tile_rel_l2=0.033879262 admissible=1
+quantization shape=65x97x160 distribution=1
+mode=layer scale_bytes=8 math_rel_l2=1.535788e-09 original_rel_l2=0.029929443 worst_tile_rel_l2=0.028348872 admissible=1
+bf16_cublas_rel_l2=1.204044e-11
+mode=row scale_bytes=648 math_rel_l2=3.1371235e-06 original_rel_l2=0.029098309 worst_tile_rel_l2=0.028348872 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0.024880192 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=7.6685634e-10 original_rel_l2=0.029856064 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.029937086 worst_tile_rel_l2=0.028348872 admissible=1
+quantization shape=65x97x160 distribution=2
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+PASS: scale-granularity experiment; no full-model quality or speedup claim
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./quantize --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+inline_quant registers=153 static_shared=16432 dynamic_shared=32768 blocks_per_sm=3
+screening: worst 64x128 input tile relative L2 <=0.04; output relative L2 <=0.06; arithmetic <=0.0002
+quantization shape=65x97x160 distribution=0
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0.037449511 worst_tile_rel_l2=0.026889597 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=1.9043007e-09 original_rel_l2=0.036082026 worst_tile_rel_l2=0.033879262 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=9.7589747e-07 original_rel_l2=0.035446688 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0.036834098 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.037292218 worst_tile_rel_l2=0.033879262 admissible=1
+quantization shape=65x97x160 distribution=1
+mode=layer scale_bytes=8 math_rel_l2=1.535788e-09 original_rel_l2=0.029929443 worst_tile_rel_l2=0.028348872 admissible=1
+bf16_cublas_rel_l2=1.204044e-11
+mode=row scale_bytes=648 math_rel_l2=3.1371235e-06 original_rel_l2=0.029098309 worst_tile_rel_l2=0.028348872 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0.024880192 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=7.6685634e-10 original_rel_l2=0.029856064 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.029937086 worst_tile_rel_l2=0.028348872 admissible=1
+quantization shape=65x97x160 distribution=2
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+PASS: scale-granularity experiment; no full-model quality or speedup claim
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./quantize --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+inline_quant registers=153 static_shared=16432 dynamic_shared=32768 blocks_per_sm=3
+screening: worst 64x128 input tile relative L2 <=0.04; output relative L2 <=0.06; arithmetic <=0.0002
+quantization shape=65x97x160 distribution=0
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0.037449511 worst_tile_rel_l2=0.026889597 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=1.9043007e-09 original_rel_l2=0.036082026 worst_tile_rel_l2=0.033879262 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=9.7589747e-07 original_rel_l2=0.035446688 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0.036834098 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.037292218 worst_tile_rel_l2=0.033879262 admissible=1
+quantization shape=65x97x160 distribution=1
+mode=layer scale_bytes=8 math_rel_l2=1.535788e-09 original_rel_l2=0.029929443 worst_tile_rel_l2=0.028348872 admissible=1
+bf16_cublas_rel_l2=1.204044e-11
+mode=row scale_bytes=648 math_rel_l2=3.1371235e-06 original_rel_l2=0.029098309 worst_tile_rel_l2=0.028348872 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0.024880192 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=7.6685634e-10 original_rel_l2=0.029856064 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.029937086 worst_tile_rel_l2=0.028348872 admissible=1
+quantization shape=65x97x160 distribution=2
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+PASS: scale-granularity experiment; no full-model quality or speedup claim
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./quantize --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+inline_quant registers=153 static_shared=16432 dynamic_shared=32768 blocks_per_sm=3
+screening: worst 64x128 input tile relative L2 <=0.04; output relative L2 <=0.06; arithmetic <=0.0002
+quantization shape=65x97x160 distribution=0
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0.037449511 worst_tile_rel_l2=0.026889597 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=1.9043007e-09 original_rel_l2=0.036082026 worst_tile_rel_l2=0.033879262 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=9.7589747e-07 original_rel_l2=0.035446688 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0.036834098 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.037292218 worst_tile_rel_l2=0.033879262 admissible=1
+quantization shape=65x97x160 distribution=1
+mode=layer scale_bytes=8 math_rel_l2=1.535788e-09 original_rel_l2=0.029929443 worst_tile_rel_l2=0.028348872 admissible=1
+bf16_cublas_rel_l2=1.204044e-11
+mode=row scale_bytes=648 math_rel_l2=3.1371235e-06 original_rel_l2=0.029098309 worst_tile_rel_l2=0.028348872 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0.024880192 worst_tile_rel_l2=0.026717998 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=7.6685634e-10 original_rel_l2=0.029856064 worst_tile_rel_l2=0.026947718 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0.029937086 worst_tile_rel_l2=0.028348872 admissible=1
+quantization shape=65x97x160 distribution=2
+mode=layer scale_bytes=8 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+bf16_cublas_rel_l2=0
+mode=row scale_bytes=648 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=row128 scale_bytes=1296 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+mode=tile64x128 scale_bytes=32 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+inline_tile64x128: exact BF16 output match
+mode=rows64 scale_bytes=16 math_rel_l2=0 original_rel_l2=0 worst_tile_rel_l2=0 admissible=1
+PASS: scale-granularity experiment; no full-model quality or speedup claim
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+Static SASS instruction counts for _Z11scaled_gemmILb1EEv9QuantizedS0_P13__nv_bfloat16: {'HMMA': 16, 'HGMMA': 0, 'LDGSTS': 0, 'LDL': 0, 'STL': 0}
+Static SASS instruction counts for _Z11scaled_gemmILb0EEv9QuantizedS0_P13__nv_bfloat16: {'HMMA': 16, 'HGMMA': 0, 'LDGSTS': 14, 'LDL': 0, 'STL': 0}

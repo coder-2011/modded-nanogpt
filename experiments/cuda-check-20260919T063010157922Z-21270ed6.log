@@ -1,0 +1,615 @@
+sha256 df68ee4a8b3c58fb134cc3e01fbb764fda3a035e2e49ad12e7430c51dddb1303 Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 8c68a93307bfbd29b85a5f8f38a39a37e8bbb0bb89fb0282eebce7f9b74f0fca attention.cuh
+sha256 70a72759111a57bf30a9523b4975dbeddabcaccb59015b88fe9b84afa774e13c attention_layer.cu
+sha256 5e23df96de295a12c6770293bb3724e58ffee06f6310f0dbf43293c5c377ffac attention_layer.cuh
+sha256 e43b134f524130c5fcc5b7ea3dfca072fed7dfcb72ff0957dbb0bd2e7d4f7733 attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 a3be2ab6c64f030ca01f7d30c6a6bb7604b3bbe62257ba0aad9bb72bca232c76 bench.cuh
+sha256 a1239425b438fa85c0628a25decee76f394162bc6c3aae2cfa03cc6e5fd1c3d9 bf16.cu
+sha256 a221a6525b5565df618f066c3a4267b1702a9bef96f183e104e7974f0ecf7e3a bf16_gemm.cuh
+sha256 d4b3c092f09347b8d6cefd89d84d64bc7bea040a24b64c0dd8614fbfe7c8b621 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 cc6af53d8c683653fe034a8f4b8e5068dbb6bb43e9d6815d22cc532e0107fb1f megakernel.cuh
+sha256 650935fbe0799cec650ebe91331f83e58b23a3461c0a9df0f01a27a6dcebaec7 mlp_evaluation.cuh
+sha256 abc976abdeaa14db113f1e1c880af4aa6b3399bb04b70e1f3718ac8abbc3d888 mlp_evaluation_check.cuh
+sha256 e2597ab25c22b57f19b5ab28668ecd93a2b0a0dec4e70829152f7d17db6d1a64 model_evaluation.cuh
+sha256 763ca542d6466667270015e5da1bfd9791f6f0f299c901e9ec864db9bc140a2b model_evaluation_check.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 9075da55b9c101c83b3683c723f318808b2655b7b2b7219976b812520dc6deb2 routing.cu
+sha256 ca484b3e8d99319779949171f011f533443b6cd387ad8d5459fdb676e072f33a routing.cuh
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 06:31:15 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:29:00.0 Off |                    0 |
+| N/A   36C    P0             72W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda body
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 -DNANO_COOP_PUBLISH=1 -DNANO_EVALUATION_ONLY=1 -DNANO_EVALUATION_BODY=1 attention_layer.cu -lcublas -o body
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1ELb0EEEvNS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32800 bytes smem
+ptxas info    : Compile time = 1874.087 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1877.939 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1ELb0EEEvNS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 8 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1364.686 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32800 bytes smem
+ptxas info    : Compile time = 1537.989 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1ELb0EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb1ELb1ELb1ELb1ELb0EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32800 bytes smem
+ptxas info    : Compile time = 1532.527 ms
+ptxas info    : Compiling entry function '_Z12staged_layerILi4EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_layerILi4EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 126 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1187.312 ms
+ptxas info    : Compiling entry function '_Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE' for 'sm_90a'
+ptxas info    : Function properties for _Z9post_onlyN4nano13AttentionPostENS_18AttentionPostStageE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 42 registers, used 0 barriers
+ptxas info    : Compile time = 45.399 ms
+ptxas info    : Compiling entry function '_Z12staged_layerILi1EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12staged_layerILi1EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 165 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1130.594 ms
+ptxas info    : Compiling entry function '_Z11reset_layerN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z11reset_layerN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 2.633 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/body --main-shapes
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LAYER BF16 projection/product rel_l2=7.75302652e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=6.78336602e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=7.38488198e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=3.01895751e-06 max_abs=4.29153442e-05
+LAYER BF16 projection/product rel_l2=3.39494161e-07 max_abs=1.1920929e-06
+LAYER BF16 projection/product rel_l2=6.98626882e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=7.03780052e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=7.35188618e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=2.94300542e-06 max_abs=3.9100647e-05
+LAYER BF16 projection/product rel_l2=7.38704922e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=6.92278302e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.46718492e-07 max_abs=4.05311584e-06
+LAYER BF16 projection/product rel_l2=2.89905969e-06 max_abs=4.00543213e-05
+LAYER BF16 projection/product rel_l2=7.80788975e-07 max_abs=1.93715096e-07
+LAYER BF16 projection/product rel_l2=6.83968546e-07 max_abs=3.4570694e-06
+LAYER BF16 projection/product rel_l2=7.48643124e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=2.9120436e-06 max_abs=4.00543213e-05
+LAYER BF16 projection/product rel_l2=7.4093649e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=2.91850812e-06 max_abs=4.29153442e-05
+LAYER BF16 projection/product rel_l2=7.74143023e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.02745887e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.45654597e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=2.88624786e-06 max_abs=3.9100647e-05
+LAYER BF16 projection/product rel_l2=7.47995971e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=2.90656283e-06 max_abs=4.19616699e-05
+LAYER BF16 projection/product rel_l2=3.25285301e-07 max_abs=1.31130219e-06
+LAYER BF16 projection/product rel_l2=7.04698552e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=6.9798549e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.49903414e-07 max_abs=4.05311584e-06
+LAYER BF16 projection/product rel_l2=2.9054889e-06 max_abs=4.00543213e-05
+LAYER BF16 projection/product rel_l2=7.49903414e-07 max_abs=4.05311584e-06
+LAYER BF16 projection/product rel_l2=2.9054889e-06 max_abs=4.00543213e-05
+LAYER BF16 projection/product rel_l2=7.48053781e-07 max_abs=4.29153442e-06
+LAYER BF16 projection/product rel_l2=2.91123046e-06 max_abs=4.00543213e-05
+LAYER BF16 projection/product rel_l2=7.70221686e-07 max_abs=2.98023224e-07
+LAYER BF16 projection/product rel_l2=7.02181923e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.49521847e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=2.92429652e-06 max_abs=4.38690186e-05
+LAYER body normalization rel_l2=5.32576961e-08 max_abs=4.59289434e-07
+LAYER body normalization rel_l2=3.78059879e-08 max_abs=2.7895018e-07
+LAYER body normalization rel_l2=4.33415502e-08 max_abs=3.62540762e-07
+LAYER body normalization rel_l2=4.45843637e-08 max_abs=3.05547653e-07
+LAYER body normalization rel_l2=4.28701724e-08 max_abs=2.461609e-07
+LAYER body normalization rel_l2=4.48168029e-08 max_abs=3.43008738e-07
+LAYER body normalization rel_l2=4.18451431e-08 max_abs=2.97982218e-07
+LAYER body normalization rel_l2=4.28974378e-08 max_abs=3.31180898e-07
+LAYER body normalization rel_l2=4.34397543e-08 max_abs=3.139381e-07
+LAYER body normalization rel_l2=5.01326375e-08 max_abs=3.83725792e-07
+LAYER body normalization rel_l2=4.98046962e-08 max_abs=5.6537725e-07
+LAYER body normalization rel_l2=4.72121673e-08 max_abs=3.31792808e-07
+LAYER body normalization rel_l2=4.36174296e-08 max_abs=2.77973184e-07
+LAYER body normalization rel_l2=4.41865264e-08 max_abs=3.48440425e-07
+LAYER body normalization rel_l2=4.72813952e-08 max_abs=3.01481955e-07
+LAYER body normalization rel_l2=5.07807523e-08 max_abs=3.54942186e-07
+LAYER body normalization rel_l2=4.58014233e-08 max_abs=3.05145797e-07
+LAYER body residual/MUDD mix rel_l2=2.29249743e-08 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=1.08380938e-08 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=9.76909374e-10 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=2.92103867e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=7.73429295e-10 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=1.8461107e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=7.49251722e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=1.34658051e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=8.00429458e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=3.17581147e-08 max_abs=1.1920929e-06
+LAYER body residual/MUDD mix rel_l2=1.28731069e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=3.22531879e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=9.82506566e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=7.54314603e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=5.73819113e-10 max_abs=3.57627869e-07
+LAYER body residual/MUDD mix rel_l2=2.04882039e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=2.29576318e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=1.22777933e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=1.09388451e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.46242917e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=9.50271372e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.48038949e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=2.08977662e-08 max_abs=2.64495611e-07
+LAYER body residual/MUDD mix rel_l2=3.9791457e-08 max_abs=5.06639481e-06
+LAYER body residual/MUDD mix rel_l2=6.09667616e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=6.56007916e-08 max_abs=8.59797001e-06
+BODY PASS tokens=16 workers=1 step=0 tasks=1567 stages=108 matrices=38 attention=7 norms=17 mixes=27
+LAYER BF16 projection/product rel_l2=7.82427056e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.10810162e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.57442205e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=3.07099863e-06 max_abs=4.10079956e-05
+LAYER BF16 projection/product rel_l2=3.43891116e-07 max_abs=1.31130219e-06
+LAYER BF16 projection/product rel_l2=6.75547933e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=6.89977214e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.38004982e-07 max_abs=6.19888306e-06
+LAYER BF16 projection/product rel_l2=2.94542845e-06 max_abs=4.38690186e-05
+LAYER BF16 projection/product rel_l2=7.45515493e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=6.84537015e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=7.44087481e-07 max_abs=6.67572021e-06
+LAYER BF16 projection/product rel_l2=2.93473791e-06 max_abs=4.10079956e-05
+LAYER BF16 projection/product rel_l2=7.6510468e-07 max_abs=2.08616257e-07
+LAYER BF16 projection/product rel_l2=6.89044159e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.36131118e-07 max_abs=6.19888306e-06
+LAYER BF16 projection/product rel_l2=2.95457657e-06 max_abs=4.29153442e-05
+LAYER BF16 projection/product rel_l2=7.33837742e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=2.95940115e-06 max_abs=4.29153442e-05
+LAYER BF16 projection/product rel_l2=7.65313753e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=6.78042875e-07 max_abs=3.81469727e-06
+LAYER BF16 projection/product rel_l2=7.30906151e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=2.95512697e-06 max_abs=4.19616699e-05
+LAYER BF16 projection/product rel_l2=7.26690229e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=2.94293178e-06 max_abs=3.81469727e-05
+LAYER BF16 projection/product rel_l2=3.24419022e-07 max_abs=1.43051147e-06
+LAYER BF16 projection/product rel_l2=6.77214445e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=6.86257986e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.30518984e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=2.96922696e-06 max_abs=4.38690186e-05
+LAYER BF16 projection/product rel_l2=7.30518984e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=2.96922696e-06 max_abs=4.38690186e-05
+LAYER BF16 projection/product rel_l2=7.27987925e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=2.95329614e-06 max_abs=4.95910645e-05
+LAYER BF16 projection/product rel_l2=6.84501585e-07 max_abs=2.23517418e-07
+LAYER BF16 projection/product rel_l2=6.73668756e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=7.21813776e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=2.92858415e-06 max_abs=5.05447388e-05
+LAYER body normalization rel_l2=4.48949818e-08 max_abs=2.74031194e-07
+LAYER body normalization rel_l2=4.02774865e-08 max_abs=2.57433021e-07
+LAYER body normalization rel_l2=4.92803705e-08 max_abs=3.43117381e-07
+LAYER body normalization rel_l2=5.87854919e-08 max_abs=4.65995586e-07
+LAYER body normalization rel_l2=4.13331425e-08 max_abs=2.6840104e-07
+LAYER body normalization rel_l2=4.34258257e-08 max_abs=2.88509164e-07
+LAYER body normalization rel_l2=5.10201911e-08 max_abs=3.59856398e-07
+LAYER body normalization rel_l2=5.91407185e-08 max_abs=4.3188234e-07
+LAYER body normalization rel_l2=5.21075881e-08 max_abs=3.41097691e-07
+LAYER body normalization rel_l2=4.89261726e-08 max_abs=3.40408953e-07
+LAYER body normalization rel_l2=5.09520043e-08 max_abs=3.42722693e-07
+LAYER body normalization rel_l2=5.01638704e-08 max_abs=3.57704169e-07
+LAYER body normalization rel_l2=3.90225475e-08 max_abs=2.73272088e-07
+LAYER body normalization rel_l2=3.82060807e-08 max_abs=2.81747567e-07
+LAYER body normalization rel_l2=4.71981146e-08 max_abs=3.56101502e-07
+LAYER body normalization rel_l2=4.44257889e-08 max_abs=3.18775899e-07
+LAYER body normalization rel_l2=5.13112411e-08 max_abs=3.11968726e-07
+LAYER body residual/MUDD mix rel_l2=2.02391034e-08 max_abs=5.96046448e-08
+LAYER body residual/MUDD mix rel_l2=1.13247671e-08 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=1.84532725e-09 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=2.87545866e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=5.16371912e-10 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=1.63320109e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=8.3938676e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=1.81856106e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=8.48240406e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=3.0466651e-08 max_abs=1.43051147e-06
+LAYER body residual/MUDD mix rel_l2=4.09748351e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=3.28576615e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=4.05334935e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=8.27374235e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=1.70081758e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.00183052e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=3.17994982e-11 max_abs=2.98023224e-08
+LAYER body residual/MUDD mix rel_l2=3.34740321e-10 max_abs=3.57627869e-07
+LAYER body residual/MUDD mix rel_l2=2.91641395e-10 max_abs=3.57627869e-07
+LAYER body residual/MUDD mix rel_l2=2.57130114e-08 max_abs=1.87382102e-06
+LAYER body residual/MUDD mix rel_l2=9.78993797e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.32548271e-08 max_abs=2.81631947e-06
+LAYER body residual/MUDD mix rel_l2=1.83800736e-08 max_abs=2.08616257e-07
+LAYER body residual/MUDD mix rel_l2=3.66979908e-08 max_abs=5.52926213e-06
+LAYER body residual/MUDD mix rel_l2=7.46299466e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=6.41947743e-08 max_abs=8.07642937e-06
+BODY PASS tokens=16 workers=1 step=1 tasks=1567 stages=108 matrices=38 attention=7 norms=17 mixes=27
+LAYER BF16 projection/product rel_l2=7.44819017e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.01818597e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.3542711e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=3.02844227e-06 max_abs=4.38690186e-05
+LAYER BF16 projection/product rel_l2=3.36565209e-07 max_abs=1.43051147e-06
+LAYER BF16 projection/product rel_l2=6.92904927e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=7.02070495e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.47950076e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=2.95589752e-06 max_abs=3.9100647e-05
+LAYER BF16 projection/product rel_l2=7.60908704e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.0909489e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.45303933e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=2.99189737e-06 max_abs=5.05447388e-05
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.26238256e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.71849376e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=2.97924143e-06 max_abs=4.76837158e-05
+LAYER BF16 projection/product rel_l2=7.77649706e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=2.9923975e-06 max_abs=4.72068787e-05
+LAYER BF16 projection/product rel_l2=7.83647516e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.16404352e-07 max_abs=3.4570694e-06
+LAYER BF16 projection/product rel_l2=7.661181e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=2.95741907e-06 max_abs=4.29153442e-05
+LAYER BF16 projection/product rel_l2=7.55266783e-07 max_abs=4.29153442e-06
+LAYER BF16 projection/product rel_l2=2.97076291e-06 max_abs=3.95774841e-05
+LAYER BF16 projection/product rel_l2=3.26637131e-07 max_abs=1.1920929e-06
+LAYER BF16 projection/product rel_l2=7.0813743e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=7.22837205e-07 max_abs=3.81469727e-06
+LAYER BF16 projection/product rel_l2=7.5331236e-07 max_abs=4.29153442e-06
+LAYER BF16 projection/product rel_l2=2.97026321e-06 max_abs=4.67300415e-05
+LAYER BF16 projection/product rel_l2=7.5331236e-07 max_abs=4.29153442e-06
+LAYER BF16 projection/product rel_l2=2.97026321e-06 max_abs=4.67300415e-05
+LAYER BF16 projection/product rel_l2=7.56127589e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=2.97776406e-06 max_abs=4.29153442e-05
+LAYER BF16 projection/product rel_l2=0 max_abs=0
+LAYER BF16 projection/product rel_l2=7.11913992e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.52546099e-07 max_abs=4.05311584e-06
+LAYER BF16 projection/product rel_l2=2.97745939e-06 max_abs=4.48226929e-05
+LAYER body normalization rel_l2=5.23104675e-08 max_abs=3.52465618e-07
+LAYER body normalization rel_l2=4.30843606e-08 max_abs=4.47730749e-07
+LAYER body normalization rel_l2=6.75635067e-08 max_abs=4.48621413e-07
+LAYER body normalization rel_l2=5.10766244e-08 max_abs=3.23574745e-07
+LAYER body normalization rel_l2=5.90106485e-08 max_abs=5.01393794e-07
+LAYER body normalization rel_l2=4.58897002e-08 max_abs=2.96443499e-07
+LAYER body normalization rel_l2=3.84295445e-08 max_abs=2.61769237e-07
+LAYER body normalization rel_l2=4.11047826e-08 max_abs=2.80268678e-07
+LAYER body normalization rel_l2=4.92854933e-08 max_abs=4.21653525e-07
+LAYER body normalization rel_l2=4.95509541e-08 max_abs=3.18987667e-07
+LAYER body normalization rel_l2=5.37570539e-08 max_abs=3.90667895e-07
+LAYER body normalization rel_l2=4.08474067e-08 max_abs=3.22753077e-07
+LAYER body normalization rel_l2=6.49734627e-08 max_abs=4.86996115e-07
+LAYER body normalization rel_l2=5.58158627e-08 max_abs=3.71103383e-07
+LAYER body normalization rel_l2=5.68357363e-08 max_abs=3.39554314e-07
+LAYER body normalization rel_l2=5.02149292e-08 max_abs=4.72113744e-07
+LAYER body normalization rel_l2=4.0466118e-08 max_abs=3.20978724e-07
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=1.29358541e-09 max_abs=5.96046448e-08
+LAYER body residual/MUDD mix rel_l2=4.91098147e-10 max_abs=5.96046448e-08
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=7.45957576e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=8.73595593e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=7.44249826e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=4.04515039e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=1.19720723e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=1.05637128e-08 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=2.55853562e-11 max_abs=2.98023224e-08
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=1.15873414e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=1.05979223e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=8.24563888e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.31876602e-08 max_abs=2.77161598e-06
+LAYER body residual/MUDD mix rel_l2=2.03481554e-08 max_abs=3.57627869e-07
+LAYER body residual/MUDD mix rel_l2=3.37315849e-08 max_abs=3.69548798e-06
+LAYER body residual/MUDD mix rel_l2=4.92551198e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=6.19334789e-08 max_abs=8.7916851e-06
+BODY PASS tokens=16 workers=1 step=2 tasks=1567 stages=108 matrices=38 attention=7 norms=17 mixes=27
+LAYER BF16 projection/product rel_l2=7.62345358e-07 max_abs=3.09944153e-06
+LAYER BF16 projection/product rel_l2=6.89337566e-07 max_abs=4.05311584e-06
+LAYER BF16 projection/product rel_l2=7.30680589e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.02147999e-06 max_abs=4.76837158e-05
+LAYER BF16 projection/product rel_l2=3.5727473e-07 max_abs=1.1920929e-06
+LAYER BF16 projection/product rel_l2=6.9492594e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=6.99460279e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.34451866e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=3.05793998e-06 max_abs=5.24520874e-05
+LAYER BF16 projection/product rel_l2=7.39758499e-07 max_abs=3.21865082e-06
+LAYER BF16 projection/product rel_l2=6.91978201e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.36738187e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=3.08765681e-06 max_abs=5.34057617e-05
+LAYER BF16 projection/product rel_l2=7.79752259e-07 max_abs=2.68220901e-07
+LAYER BF16 projection/product rel_l2=6.99413988e-07 max_abs=3.81469727e-06
+LAYER BF16 projection/product rel_l2=7.39388712e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=3.10551281e-06 max_abs=5.34057617e-05
+LAYER BF16 projection/product rel_l2=7.38124162e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.1151825e-06 max_abs=5.34057617e-05
+LAYER BF16 projection/product rel_l2=7.42440358e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=6.85205793e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.40479001e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.12586282e-06 max_abs=5.14984131e-05
+LAYER BF16 projection/product rel_l2=7.35629313e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.12381631e-06 max_abs=5.24520874e-05
+LAYER BF16 projection/product rel_l2=3.52349868e-07 max_abs=1.31130219e-06
+LAYER BF16 projection/product rel_l2=6.84476929e-07 max_abs=3.81469727e-06
+LAYER BF16 projection/product rel_l2=7.03062844e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.39369242e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.10917997e-06 max_abs=4.95910645e-05
+LAYER BF16 projection/product rel_l2=7.39369242e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.10917997e-06 max_abs=4.95910645e-05
+LAYER BF16 projection/product rel_l2=7.32367856e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=3.0949298e-06 max_abs=4.86373901e-05
+LAYER BF16 projection/product rel_l2=7.37788874e-07 max_abs=2.98023224e-07
+LAYER BF16 projection/product rel_l2=6.96616673e-07 max_abs=3.81469727e-06
+LAYER BF16 projection/product rel_l2=7.32020138e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=3.09384845e-06 max_abs=5.05447388e-05
+LAYER body normalization rel_l2=4.84462551e-08 max_abs=4.62054709e-07
+LAYER body normalization rel_l2=4.50846894e-08 max_abs=3.72500712e-07
+LAYER body normalization rel_l2=5.51942659e-08 max_abs=4.42188856e-07
+LAYER body normalization rel_l2=5.46431299e-08 max_abs=4.67041184e-07
+LAYER body normalization rel_l2=4.75479647e-08 max_abs=3.53522006e-07
+LAYER body normalization rel_l2=5.05936813e-08 max_abs=5.19734169e-07
+LAYER body normalization rel_l2=5.04578704e-08 max_abs=4.24280278e-07
+LAYER body normalization rel_l2=5.34489445e-08 max_abs=5.2713026e-07
+LAYER body normalization rel_l2=4.79957147e-08 max_abs=3.71699297e-07
+LAYER body normalization rel_l2=5.39111662e-08 max_abs=4.32242035e-07
+LAYER body normalization rel_l2=4.7629858e-08 max_abs=4.02176356e-07
+LAYER body normalization rel_l2=4.61633214e-08 max_abs=3.62742645e-07
+LAYER body normalization rel_l2=4.42345395e-08 max_abs=3.7989634e-07
+LAYER body normalization rel_l2=4.45470478e-08 max_abs=3.85193781e-07
+LAYER body normalization rel_l2=4.94636514e-08 max_abs=4.69102447e-07
+LAYER body normalization rel_l2=4.91358553e-08 max_abs=5.02367773e-07
+LAYER body normalization rel_l2=4.73027599e-08 max_abs=3.70507319e-07
+LAYER body residual/MUDD mix rel_l2=1.9800061e-08 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=7.01272979e-09 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=1.92206773e-09 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=2.77764388e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=1.35675462e-09 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=1.54758109e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=1.39070632e-09 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=1.30819309e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=5.4860834e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=3.16980539e-08 max_abs=1.83284283e-06
+LAYER body residual/MUDD mix rel_l2=8.71643e-11 max_abs=5.96046448e-08
+LAYER body residual/MUDD mix rel_l2=3.19279974e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=1.45542256e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=4.9048096e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=1.29122395e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.19461159e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=5.18200157e-10 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=6.70845457e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=5.84091088e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.51204426e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=7.01941117e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.33003486e-08 max_abs=3.81469727e-06
+LAYER body residual/MUDD mix rel_l2=2.25010918e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=3.92408727e-08 max_abs=6.46710396e-06
+LAYER body residual/MUDD mix rel_l2=5.56172391e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=6.62226624e-08 max_abs=1.19823962e-05
+BODY PASS tokens=80 workers=17 step=0 tasks=5167 stages=108 matrices=38 attention=7 norms=17 mixes=27
+LAYER BF16 projection/product rel_l2=7.68334423e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=6.9186771e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.39410318e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=3.02671482e-06 max_abs=5.34057617e-05
+LAYER BF16 projection/product rel_l2=3.48417519e-07 max_abs=1.1920929e-06
+LAYER BF16 projection/product rel_l2=6.97391915e-07 max_abs=4.05311584e-06
+LAYER BF16 projection/product rel_l2=7.00143648e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=7.38373395e-07 max_abs=4.76837158e-06
+LAYER BF16 projection/product rel_l2=3.04482479e-06 max_abs=5.62667847e-05
+LAYER BF16 projection/product rel_l2=7.48474725e-07 max_abs=2.86102295e-06
+LAYER BF16 projection/product rel_l2=6.98380648e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.44331672e-07 max_abs=6.19888306e-06
+LAYER BF16 projection/product rel_l2=3.06214136e-06 max_abs=4.86373901e-05
+LAYER BF16 projection/product rel_l2=7.85936959e-07 max_abs=2.68220901e-07
+LAYER BF16 projection/product rel_l2=7.04981121e-07 max_abs=3.81469727e-06
+LAYER BF16 projection/product rel_l2=7.43612747e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=3.06015021e-06 max_abs=5.14984131e-05
+LAYER BF16 projection/product rel_l2=7.42913957e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.04530869e-06 max_abs=4.95910645e-05
+LAYER BF16 projection/product rel_l2=7.47023719e-07 max_abs=3.33786011e-06
+LAYER BF16 projection/product rel_l2=6.99048317e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=7.42210675e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.05948442e-06 max_abs=5.53131104e-05
+LAYER BF16 projection/product rel_l2=7.46596804e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.05319906e-06 max_abs=5.24520874e-05
+LAYER BF16 projection/product rel_l2=3.51447226e-07 max_abs=1.1920929e-06
+LAYER BF16 projection/product rel_l2=6.92333596e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.05560522e-07 max_abs=4.05311584e-06
+LAYER BF16 projection/product rel_l2=7.41733614e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.04353928e-06 max_abs=5.14984131e-05
+LAYER BF16 projection/product rel_l2=7.41733614e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.04353928e-06 max_abs=5.14984131e-05
+LAYER BF16 projection/product rel_l2=7.34431329e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.03210991e-06 max_abs=4.67300415e-05
+LAYER BF16 projection/product rel_l2=7.72374392e-07 max_abs=2.23517418e-07
+LAYER BF16 projection/product rel_l2=7.01927302e-07 max_abs=3.57627869e-06
+LAYER BF16 projection/product rel_l2=7.34709837e-07 max_abs=5.24520874e-06
+LAYER BF16 projection/product rel_l2=3.02811158e-06 max_abs=4.86373901e-05
+LAYER body normalization rel_l2=4.89104804e-08 max_abs=4.71507215e-07
+LAYER body normalization rel_l2=4.43439209e-08 max_abs=3.65009592e-07
+LAYER body normalization rel_l2=5.61643512e-08 max_abs=4.11770398e-07
+LAYER body normalization rel_l2=5.59601968e-08 max_abs=4.70822609e-07
+LAYER body normalization rel_l2=4.92305417e-08 max_abs=4.65792e-07
+LAYER body normalization rel_l2=4.3637693e-08 max_abs=3.62986437e-07
+LAYER body normalization rel_l2=4.52046794e-08 max_abs=4.2342877e-07
+LAYER body normalization rel_l2=4.57057456e-08 max_abs=4.25728332e-07
+LAYER body normalization rel_l2=5.01447228e-08 max_abs=4.18342915e-07
+LAYER body normalization rel_l2=4.95082989e-08 max_abs=4.96236271e-07
+LAYER body normalization rel_l2=4.70383035e-08 max_abs=3.44442218e-07
+LAYER body normalization rel_l2=4.24977341e-08 max_abs=3.18049912e-07
+LAYER body normalization rel_l2=4.50641457e-08 max_abs=5.41524251e-07
+LAYER body normalization rel_l2=4.68007943e-08 max_abs=4.79954235e-07
+LAYER body normalization rel_l2=5.37664535e-08 max_abs=4.62006518e-07
+LAYER body normalization rel_l2=4.90849378e-08 max_abs=4.37820986e-07
+LAYER body normalization rel_l2=4.3721586e-08 max_abs=4.36183119e-07
+LAYER body residual/MUDD mix rel_l2=1.93209634e-08 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=7.51362932e-09 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=2.67234882e-09 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=2.68217855e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=8.73498164e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=1.64419248e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=7.28455756e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=1.43617044e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=1.04998512e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=3.23592671e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=1.18274918e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=3.27898267e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=1.14371652e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=5.79245782e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=1.03251581e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=2.24799299e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=6.36094209e-10 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=9.88415874e-10 max_abs=5.96046448e-07
+LAYER body residual/MUDD mix rel_l2=8.80760275e-10 max_abs=5.96046448e-07
+LAYER body residual/MUDD mix rel_l2=2.54579815e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=1.67215505e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=2.45819926e-08 max_abs=5.24520874e-06
+LAYER body residual/MUDD mix rel_l2=2.2444743e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=4.15554952e-08 max_abs=5.48362732e-06
+LAYER body residual/MUDD mix rel_l2=5.8867747e-10 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=6.6529745e-08 max_abs=1.51693821e-05
+BODY PASS tokens=80 workers=17 step=1 tasks=5167 stages=108 matrices=38 attention=7 norms=17 mixes=27
+LAYER BF16 projection/product rel_l2=7.55613855e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=7.1522624e-07 max_abs=6.19888306e-06
+LAYER BF16 projection/product rel_l2=7.60308618e-07 max_abs=8.58306885e-06
+LAYER BF16 projection/product rel_l2=3.0362365e-06 max_abs=7.2479248e-05
+LAYER BF16 projection/product rel_l2=3.7067869e-07 max_abs=1.43051147e-06
+LAYER BF16 projection/product rel_l2=7.1911418e-07 max_abs=6.19888306e-06
+LAYER BF16 projection/product rel_l2=7.116182e-07 max_abs=5.7220459e-06
+LAYER BF16 projection/product rel_l2=7.58497257e-07 max_abs=1.00135803e-05
+LAYER BF16 projection/product rel_l2=3.06585533e-06 max_abs=7.2479248e-05
+LAYER BF16 projection/product rel_l2=7.21922723e-07 max_abs=4.529953e-06
+LAYER BF16 projection/product rel_l2=7.11869018e-07 max_abs=6.19888306e-06
+LAYER BF16 projection/product rel_l2=7.5869931e-07 max_abs=9.53674316e-06
+LAYER BF16 projection/product rel_l2=3.11668804e-06 max_abs=7.34329224e-05
+LAYER BF16 projection/product rel_l2=8.4770271e-07 max_abs=4.61935997e-07
+LAYER BF16 projection/product rel_l2=7.11745154e-07 max_abs=6.19888306e-06
+LAYER BF16 projection/product rel_l2=7.56560061e-07 max_abs=1.09672546e-05
+LAYER BF16 projection/product rel_l2=3.13406761e-06 max_abs=6.96182251e-05
+LAYER BF16 projection/product rel_l2=7.54724792e-07 max_abs=1.14440918e-05
+LAYER BF16 projection/product rel_l2=3.14279664e-06 max_abs=6.96182251e-05
+LAYER BF16 projection/product rel_l2=7.12332612e-07 max_abs=3.81469727e-06
+LAYER BF16 projection/product rel_l2=7.07790785e-07 max_abs=6.19888306e-06
+LAYER BF16 projection/product rel_l2=7.53884447e-07 max_abs=9.05990601e-06
+LAYER BF16 projection/product rel_l2=3.16185605e-06 max_abs=6.96182251e-05
+LAYER BF16 projection/product rel_l2=7.52663038e-07 max_abs=8.58306885e-06
+LAYER BF16 projection/product rel_l2=3.15933952e-06 max_abs=7.15255737e-05
+LAYER BF16 projection/product rel_l2=3.68649676e-07 max_abs=2.14576721e-06
+LAYER BF16 projection/product rel_l2=7.08854726e-07 max_abs=5.48362732e-06
+LAYER BF16 projection/product rel_l2=6.96392688e-07 max_abs=5.48362732e-06
+LAYER BF16 projection/product rel_l2=7.48646133e-07 max_abs=1.00135803e-05
+LAYER BF16 projection/product rel_l2=3.16058122e-06 max_abs=7.43865967e-05
+LAYER BF16 projection/product rel_l2=7.48646133e-07 max_abs=1.00135803e-05
+LAYER BF16 projection/product rel_l2=3.16058122e-06 max_abs=7.43865967e-05
+LAYER BF16 projection/product rel_l2=7.48051459e-07 max_abs=1.00135803e-05
+LAYER BF16 projection/product rel_l2=3.15050229e-06 max_abs=7.2479248e-05
+LAYER BF16 projection/product rel_l2=8.4266938e-07 max_abs=4.61935997e-07
+LAYER BF16 projection/product rel_l2=7.06502103e-07 max_abs=6.67572021e-06
+LAYER BF16 projection/product rel_l2=7.48025113e-07 max_abs=1.09672546e-05
+LAYER BF16 projection/product rel_l2=3.14771651e-06 max_abs=7.15255737e-05
+LAYER body normalization rel_l2=4.97098938e-08 max_abs=7.49887958e-07
+LAYER body normalization rel_l2=4.45627789e-08 max_abs=6.06998121e-07
+LAYER body normalization rel_l2=5.60408467e-08 max_abs=6.66179182e-07
+LAYER body normalization rel_l2=5.57737668e-08 max_abs=7.72982276e-07
+LAYER body normalization rel_l2=4.88959893e-08 max_abs=6.17148281e-07
+LAYER body normalization rel_l2=4.8954718e-08 max_abs=6.72262577e-07
+LAYER body normalization rel_l2=5.07045545e-08 max_abs=6.90115228e-07
+LAYER body normalization rel_l2=5.15042986e-08 max_abs=7.60570584e-07
+LAYER body normalization rel_l2=4.69889651e-08 max_abs=5.95554e-07
+LAYER body normalization rel_l2=5.34914777e-08 max_abs=7.13842739e-07
+LAYER body normalization rel_l2=5.38745869e-08 max_abs=7.92378282e-07
+LAYER body normalization rel_l2=4.43137556e-08 max_abs=6.01450977e-07
+LAYER body normalization rel_l2=4.44181163e-08 max_abs=7.00320377e-07
+LAYER body normalization rel_l2=4.58664124e-08 max_abs=6.1020882e-07
+LAYER body normalization rel_l2=4.75419319e-08 max_abs=6.37630837e-07
+LAYER body normalization rel_l2=5.0242561e-08 max_abs=6.27378741e-07
+LAYER body normalization rel_l2=4.92745342e-08 max_abs=7.08709648e-07
+LAYER body residual/MUDD mix rel_l2=1.95089169e-08 max_abs=1.1920929e-07
+LAYER body residual/MUDD mix rel_l2=5.004852e-09 max_abs=1.9883737e-07
+LAYER body residual/MUDD mix rel_l2=3.02038496e-09 max_abs=3.57627869e-07
+LAYER body residual/MUDD mix rel_l2=2.75253819e-08 max_abs=9.23871994e-07
+LAYER body residual/MUDD mix rel_l2=8.9120092e-10 max_abs=2.38418579e-07
+LAYER body residual/MUDD mix rel_l2=1.67390381e-08 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=7.03114945e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=1.4399073e-09 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=3.39203731e-10 max_abs=4.76837158e-07
+LAYER body residual/MUDD mix rel_l2=3.19073548e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=9.34855029e-10 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=3.27812615e-08 max_abs=3.74019146e-06
+LAYER body residual/MUDD mix rel_l2=7.06971905e-10 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=5.90675527e-09 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=1.04431809e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=2.21416289e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=0 max_abs=0
+LAYER body residual/MUDD mix rel_l2=4.94697027e-10 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=4.63814914e-10 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=3.98531013e-10 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=2.5116378e-08 max_abs=1.90734863e-06
+LAYER body residual/MUDD mix rel_l2=1.46689965e-09 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=2.42226701e-08 max_abs=7.15255737e-06
+LAYER body residual/MUDD mix rel_l2=2.2044607e-08 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=4.03407908e-08 max_abs=7.27176666e-06
+LAYER body residual/MUDD mix rel_l2=6.83694775e-10 max_abs=9.53674316e-07
+LAYER body residual/MUDD mix rel_l2=6.58378025e-08 max_abs=1.8030405e-05
+BODY PASS tokens=16384 workers=528 step=0 tasks=921607 stages=108 matrices=38 attention=7 norms=17 mixes=27
+PASS: eleven-layer BF16 body; prepared embeddings/gates, loss, training and optimizer integration remain
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb1EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 0, 'STL': 0}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb0ELb1ELb0EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 1, 'STL': 1}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1ELb1ELb1ELb1ELb0EEEvNS_5GraphE: {'HMMA': 56, 'HGMMA': 0, 'LDGSTS': 56, 'LDL': 0, 'STL': 0}

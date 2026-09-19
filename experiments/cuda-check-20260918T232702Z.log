@@ -1,0 +1,1098 @@
+sha256 c863e1495990da4327eebb54f7888a751ad5d670c137d3272650b550f771604b Makefile
+sha256 3fbb4654f027fd94bde15e7d5edb223e2866399654dbcb0daeb217c128c9d209 megakernel.cuh
+sha256 769f2523af87e1b59ade9fefe17caefb3d8c1f8ff588e11b16239e284fad5258 validate.cu
+$ nvidia-smi
+Fri Sep 18 23:26:30 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:29:00.0 Off |                    0 |
+| N/A   30C    P0             69W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda validate
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills validate.cu -lcublas -o validate
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelENS_5GraphE', 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelENS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelENS_5GraphE
+    8 bytes stack frame, 4 bytes spill stores, 4 bytes spill loads
+ptxas info    : Used 80 registers, used 1 barriers, 8 bytes cumulative stack size, 4100 bytes smem
+ptxas info    : Compile time = 251.571 ms
+ptxas info    : Compiling entry function '_Z13staged_kernelN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z13staged_kernelN4nano6MatmulE
+    128 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 97 registers, used 1 barriers, 128 bytes cumulative stack size, 4096 bytes smem
+ptxas info    : Compile time = 1239.007 ms
+ptxas info    : Compiling entry function '_Z18reference_epiloguePKfN4nano6MatmulE' for 'sm_90a'
+ptxas info    : Function properties for _Z18reference_epiloguePKfN4nano6MatmulE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 17 registers, used 0 barriers
+ptxas info    : Compile time = 12.074 ms
+ptxas info    : Compiling entry function '_Z6unpackPK13__nv_fp8_e4m3Pfi' for 'sm_90a'
+ptxas info    : Function properties for _Z6unpackPK13__nv_fp8_e4m3Pfi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 10 registers, used 0 barriers
+ptxas info    : Compile time = 1.522 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/validate
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=80 static_shared=4100 local_bytes=8
+resident_blocks_per_SM=6
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=924 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=924 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=924 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=256 C=768 H=3072 workers=132 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/786432
+  dpre   rel_l2=0 max_abs=0 different=0/786432
+  post.T rel_l2=0 max_abs=0 different=0/786432
+  dpre.T rel_l2=0 max_abs=0 different=0/786432
+  y      rel_l2=6.9061389e-06 max_abs=0.0009765625 different=10/196608
+  dx     rel_l2=2.1585615e-05 max_abs=0.001953125 different=5/196608
+  dw1    rel_l2=7.5138585e-08 max_abs=0.00012207031 different=1/2359296
+  dw2    rel_l2=1.963173e-07 max_abs=0.00024414062 different=5/2359296
+timing median_ms fused=0.751232 staged_same_tiles=0.269696 tasks=1632 (warm cache; reset excluded)
+shape M=8192 C=768 H=3072 workers=132 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/25165824
+  dpre   rel_l2=0 max_abs=0 different=0/25165824
+  post.T rel_l2=0 max_abs=0 different=0/25165824
+  dpre.T rel_l2=0 max_abs=0 different=0/25165824
+  y      rel_l2=1.8368745e-05 max_abs=0.00390625 different=435/6291456
+  dx     rel_l2=1.3319802e-05 max_abs=0.00390625 different=195/6291456
+  dw1    rel_l2=2.0114835e-05 max_abs=0.0625 different=181/2359296
+  dw2    rel_l2=2.2570903e-05 max_abs=0.0625 different=272/2359296
+timing median_ms fused=10.122432 staged_same_tiles=2.290528 tasks=16512 (warm cache; reset excluded)
+shape M=256 C=768 H=3072 workers=264 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/786432
+  dpre   rel_l2=0 max_abs=0 different=0/786432
+  post.T rel_l2=0 max_abs=0 different=0/786432
+  dpre.T rel_l2=0 max_abs=0 different=0/786432
+  y      rel_l2=6.9061389e-06 max_abs=0.0009765625 different=10/196608
+  dx     rel_l2=2.1585615e-05 max_abs=0.001953125 different=5/196608
+  dw1    rel_l2=7.5138585e-08 max_abs=0.00012207031 different=1/2359296
+  dw2    rel_l2=1.963173e-07 max_abs=0.00024414062 different=5/2359296
+timing median_ms fused=0.780928 staged_same_tiles=0.267232 tasks=1632 (warm cache; reset excluded)
+shape M=8192 C=768 H=3072 workers=264 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/25165824
+  dpre   rel_l2=0 max_abs=0 different=0/25165824
+  post.T rel_l2=0 max_abs=0 different=0/25165824
+  dpre.T rel_l2=0 max_abs=0 different=0/25165824
+  y      rel_l2=1.8368745e-05 max_abs=0.00390625 different=435/6291456
+  dx     rel_l2=1.3319802e-05 max_abs=0.00390625 different=195/6291456
+  dw1    rel_l2=2.0114835e-05 max_abs=0.0625 different=181/2359296
+  dw2    rel_l2=2.2570903e-05 max_abs=0.0625 different=272/2359296
+timing median_ms fused=8.289664 staged_same_tiles=2.290784 tasks=16512 (warm cache; reset excluded)
+shape M=256 C=768 H=3072 workers=528 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/786432
+  dpre   rel_l2=0 max_abs=0 different=0/786432
+  post.T rel_l2=0 max_abs=0 different=0/786432
+  dpre.T rel_l2=0 max_abs=0 different=0/786432
+  y      rel_l2=6.9061389e-06 max_abs=0.0009765625 different=10/196608
+  dx     rel_l2=2.1585615e-05 max_abs=0.001953125 different=5/196608
+  dw1    rel_l2=7.5138585e-08 max_abs=0.00012207031 different=1/2359296
+  dw2    rel_l2=1.963173e-07 max_abs=0.00024414062 different=5/2359296
+timing median_ms fused=1.007040 staged_same_tiles=0.265408 tasks=1632 (warm cache; reset excluded)
+shape M=8192 C=768 H=3072 workers=528 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/25165824
+  dpre   rel_l2=0 max_abs=0 different=0/25165824
+  post.T rel_l2=0 max_abs=0 different=0/25165824
+  dpre.T rel_l2=0 max_abs=0 different=0/25165824
+  y      rel_l2=1.8368745e-05 max_abs=0.00390625 different=435/6291456
+  dx     rel_l2=1.3319802e-05 max_abs=0.00390625 different=195/6291456
+  dw1    rel_l2=2.0114835e-05 max_abs=0.0625 different=181/2359296
+  dw2    rel_l2=2.2570903e-05 max_abs=0.0625 different=272/2359296
+timing median_ms fused=9.398624 staged_same_tiles=2.303936 tasks=16512 (warm cache; reset excluded)
+shape M=256 C=768 H=3072 workers=792 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/786432
+  dpre   rel_l2=0 max_abs=0 different=0/786432
+  post.T rel_l2=0 max_abs=0 different=0/786432
+  dpre.T rel_l2=0 max_abs=0 different=0/786432
+  y      rel_l2=6.9061389e-06 max_abs=0.0009765625 different=10/196608
+  dx     rel_l2=2.1585615e-05 max_abs=0.001953125 different=5/196608
+  dw1    rel_l2=7.5138585e-08 max_abs=0.00012207031 different=1/2359296
+  dw2    rel_l2=1.963173e-07 max_abs=0.00024414062 different=5/2359296
+timing median_ms fused=1.562880 staged_same_tiles=0.268768 tasks=1632 (warm cache; reset excluded)
+shape M=8192 C=768 H=3072 workers=792 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/25165824
+  dpre   rel_l2=0 max_abs=0 different=0/25165824
+  post.T rel_l2=0 max_abs=0 different=0/25165824
+  dpre.T rel_l2=0 max_abs=0 different=0/25165824
+  y      rel_l2=1.8368745e-05 max_abs=0.00390625 different=435/6291456
+  dx     rel_l2=1.3319802e-05 max_abs=0.00390625 different=195/6291456
+  dw1    rel_l2=2.0114835e-05 max_abs=0.0625 different=181/2359296
+  dw2    rel_l2=2.2570903e-05 max_abs=0.0625 different=272/2359296
+timing median_ms fused=13.504096 staged_same_tiles=2.278080 tasks=16512 (warm cache; reset excluded)
+PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.
+
+$ make -C /workspace/cuda sanitize
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./validate --quick
+========= COMPUTE-SANITIZER
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=80 static_shared=4100 local_bytes=8
+resident_blocks_per_SM=6
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=924 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=924 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=924 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./validate --quick
+========= COMPUTE-SANITIZER
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=80 static_shared=4100 local_bytes=8
+resident_blocks_per_SM=6
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=924 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=924 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=924 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+PASS: FP8 six-GEMM MLP graph, all outputs and gradients; not full-model training.
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool synccheck --error-exitcode 1 ./validate --quick
+========= COMPUTE-SANITIZER
+GPU=NVIDIA H100 80GB HBM3 SMs=132 CUDA_runtime=12080
+megakernel registers=80 static_shared=4100 local_bytes=8
+resident_blocks_per_SM=6
+shape M=7 C=17 H=33 workers=1 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=1 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=1 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=7 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=7 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=7 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=132 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=132 seed=1337 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/20640
+  dpre   rel_l2=0 max_abs=0 different=0/20640
+  post.T rel_l2=0 max_abs=0 different=0/20640
+  dpre.T rel_l2=0 max_abs=0 different=0/20640
+  y      rel_l2=0 max_abs=0 different=0/12384
+  dx     rel_l2=0 max_abs=0 different=0/12384
+  dw1    rel_l2=0 max_abs=0 different=0/15360
+  dw2    rel_l2=0 max_abs=0 different=0/15360
+shape M=65 C=32 H=64 workers=132 seed=2 zeros=1
+  post   rel_l2=0 max_abs=0 different=0/4160
+  dpre   rel_l2=0 max_abs=0 different=0/4160
+  post.T rel_l2=0 max_abs=0 different=0/4160
+  dpre.T rel_l2=0 max_abs=0 different=0/4160
+  y      rel_l2=0 max_abs=0 different=0/2080
+  dx     rel_l2=0 max_abs=0 different=0/2080
+  dw1    rel_l2=0 max_abs=0 different=0/2048
+  dw2    rel_l2=0 max_abs=0 different=0/2048
+shape M=7 C=17 H=33 workers=924 seed=42 zeros=0
+  post   rel_l2=0 max_abs=0 different=0/231
+  dpre   rel_l2=0 max_abs=0 different=0/231
+  post.T rel_l2=0 max_abs=0 different=0/231
+  dpre.T rel_l2=0 max_abs=0 different=0/231
+  y      rel_l2=0 max_abs=0 different=0/119
+  dx     rel_l2=0 ========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (32,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (33,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (34,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (35,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (36,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (37,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (38,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (39,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (40,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (41,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (42,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (43,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (44,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (45,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (46,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (47,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (48,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (49,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (50,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (51,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (52,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (53,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (54,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (55,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (56,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (57,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (58,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (59,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (60,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (61,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (62,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (63,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+FAIL: cudaDeviceSynchronize(): unspecified launch failure
+max_abs=0 different=0/119
+  dw1    rel_l2=0 max_abs=0 different=0/561
+  dw2    rel_l2=0 max_abs=0 different=0/561
+shape M=129 C=96 H=160 workers=924 seed=1337 zeros=0
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (32,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (33,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (34,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (35,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (36,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (37,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (38,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (39,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (40,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (41,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (42,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (43,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (44,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (45,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (46,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (47,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (48,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (49,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (50,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (51,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (52,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (53,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (54,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (55,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (56,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (57,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (58,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (59,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (60,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (61,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (62,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Barrier error detected. Divergent thread(s) in block.
+=========     at nano::matmul_tile(const nano::Matmul &, const nano::Task &, __nv_fp8_e4m3 *, __nv_fp8_e4m3 *)+0x1410 in megakernel.cuh:123
+=========     by thread (63,0,0) in block (218,0,0)
+=========         Device Frame: nano::megakernel(nano::Graph)+0x620 in megakernel.cuh:197
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: validate(int, int, int, int, bool, unsigned int, bool) [clone .constprop.2] [0x13bdd] in validate
+=========         Host Frame: main [0x10030] in validate
+========= 
+========= Target application returned an error
+========= ERROR SUMMARY: 64 errors
+make: *** [Makefile:14: sanitize] Error 1
+make: Leaving directory '/workspace/cuda'

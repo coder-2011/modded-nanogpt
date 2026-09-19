@@ -1,0 +1,199 @@
+sha256 c6f723a910eb20d061845afcc39fcecc43a576db4168dbd4a20d158c223f5337 Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 05b62efa083ac6aff34fb15d7566560fd16098746f7f6a5fc5f63ddebef859fb attention.cuh
+sha256 a8a2155c83ae275021b9cb0626865ae047eb205e067b710a6671d97ddc53633b attention_layer.cu
+sha256 5e23df96de295a12c6770293bb3724e58ffee06f6310f0dbf43293c5c377ffac attention_layer.cuh
+sha256 e43b134f524130c5fcc5b7ea3dfca072fed7dfcb72ff0957dbb0bd2e7d4f7733 attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 a3be2ab6c64f030ca01f7d30c6a6bb7604b3bbe62257ba0aad9bb72bca232c76 bench.cuh
+sha256 9dddb4cda1b99b427d6a5726c8a69513deb50cb06a97e36cdeac0893a600ac26 bf16.cu
+sha256 6e99a879dfa2957f3ef9ba1bab8065f3a66191b157b6129b191b86265fd962f6 bf16_gemm.cuh
+sha256 b6013fa23a801d8e288bf261029957d6931556cc18d7e7fc2de9974ad7887d6d embeddings.cuh
+sha256 dd38c6d6039e09b954f14669ec4cd0877700ba1011719e8d784a5629f1a728d1 evaluation_head.cuh
+sha256 ec94fd114bd2b8b97e2e890697973afe316a7ce5e2535476815f9db9e12a4778 evaluation_head_check.cuh
+sha256 d4b3c092f09347b8d6cefd89d84d64bc7bea040a24b64c0dd8614fbfe7c8b621 frontier.cuh
+sha256 75c4137f95d8b352fb02671ea4995ab6d8857390eb27d11479f7d6e628f02ce5 gates.cuh
+sha256 acb42b1055ea9b02dc5e738c6f83b14a442784287dbd42d3e8a17a1b47aa33c8 head.cu
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 2b5e51d0612d34780b53c7033528f27d3463ee423a66444408bc5a388f04ef57 loss.cu
+sha256 faf9bd8535e5fe774dcb4113d46aa9b9d9d534e45ce6ed0a82bee4defc8cfef0 megakernel.cuh
+sha256 650935fbe0799cec650ebe91331f83e58b23a3461c0a9df0f01a27a6dcebaec7 mlp_evaluation.cuh
+sha256 abc976abdeaa14db113f1e1c880af4aa6b3399bb04b70e1f3718ac8abbc3d888 mlp_evaluation_check.cuh
+sha256 130c9720933bf2a28d2114d5533a153971d9684d2be27fb4c962a67fe98ad357 mlp_training.cuh
+sha256 960256e6097b5eb5a2a3e5505c14fabf62213b218441a16405ed0adceaa9ea9f model_evaluation.cuh
+sha256 eafe6723a2b8a770528517590aa92e014ae315d4d9cbd9dea25bdd3139db22c4 model_evaluation_check.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 9075da55b9c101c83b3683c723f318808b2655b7b2b7219976b812520dc6deb2 routing.cu
+sha256 ca484b3e8d99319779949171f011f533443b6cd387ad8d5459fdb676e072f33a routing.cuh
+sha256 366691d3d63c7408727f71e068c17592e36542ed15e05eda7712254cf4936b1a suffix.cu
+sha256 a7e11fd9d0b2c99162b82641a9512b574dc46161e36e7f50585bed85d99f6ef8 tail.cu
+sha256 0d560717a19a59e5505d3567890ca1e93d0fe3b4aeec191cbd711e3d28988e4c tail_backward.cuh
+sha256 0621799b3cb02485e39460b3fef825966fe42cf436ebcf76275a8cad3919dd79 tail_reference.cpp
+sha256 0ebd41279767d6a31a504734fa15929f9502c2558209aac93e31b8444c498221 tail_reference.h
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 5de4df83cf0040e94b7189fdc2752e58710298b69a71d7cb160ed09b0b471154 training_loss.cuh
+sha256 15b680ed94a53c4bfe715d9a1a763a5bff7f9b071581ee54c5d76bfbe636a685 training_loss_reference.cu
+sha256 8ef77ab459d54d276bc463c5a69582bf9ead100a8f5b41b137b03afa3742ee5a training_pack.cuh
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 09:04:29 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:00:0F.0 Off |                    0 |
+| N/A   23C    P0             70W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda suffix
+make: Entering directory '/workspace/cuda'
+g++ -std=c++17 -O2 -D_GLIBCXX_USE_CXX11_ABI=1 -I/usr/local/lib/python3.12/site-packages/torch/include -I/usr/local/lib/python3.12/site-packages/torch/include/torch/csrc/api/include -c tail_reference.cpp -o tail_reference.o
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills --use_fast_math -c training_loss_reference.cu -o training_loss_reference.o
+training_loss_reference.cu(207): warning #177-D: variable "result" was declared but never referenced
+      __nv_fp8_e5m28 result;
+                     ^
+          detected during instantiation of "void reference_loss<Vocabulary>(const nano::TrainingLoss &, const float *) [with Vocabulary=2048]" at line 301
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+training_loss_reference.cu(207): warning #177-D: variable "result" was declared but never referenced
+      __nv_fp8_e5m28 result;
+                     ^
+          detected during instantiation of "void reference_loss<Vocabulary>(const nano::TrainingLoss &, const float *) [with Vocabulary=2048]" at line 301
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi50304EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi50304EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 204.228 ms
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi24576EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi24576EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 122 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 74.084 ms
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi14336EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi14336EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 80 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 58.959 ms
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi10240EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi10240EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 63 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 40.539 ms
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi2048EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi2048EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 19.658 ms
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 -DNANO_COOP_PUBLISH=1 suffix.cu tail_reference.o training_loss_reference.o -lcublas -L/usr/local/lib/python3.12/site-packages/torch/lib -Xlinker -rpath -Xlinker /usr/local/lib/python3.12/site-packages/torch/lib -ltorch -ltorch_cpu -ltorch_cuda -lc10 -lc10_cuda -o suffix
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE', 28 bytes spill stores, 48 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE', 28 bytes spill stores, 48 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb1ELb1EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32800 bytes smem
+ptxas info    : Compile time = 1653.828 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb1ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb1ELb1EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32800 bytes smem
+ptxas info    : Compile time = 1602.585 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE
+    24 bytes stack frame, 28 bytes spill stores, 48 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 24 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1425.641 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE
+    24 bytes stack frame, 28 bytes spill stores, 48 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 24 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1329.800 ms
+ptxas info    : Compiling entry function '_Z12suffix_stageILi1EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12suffix_stageILi1EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 96 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1395.182 ms
+ptxas info    : Compiling entry function '_Z12suffix_stageILi4EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z12suffix_stageILi4EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 96 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1439.147 ms
+ptxas info    : Compiling entry function '_Z10tail_stageILi1EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10tail_stageILi1EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 96 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1362.744 ms
+ptxas info    : Compiling entry function '_Z10tail_stageILi4EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10tail_stageILi4EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 96 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1297.389 ms
+ptxas info    : Compiling entry function '_Z10head_stageILi1EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10head_stageILi1EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 92 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 730.029 ms
+ptxas info    : Compiling entry function '_Z10head_stageILi4EEvN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10head_stageILi4EEvN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 92 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 782.030 ms
+ptxas info    : Compiling entry function '_Z10loss_stageN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10loss_stageN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 39 registers, used 0 barriers
+ptxas info    : Compile time = 30.814 ms
+ptxas info    : Compiling entry function '_Z10reset_lossN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10reset_lossN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.558 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/suffix --profile --gradient-chunk=4096
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb1ELb1EEEvNS_5GraphE: {'HMMA': 104, 'HGMMA': 0, 'LDGSTS': 84, 'LDL': 0, 'STL': 0}
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE: {'HMMA': 104, 'HGMMA': 0, 'LDGSTS': 84, 'LDL': 12, 'STL': 7}
+$ ncu --set full --clock-control none --cache-control none --profile-from-start off --launch-count 1 --export /workspace/cuda/profile --force-overwrite /workspace/cuda/suffix --profile --gradient-chunk=4096
+exit_status=0
+==WARNING== Note: Running with uncontrolled GPU caches. Profiling results may be inconsistent.
+==WARNING== Note: Running with unmodified GPU clocks. If not controlled otherwise, profiling results may be inconsistent.
+==PROF== Connected to process 117 (/workspace/cuda/suffix)
+==WARNING== Unable to access the following 6 metrics: ctc__rx_bytes_data_user.sum, ctc__rx_bytes_data_user.sum.pct_of_peak_sustained_elapsed, ctc__rx_bytes_data_user.sum.per_second, ctc__tx_bytes_data_user.sum, ctc__tx_bytes_data_user.sum.pct_of_peak_sustained_elapsed, ctc__tx_bytes_data_user.sum.per_second.
+
+
+==PROF== Profiling "megakernel" - 0 (1/1): 0%....50%....100% - 39 passes
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+==PROF== Disconnected from process 117
+==PROF== Report: /workspace/cuda/profile.ncu-rep

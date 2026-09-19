@@ -1,0 +1,205 @@
+sha256 29c3709d1af844971813a226d6c9cb190e20f3f95729233518fc566f078fd6de Makefile
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 85a48816328b4330d2e63b18d711f198b93337cff64025ce59f447a18b8194d8 megakernel.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 8bb828361e7996398fbc73631ca172fa04d0d11e53f51e002067e5e81ea760a0 validate.cu
+$ nvidia-smi
+Sat Sep 19 00:57:31 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:85:00.0 Off |                    0 |
+| N/A   34C    P0             69W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+|   1  NVIDIA H100 80GB HBM3          On  |   00000000:8B:00.0 Off |                    0 |
+| N/A   29C    P0             68W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvidia-smi topo -m
+	[4mGPU0	GPU1	CPU Affinity	NUMA Affinity	GPU NUMA ID[0m
+Failed to run topology matrix
+
+
+Topology diagnostic unavailable; native peer-access checks remain required.
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda transport
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills transport.cu -lnccl -o transport
+ptxas info    : 28 bytes gmem
+ptxas info    : Compiling entry function '_ZN3cub17CUB_200700_900_NS16DeviceScanKernelINS0_16DeviceScanPolicyIjN4cuda3std3__44plusIvEEE9Policy900EPjSA_NS0_13ScanTileStateIjLb1EEES7_NS0_6detail10InputValueIjSA_EEjjLb0EEEvT0_T1_T2_iT3_T4_T5_' for 'sm_90a'
+ptxas info    : Function properties for _ZN3cub17CUB_200700_900_NS16DeviceScanKernelINS0_16DeviceScanPolicyIjN4cuda3std3__44plusIvEEE9Policy900EPjSA_NS0_13ScanTileStateIjLb1EEES7_NS0_6detail10InputValueIjSA_EEjjLb0EEEvT0_T1_T2_iT3_T4_T5_
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 64 registers, used 1 barriers, 12304 bytes smem
+ptxas info    : Compile time = 48.388 ms
+ptxas info    : Compiling entry function '_ZN3cub17CUB_200700_900_NS20DeviceScanInitKernelINS0_13ScanTileStateIjLb1EEEEEvT_i' for 'sm_90a'
+ptxas info    : Function properties for _ZN3cub17CUB_200700_900_NS20DeviceScanInitKernelINS0_13ScanTileStateIjLb1EEEEEvT_i
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 1.676 ms
+ptxas info    : Compiling entry function '_ZN3cub17CUB_200700_900_NS11EmptyKernelIvEEvv' for 'sm_90a'
+ptxas info    : Function properties for _ZN3cub17CUB_200700_900_NS11EmptyKernelIvEEvv
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 4 registers, used 0 barriers
+ptxas info    : Compile time = 0.524 ms
+ptxas info    : Compiling entry function '_Z13check_patternPKtiPj' for 'sm_90a'
+ptxas info    : Function properties for _Z13check_patternPKtiPj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 2.455 ms
+ptxas info    : Compiling entry function '_Z9dense_addPKtS0_Pti' for 'sm_90a'
+ptxas info    : Function properties for _Z9dense_addPKtS0_Pti
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, used 0 barriers
+ptxas info    : Compile time = 1.545 ms
+ptxas info    : Compiling entry function '_Z10decode_add6PackedPKtPt' for 'sm_90a'
+ptxas info    : Function properties for _Z10decode_add6PackedPKtPt
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 21 registers, used 0 barriers
+ptxas info    : Compile time = 4.492 ms
+ptxas info    : Compiling entry function '_Z11pack_valuesPKt6Packed' for 'sm_90a'
+ptxas info    : Function properties for _Z11pack_valuesPKt6Packed
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 20 registers, used 0 barriers
+ptxas info    : Compile time = 3.193 ms
+ptxas info    : Compiling entry function '_Z10tile_sizesPKt6PackedPj' for 'sm_90a'
+ptxas info    : Function properties for _Z10tile_sizesPKt6PackedPj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 26 registers, used 1 barriers, 24 bytes smem
+ptxas info    : Compile time = 4.098 ms
+ptxas info    : Compiling entry function '_Z16choose_exponentsPKjPi' for 'sm_90a'
+ptxas info    : Function properties for _Z16choose_exponentsPKjPi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 15 registers, used 1 barriers, 64 bytes smem
+ptxas info    : Compile time = 4.796 ms
+ptxas info    : Compiling entry function '_Z18exponent_histogramPKtiPj' for 'sm_90a'
+ptxas info    : Function properties for _Z18exponent_histogramPKtiPj
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 1 barriers, 1024 bytes smem
+ptxas info    : Compile time = 2.263 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/transport
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+GPU[1]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+NCCL version=22501
+codec exact n=1 payload=1 (all BF16 bit patterns covered at n=65543)
+codec exact n=63 payload=63 (all BF16 bit patterns covered at n=65543)
+codec exact n=64 payload=64 (all BF16 bit patterns covered at n=65543)
+codec exact n=65 payload=65 (all BF16 bit patterns covered at n=65543)
+codec exact n=65543 payload=129287 (all BF16 bit patterns covered at n=65543)
+IPC owner_populate_ms=0.024065
+IPC bytes=98304 (owner allocation stays alive; client is a separate exec process)
+IPC first_map_and_read_ms=1.136299
+ipc_remap_read median_ms=0.190280 samples_ms= 0.190422 0.270293 0.188808 0.186524 0.188629 0.195956 0.275218 0.239352 0.186534 0.190138
+pinned_h2d_read median_ms=0.029508 samples_ms= 0.024420 0.031527 0.028526 0.030490 0.025446 0.030923 0.027884 0.031173 0.027395 0.040070
+ipc_reused_map_read median_ms=0.022308 samples_ms= 0.021287 0.021553 0.021781 0.026001 0.030934 0.022512 0.022103 0.021950 0.023490 0.022588
+IPC owner_populate_ms=22.062751
+IPC bytes=200000000 (owner allocation stays alive; client is a separate exec process)
+IPC first_map_and_read_ms=4.600868
+ipc_remap_read median_ms=3.080500 samples_ms= 2.086254 2.031313 2.035043 17.462517 22.671883 4.000952 3.185596 2.975403 4.470411 2.758666
+pinned_h2d_read median_ms=7.415032 samples_ms= 7.405385 7.415509 7.418333 7.405222 7.420853 7.429478 7.423015 7.400268 7.402859 7.414555
+ipc_reused_map_read median_ms=0.182939 samples_ms= 0.182077 0.183088 0.183603 0.184773 0.182967 0.183863 0.182910 0.181150 0.182437 0.182825
+IPC owner_populate_ms=32.539763
+IPC bytes=248000000 (owner allocation stays alive; client is a separate exec process)
+IPC first_map_and_read_ms=4.427001
+ipc_remap_read median_ms=3.413966 samples_ms= 2.672634 2.608850 2.532430 2.516552 3.381957 3.549319 10.137625 27.321309 9.695721 3.445976
+pinned_h2d_read median_ms=9.186409 samples_ms= 9.196839 9.186074 9.169405 9.188009 9.186744 9.185572 9.185798 9.194268 9.188437 9.170517
+ipc_reused_map_read median_ms=0.223328 samples_ms= 0.223628 0.222300 0.224094 0.221225 0.224090 0.223029 0.227183 0.220605 0.222466 0.226643
+peer_access 0->1=1
+peer_access 1->0=1
+transport n=2359296 broad_exponents=0 dense_bytes=4718592 wire_bytes=3441705 ratio=0.729392
+dense_peer_reduce median_ms=0.034673 samples_ms= 0.034954 0.034100 0.034387 0.036353 0.033627 0.033865 0.034976 0.034856 0.035562 0.034490
+nccl_reduce median_ms=0.050727 samples_ms= 0.052433 0.050480 0.050616 0.050807 0.049796 0.056691 0.050368 0.057408 0.050647 0.057567
+precompressed_transfer_reduce median_ms=0.067595 samples_ms= 0.062108 0.082770 0.062253 0.081594 0.072760 0.062339 0.081866 0.062429 0.060273 0.080634
+compress_transfer_reduce median_ms=0.155054 samples_ms= 0.156612 0.151345 0.176871 0.147330 0.154611 0.166738 0.144327 0.168062 0.147211 0.155496
+transport n=2359296 broad_exponents=1 dense_bytes=4718592 wire_bytes=5676305 ratio=1.202966
+dense_peer_reduce median_ms=0.032811 samples_ms= 0.034827 0.042547 0.033414 0.032727 0.032891 0.032409 0.032732 0.032577 0.033839 0.032474
+nccl_reduce median_ms=0.049427 samples_ms= 0.048210 0.049347 0.048595 0.048927 0.049641 0.049576 0.049507 0.049313 0.050600 0.049976
+precompressed_transfer_reduce median_ms=0.071198 samples_ms= 0.089018 0.062228 0.070380 0.284664 0.068426 0.063288 0.070811 0.090925 0.071586 0.087853
+compress_transfer_reduce median_ms=0.157752 samples_ms= 0.171105 0.177937 0.170939 0.153278 0.159759 0.153498 0.154509 0.155613 0.155745 0.164537
+transport n=28311552 broad_exponents=0 dense_bytes=56623104 wire_bytes=41299594 ratio=0.729377
+dense_peer_reduce median_ms=0.251174 samples_ms= 0.251822 0.251883 0.251490 0.252380 0.249786 0.250466 0.250216 0.250431 0.250884 0.251465
+nccl_reduce median_ms=0.214755 samples_ms= 0.215172 0.215406 0.213765 0.213784 0.215821 0.214596 0.214361 0.217162 0.209276 0.214913
+precompressed_transfer_reduce median_ms=0.315222 samples_ms= 0.307943 0.314611 0.294918 0.315905 0.316574 0.297506 0.317347 0.316206 0.296183 0.315833
+compress_transfer_reduce median_ms=0.923196 samples_ms= 0.923515 0.920173 0.915364 0.923012 0.923379 0.914016 0.942538 0.932952 0.919615 0.927621
+transport n=28311552 broad_exponents=1 dense_bytes=56623104 wire_bytes=68122314 ratio=1.203083
+dense_peer_reduce median_ms=0.252269 samples_ms= 0.252200 0.252755 0.250066 0.252339 0.250981 0.253710 0.249789 0.252889 0.250888 0.256325
+nccl_reduce median_ms=0.211989 samples_ms= 0.215485 0.212222 0.209628 0.210986 0.222385 0.213235 0.210330 0.211405 0.211756 0.213278
+precompressed_transfer_reduce median_ms=0.373320 samples_ms= 0.370412 0.373197 0.371369 0.371855 0.373444 0.373167 0.384211 0.374186 0.376015 0.382015
+compress_transfer_reduce median_ms=0.995728 samples_ms= 1.001514 0.995500 0.993931 1.004884 0.995956 0.997135 0.996445 0.987942 0.987127 0.987427
+PASS: IPC cache and ZipServ-inspired two-GPU reduce; not full training
+
+$ make -C /workspace/cuda sanitize BIN=transport CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./transport --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+GPU[1]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+NCCL version=22501
+codec exact n=1 payload=1 (all BF16 bit patterns covered at n=65543)
+codec exact n=63 payload=63 (all BF16 bit patterns covered at n=65543)
+codec exact n=64 payload=64 (all BF16 bit patterns covered at n=65543)
+codec exact n=65 payload=65 (all BF16 bit patterns covered at n=65543)
+codec exact n=65543 payload=129287 (all BF16 bit patterns covered at n=65543)
+PASS: lossless codec stress
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./transport --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+GPU[1]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+NCCL version=22501
+codec exact n=1 payload=1 (all BF16 bit patterns covered at n=65543)
+codec exact n=63 payload=63 (all BF16 bit patterns covered at n=65543)
+codec exact n=64 payload=64 (all BF16 bit patterns covered at n=65543)
+codec exact n=65 payload=65 (all BF16 bit patterns covered at n=65543)
+codec exact n=65543 payload=129287 (all BF16 bit patterns covered at n=65543)
+PASS: lossless codec stress
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./transport --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+GPU[1]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+NCCL version=22501
+codec exact n=1 payload=1 (all BF16 bit patterns covered at n=65543)
+codec exact n=63 payload=63 (all BF16 bit patterns covered at n=65543)
+codec exact n=64 payload=64 (all BF16 bit patterns covered at n=65543)
+codec exact n=65 payload=65 (all BF16 bit patterns covered at n=65543)
+codec exact n=65543 payload=129287 (all BF16 bit patterns covered at n=65543)
+PASS: lossless codec stress
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./transport --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+GPU[1]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+NCCL version=22501
+codec exact n=1 payload=1 (all BF16 bit patterns covered at n=65543)
+codec exact n=63 payload=63 (all BF16 bit patterns covered at n=65543)
+codec exact n=64 payload=64 (all BF16 bit patterns covered at n=65543)
+codec exact n=65 payload=65 (all BF16 bit patterns covered at n=65543)
+codec exact n=65543 payload=129287 (all BF16 bit patterns covered at n=65543)
+PASS: lossless codec stress
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'

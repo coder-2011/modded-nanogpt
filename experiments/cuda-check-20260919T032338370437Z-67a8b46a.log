@@ -1,0 +1,518 @@
+sha256 01d8af5cd1ac92409598abe13725e86cac03385515ba94c5d74c4a9042160e03 Makefile
+sha256 4d98074bdbd7ec24e0d0aae4a0718c9913b315694f605d030c9647998a6b4974 attention.cu
+sha256 e35258002dec8809bcba72c8b7537e539592f03d16004334a312c9132841a6c6 attention.cuh
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 6eb043b0deec41825720d6ba638468d9aec856a01cb2b9dec6c23a28ffe49a81 frontier.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 e412c18213b404544eaca85c7b3159de1ec4cf9b39d91c249cd3e41cd0586168 megakernel.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 03:24:46 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000000:BE:00.0 Off |                    0 |
+| N/A   29C    P0             73W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda attention
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 attention.cu -o attention
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb1EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 549.711 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb1EEEvNS_5GraphE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 126 registers, used 1 barriers, 32776 bytes smem
+ptxas info    : Compile time = 526.880 ms
+ptxas info    : Compiling entry function '_Z21reset_attention_statePiii' for 'sm_90a'
+ptxas info    : Function properties for _Z21reset_attention_statePiii
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 8 registers, used 0 barriers
+ptxas info    : Compile time = 0.946 ms
+ptxas info    : Compiling entry function '_Z16staged_attentionN4nano9AttentionENS_8TaskKindE' for 'sm_90a'
+ptxas info    : Function properties for _Z16staged_attentionN4nano9AttentionENS_8TaskKindE
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 48 registers, used 0 barriers
+ptxas info    : Compile time = 74.473 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/attention
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+mixed worker resident_ctas_per_sm=4
+attention tokens=21 heads=6 qk=64 v=128 window=8 documents=3 workers=1
+y rel_l2=4.95039817e-08 max_abs=9.16704939e-08
+dq rel_l2=1.30931278e-07 max_abs=4.18988291e-08
+dk rel_l2=1.37493679e-07 max_abs=4.88765318e-08
+dv rel_l2=9.03035626e-08 max_abs=2.89713774e-07
+lse rel_l2=4.74236937e-08 max_abs=2.67060202e-07
+delta rel_l2=4.42342281e-08 max_abs=1.69500709e-07
+attention tokens=46 heads=3 qk=64 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79775712e-08 max_abs=1.98682151e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.03352672e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=4.73227084e-08 max_abs=2.14204192e-07
+qkv+attention qk=64 v=128 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.48766551e-08 max_abs=1.56146034e-07
+transformed_attention_dq rel_l2=1.55188686e-07 max_abs=1.02673008e-07
+transformed_attention_dk rel_l2=1.55626127e-07 max_abs=1.24262059e-07
+transformed_attention_dv rel_l2=1.18677473e-07 max_abs=2.10547747e-07
+qkv_gradient rel_l2=9.80435543e-08 max_abs=3.51736335e-05
+attention tokens=257 heads=6 qk=64 v=128 window=128 documents=4 workers=132
+y rel_l2=1.0661233e-07 max_abs=1.08989298e-07
+dq rel_l2=2.49966815e-06 max_abs=3.61802644e-06
+dk rel_l2=2.1735062e-06 max_abs=9.161377e-07
+dv rel_l2=2.38350805e-07 max_abs=1.18129121e-06
+lse rel_l2=5.04492711e-08 max_abs=8.19295551e-07
+delta rel_l2=8.60067629e-06 max_abs=0.000114929629
+attention tokens=23 heads=6 qk=64 v=128 window=0 documents=3 workers=7
+y rel_l2=0 max_abs=0
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=0 max_abs=0
+lse rel_l2=4.49791773e-08 max_abs=2.93521083e-08
+delta rel_l2=4.26892547e-08 max_abs=3.27825546e-07
+attention tokens=1026 heads=3 qk=64 v=128 window=1536 documents=3 workers=528
+y rel_l2=4.06061607e-07 max_abs=2.14730445e-06
+dq rel_l2=0.000114196161 max_abs=0.00150949315
+dk rel_l2=9.39667948e-05 max_abs=0.00104342892
+dv rel_l2=1.12767024e-06 max_abs=5.47290996e-06
+lse rel_l2=4.71449787e-08 max_abs=6.9315106e-06
+delta rel_l2=3.93628697e-05 max_abs=0.0015411675
+timing scalar attention baseline tokens=16384 qk=64 v=128 window=384; no FA3 speed claim
+staged_forward_backward median_ms=10.351936 samples_ms= 10.371872 10.351520 10.350784 10.341664 10.363488 10.362752 10.331168 10.353376 10.348288 10.352352
+persistent_forward_backward_plus_reset_and_sentinel median_ms=19.927296 samples_ms= 20.309536 19.941919 19.863329 19.658400 19.918943 19.805984 19.849760 19.935648 20.055649 19.968800
+attention tokens=21 heads=6 qk=64 v=64 window=8 documents=3 workers=1
+y rel_l2=4.9446129e-08 max_abs=9.95267088e-08
+dq rel_l2=1.31519789e-07 max_abs=3.13823477e-08
+dk rel_l2=1.40677028e-07 max_abs=3.55834869e-08
+dv rel_l2=8.71992955e-08 max_abs=2.18336572e-07
+lse rel_l2=4.65602536e-08 max_abs=2.75894889e-07
+delta rel_l2=3.4970898e-08 max_abs=1.32247806e-07
+attention tokens=46 heads=3 qk=64 v=64 window=5 documents=3 workers=7
+y rel_l2=1.81983313e-08 max_abs=2.38418578e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.15681073e-08 max_abs=1.03314718e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=3.67432921e-08 max_abs=7.07805157e-08
+qkv+attention qk=64 v=64 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=8.52922722e-08 max_abs=7.62939453e-06
+transformed_k rel_l2=8.73407002e-05 max_abs=0.0078125
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.3714873e-08 max_abs=2.13409173e-07
+transformed_attention_dq rel_l2=8.36682563e-06 max_abs=1.65856128e-05
+transformed_attention_dk rel_l2=7.83401797e-06 max_abs=1.19382117e-05
+transformed_attention_dv rel_l2=1.19681413e-07 max_abs=2.55496351e-07
+qkv_gradient rel_l2=1.05855018e-07 max_abs=4.43267386e-05
+attention tokens=257 heads=6 qk=64 v=64 window=128 documents=4 workers=132
+y rel_l2=1.04854192e-07 max_abs=9.24735035e-08
+dq rel_l2=1.17992535e-06 max_abs=1.31059952e-06
+dk rel_l2=1.38035367e-06 max_abs=2.50816146e-07
+dv rel_l2=2.35508279e-07 max_abs=6.27627585e-07
+lse rel_l2=4.92665588e-08 max_abs=7.67509896e-07
+delta rel_l2=8.04972469e-06 max_abs=7.82012939e-05
+attention tokens=23 heads=6 qk=64 v=64 window=0 documents=3 workers=7
+y rel_l2=0 max_abs=0
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=0 max_abs=0
+lse rel_l2=4.24192616e-08 max_abs=2.47494549e-08
+delta rel_l2=4.35595964e-08 max_abs=1.97440386e-07
+attention tokens=1026 heads=3 qk=64 v=64 window=1536 documents=3 workers=528
+y rel_l2=4.09586899e-07 max_abs=2.12062779e-06
+dq rel_l2=4.23232792e-05 max_abs=0.000565222617
+dk rel_l2=4.02670102e-05 max_abs=0.000795318598
+dv rel_l2=1.13729412e-06 max_abs=5.80388286e-06
+lse rel_l2=4.61185662e-08 max_abs=6.6220819e-06
+delta rel_l2=1.47316785e-05 max_abs=0.000640869141
+timing scalar attention baseline tokens=16384 qk=64 v=64 window=384; no FA3 speed claim
+staged_forward_backward median_ms=9.161296 samples_ms= 9.144992 9.170080 9.154208 9.160288 9.156192 9.179008 9.173056 9.162304 9.170080 9.160064
+persistent_forward_backward_plus_reset_and_sentinel median_ms=18.126368 samples_ms= 18.063007 18.677120 18.404991 18.005920 17.841440 17.922367 18.521791 18.299328 18.056383 18.189728
+attention tokens=21 heads=6 qk=128 v=128 window=8 documents=3 workers=1
+y rel_l2=4.96671552e-08 max_abs=1.08087393e-07
+dq rel_l2=1.14416663e-07 max_abs=2.72977393e-08
+dk rel_l2=1.21254799e-07 max_abs=4.52242475e-08
+dv rel_l2=8.49113813e-08 max_abs=2.59957711e-07
+lse rel_l2=4.57611017e-08 max_abs=2.27817114e-07
+delta rel_l2=5.25624248e-08 max_abs=2.23517418e-07
+attention tokens=46 heads=3 qk=128 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79464725e-08 max_abs=2.38418579e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.14660331e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=5.21817387e-08 max_abs=2.75671482e-07
+qkv+attention qk=128 v=128 paired=0 key_offset=1 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=6.39353136e-08 max_abs=2.14501032e-07
+transformed_attention_dq rel_l2=1.45285847e-07 max_abs=1.00062244e-07
+transformed_attention_dk rel_l2=1.49037686e-07 max_abs=7.80297832e-08
+transformed_attention_dv rel_l2=9.81830934e-08 max_abs=2.85756888e-07
+qkv_gradient rel_l2=1.13462992e-07 max_abs=0.000122330503
+attention tokens=257 heads=6 qk=128 v=128 window=128 documents=4 workers=132
+y rel_l2=1.06277577e-07 max_abs=1.02360548e-07
+dq rel_l2=3.70394372e-06 max_abs=5.71221249e-06
+dk rel_l2=3.76110041e-06 max_abs=1.07093747e-06
+dv rel_l2=2.38775068e-07 max_abs=1.07361672e-06
+lse rel_l2=5.03206836e-08 max_abs=7.35269115e-07
+delta rel_l2=1.9502628e-05 max_abs=0.000318549573
+attention tokens=23 heads=6 qk=128 v=128 window=0 documents=3 workers=7
+y rel_l2=0 max_abs=0
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=0 max_abs=0
+lse rel_l2=5.59535858e-08 max_abs=5.1284694e-08
+delta rel_l2=5.33326546e-08 max_abs=2.83122063e-07
+attention tokens=1026 heads=3 qk=128 v=128 window=1536 documents=3 workers=528
+y rel_l2=4.30594912e-07 max_abs=2.38365479e-06
+dq rel_l2=8.50527592e-05 max_abs=0.000949948503
+dk rel_l2=7.83007541e-05 max_abs=0.000700659621
+dv rel_l2=1.04478449e-06 max_abs=6.26057634e-06
+lse rel_l2=4.77730915e-08 max_abs=6.07188881e-06
+delta rel_l2=3.17590412e-05 max_abs=0.0014514327
+timing scalar attention baseline tokens=16384 qk=128 v=128 window=384; no FA3 speed claim
+staged_forward_backward median_ms=12.472480 samples_ms= 12.453024 12.459520 12.453216 12.468896 12.480064 12.476064 12.491872 12.493120 12.478560 12.461920
+persistent_forward_backward_plus_reset_and_sentinel median_ms=24.969151 samples_ms= 25.228928 24.712929 24.795008 24.982847 24.243135 24.783680 24.955456 25.058399 25.172384 25.438496
+PASS: native attention math and mixed persistent scheduling; full model and FA3 parity remain unverified
+
+$ make -C /workspace/cuda sanitize BIN=attention CHECK_FLAGS=
+make: Entering directory '/workspace/cuda'
+compute-sanitizer --tool memcheck --error-exitcode 1 ./attention --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+mixed worker resident_ctas_per_sm=4
+attention tokens=21 heads=6 qk=64 v=128 window=8 documents=3 workers=1
+y rel_l2=4.95039817e-08 max_abs=9.16704939e-08
+dq rel_l2=1.30931278e-07 max_abs=4.18988291e-08
+dk rel_l2=1.37493679e-07 max_abs=4.88765318e-08
+dv rel_l2=9.03035626e-08 max_abs=2.89713774e-07
+lse rel_l2=4.74236937e-08 max_abs=2.67060202e-07
+delta rel_l2=4.42342281e-08 max_abs=1.69500709e-07
+attention tokens=46 heads=3 qk=64 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79775712e-08 max_abs=1.98682151e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.03352672e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=4.73227084e-08 max_abs=2.14204192e-07
+qkv+attention qk=64 v=128 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.48766551e-08 max_abs=1.56146034e-07
+transformed_attention_dq rel_l2=1.55188686e-07 max_abs=1.02673008e-07
+transformed_attention_dk rel_l2=1.55626127e-07 max_abs=1.24262059e-07
+transformed_attention_dv rel_l2=1.18677473e-07 max_abs=2.10547747e-07
+qkv_gradient rel_l2=9.80435543e-08 max_abs=3.51736335e-05
+attention tokens=21 heads=6 qk=64 v=64 window=8 documents=3 workers=1
+y rel_l2=4.9446129e-08 max_abs=9.95267088e-08
+dq rel_l2=1.31519789e-07 max_abs=3.13823477e-08
+dk rel_l2=1.40677028e-07 max_abs=3.55834869e-08
+dv rel_l2=8.71992955e-08 max_abs=2.18336572e-07
+lse rel_l2=4.65602536e-08 max_abs=2.75894889e-07
+delta rel_l2=3.4970898e-08 max_abs=1.32247806e-07
+attention tokens=46 heads=3 qk=64 v=64 window=5 documents=3 workers=7
+y rel_l2=1.81983313e-08 max_abs=2.38418578e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.15681073e-08 max_abs=1.03314718e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=3.67432921e-08 max_abs=7.07805157e-08
+qkv+attention qk=64 v=64 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=8.52922722e-08 max_abs=7.62939453e-06
+transformed_k rel_l2=8.73407002e-05 max_abs=0.0078125
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.3714873e-08 max_abs=2.13409173e-07
+transformed_attention_dq rel_l2=8.36682563e-06 max_abs=1.65856128e-05
+transformed_attention_dk rel_l2=7.83401797e-06 max_abs=1.19382117e-05
+transformed_attention_dv rel_l2=1.19681413e-07 max_abs=2.55496351e-07
+qkv_gradient rel_l2=1.05855018e-07 max_abs=4.43267386e-05
+attention tokens=21 heads=6 qk=128 v=128 window=8 documents=3 workers=1
+y rel_l2=4.96671552e-08 max_abs=1.08087393e-07
+dq rel_l2=1.14416663e-07 max_abs=2.72977393e-08
+dk rel_l2=1.21254799e-07 max_abs=4.52242475e-08
+dv rel_l2=8.49113813e-08 max_abs=2.59957711e-07
+lse rel_l2=4.57611017e-08 max_abs=2.27817114e-07
+delta rel_l2=5.25624248e-08 max_abs=2.23517418e-07
+attention tokens=46 heads=3 qk=128 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79464725e-08 max_abs=2.38418579e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.14660331e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=5.21817387e-08 max_abs=2.75671482e-07
+qkv+attention qk=128 v=128 paired=0 key_offset=1 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=6.39353136e-08 max_abs=2.14501032e-07
+transformed_attention_dq rel_l2=1.45285847e-07 max_abs=1.00062244e-07
+transformed_attention_dk rel_l2=1.49037686e-07 max_abs=7.80297832e-08
+transformed_attention_dv rel_l2=9.81830934e-08 max_abs=2.85756888e-07
+qkv_gradient rel_l2=1.13462992e-07 max_abs=0.000122330503
+PASS: native attention math and mixed persistent scheduling; full model and FA3 parity remain unverified
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool initcheck --error-exitcode 1 ./attention --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+mixed worker resident_ctas_per_sm=4
+attention tokens=21 heads=6 qk=64 v=128 window=8 documents=3 workers=1
+y rel_l2=4.95039817e-08 max_abs=9.16704939e-08
+dq rel_l2=1.30931278e-07 max_abs=4.18988291e-08
+dk rel_l2=1.37493679e-07 max_abs=4.88765318e-08
+dv rel_l2=9.03035626e-08 max_abs=2.89713774e-07
+lse rel_l2=4.74236937e-08 max_abs=2.67060202e-07
+delta rel_l2=4.42342281e-08 max_abs=1.69500709e-07
+attention tokens=46 heads=3 qk=64 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79775712e-08 max_abs=1.98682151e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.03352672e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=4.73227084e-08 max_abs=2.14204192e-07
+qkv+attention qk=64 v=128 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.48766551e-08 max_abs=1.56146034e-07
+transformed_attention_dq rel_l2=1.55188686e-07 max_abs=1.02673008e-07
+transformed_attention_dk rel_l2=1.55626127e-07 max_abs=1.24262059e-07
+transformed_attention_dv rel_l2=1.18677473e-07 max_abs=2.10547747e-07
+qkv_gradient rel_l2=9.80435543e-08 max_abs=3.51736335e-05
+attention tokens=21 heads=6 qk=64 v=64 window=8 documents=3 workers=1
+y rel_l2=4.9446129e-08 max_abs=9.95267088e-08
+dq rel_l2=1.31519789e-07 max_abs=3.13823477e-08
+dk rel_l2=1.40677028e-07 max_abs=3.55834869e-08
+dv rel_l2=8.71992955e-08 max_abs=2.18336572e-07
+lse rel_l2=4.65602536e-08 max_abs=2.75894889e-07
+delta rel_l2=3.4970898e-08 max_abs=1.32247806e-07
+attention tokens=46 heads=3 qk=64 v=64 window=5 documents=3 workers=7
+y rel_l2=1.81983313e-08 max_abs=2.38418578e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.15681073e-08 max_abs=1.03314718e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=3.67432921e-08 max_abs=7.07805157e-08
+qkv+attention qk=64 v=64 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=8.52922722e-08 max_abs=7.62939453e-06
+transformed_k rel_l2=8.73407002e-05 max_abs=0.0078125
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.3714873e-08 max_abs=2.13409173e-07
+transformed_attention_dq rel_l2=8.36682563e-06 max_abs=1.65856128e-05
+transformed_attention_dk rel_l2=7.83401797e-06 max_abs=1.19382117e-05
+transformed_attention_dv rel_l2=1.19681413e-07 max_abs=2.55496351e-07
+qkv_gradient rel_l2=1.05855018e-07 max_abs=4.43267386e-05
+attention tokens=21 heads=6 qk=128 v=128 window=8 documents=3 workers=1
+y rel_l2=4.96671552e-08 max_abs=1.08087393e-07
+dq rel_l2=1.14416663e-07 max_abs=2.72977393e-08
+dk rel_l2=1.21254799e-07 max_abs=4.52242475e-08
+dv rel_l2=8.49113813e-08 max_abs=2.59957711e-07
+lse rel_l2=4.57611017e-08 max_abs=2.27817114e-07
+delta rel_l2=5.25624248e-08 max_abs=2.23517418e-07
+attention tokens=46 heads=3 qk=128 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79464725e-08 max_abs=2.38418579e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.14660331e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=5.21817387e-08 max_abs=2.75671482e-07
+qkv+attention qk=128 v=128 paired=0 key_offset=1 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=6.39353136e-08 max_abs=2.14501032e-07
+transformed_attention_dq rel_l2=1.45285847e-07 max_abs=1.00062244e-07
+transformed_attention_dk rel_l2=1.49037686e-07 max_abs=7.80297832e-08
+transformed_attention_dv rel_l2=9.81830934e-08 max_abs=2.85756888e-07
+qkv_gradient rel_l2=1.13462992e-07 max_abs=0.000122330503
+PASS: native attention math and mixed persistent scheduling; full model and FA3 parity remain unverified
+========= ERROR SUMMARY: 0 errors
+compute-sanitizer --tool racecheck --error-exitcode 1 ./attention --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+mixed worker resident_ctas_per_sm=4
+attention tokens=21 heads=6 qk=64 v=128 window=8 documents=3 workers=1
+y rel_l2=4.95039817e-08 max_abs=9.16704939e-08
+dq rel_l2=1.30931278e-07 max_abs=4.18988291e-08
+dk rel_l2=1.37493679e-07 max_abs=4.88765318e-08
+dv rel_l2=9.03035626e-08 max_abs=2.89713774e-07
+lse rel_l2=4.74236937e-08 max_abs=2.67060202e-07
+delta rel_l2=4.42342281e-08 max_abs=1.69500709e-07
+attention tokens=46 heads=3 qk=64 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79775712e-08 max_abs=1.98682151e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.03352672e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=4.73227084e-08 max_abs=2.14204192e-07
+qkv+attention qk=64 v=128 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.48766551e-08 max_abs=1.56146034e-07
+transformed_attention_dq rel_l2=1.55188686e-07 max_abs=1.02673008e-07
+transformed_attention_dk rel_l2=1.55626127e-07 max_abs=1.24262059e-07
+transformed_attention_dv rel_l2=1.18677473e-07 max_abs=2.10547747e-07
+qkv_gradient rel_l2=9.80435543e-08 max_abs=3.51736335e-05
+attention tokens=21 heads=6 qk=64 v=64 window=8 documents=3 workers=1
+y rel_l2=4.9446129e-08 max_abs=9.95267088e-08
+dq rel_l2=1.31519789e-07 max_abs=3.13823477e-08
+dk rel_l2=1.40677028e-07 max_abs=3.55834869e-08
+dv rel_l2=8.71992955e-08 max_abs=2.18336572e-07
+lse rel_l2=4.65602536e-08 max_abs=2.75894889e-07
+delta rel_l2=3.4970898e-08 max_abs=1.32247806e-07
+attention tokens=46 heads=3 qk=64 v=64 window=5 documents=3 workers=7
+y rel_l2=1.81983313e-08 max_abs=2.38418578e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.15681073e-08 max_abs=1.03314718e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=3.67432921e-08 max_abs=7.07805157e-08
+qkv+attention qk=64 v=64 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=8.52922722e-08 max_abs=7.62939453e-06
+transformed_k rel_l2=8.73407002e-05 max_abs=0.0078125
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.3714873e-08 max_abs=2.13409173e-07
+transformed_attention_dq rel_l2=8.36682563e-06 max_abs=1.65856128e-05
+transformed_attention_dk rel_l2=7.83401797e-06 max_abs=1.19382117e-05
+transformed_attention_dv rel_l2=1.19681413e-07 max_abs=2.55496351e-07
+qkv_gradient rel_l2=1.05855018e-07 max_abs=4.43267386e-05
+attention tokens=21 heads=6 qk=128 v=128 window=8 documents=3 workers=1
+y rel_l2=4.96671552e-08 max_abs=1.08087393e-07
+dq rel_l2=1.14416663e-07 max_abs=2.72977393e-08
+dk rel_l2=1.21254799e-07 max_abs=4.52242475e-08
+dv rel_l2=8.49113813e-08 max_abs=2.59957711e-07
+lse rel_l2=4.57611017e-08 max_abs=2.27817114e-07
+delta rel_l2=5.25624248e-08 max_abs=2.23517418e-07
+attention tokens=46 heads=3 qk=128 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79464725e-08 max_abs=2.38418579e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.14660331e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=5.21817387e-08 max_abs=2.75671482e-07
+qkv+attention qk=128 v=128 paired=0 key_offset=1 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=6.39353136e-08 max_abs=2.14501032e-07
+transformed_attention_dq rel_l2=1.45285847e-07 max_abs=1.00062244e-07
+transformed_attention_dk rel_l2=1.49037686e-07 max_abs=7.80297832e-08
+transformed_attention_dv rel_l2=9.81830934e-08 max_abs=2.85756888e-07
+qkv_gradient rel_l2=1.13462992e-07 max_abs=0.000122330503
+PASS: native attention math and mixed persistent scheduling; full model and FA3 parity remain unverified
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+compute-sanitizer --tool synccheck --error-exitcode 1 ./attention --quick 
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+mixed worker resident_ctas_per_sm=4
+attention tokens=21 heads=6 qk=64 v=128 window=8 documents=3 workers=1
+y rel_l2=4.95039817e-08 max_abs=9.16704939e-08
+dq rel_l2=1.30931278e-07 max_abs=4.18988291e-08
+dk rel_l2=1.37493679e-07 max_abs=4.88765318e-08
+dv rel_l2=9.03035626e-08 max_abs=2.89713774e-07
+lse rel_l2=4.74236937e-08 max_abs=2.67060202e-07
+delta rel_l2=4.42342281e-08 max_abs=1.69500709e-07
+attention tokens=46 heads=3 qk=64 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79775712e-08 max_abs=1.98682151e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.03352672e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=4.73227084e-08 max_abs=2.14204192e-07
+qkv+attention qk=64 v=128 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.48766551e-08 max_abs=1.56146034e-07
+transformed_attention_dq rel_l2=1.55188686e-07 max_abs=1.02673008e-07
+transformed_attention_dk rel_l2=1.55626127e-07 max_abs=1.24262059e-07
+transformed_attention_dv rel_l2=1.18677473e-07 max_abs=2.10547747e-07
+qkv_gradient rel_l2=9.80435543e-08 max_abs=3.51736335e-05
+attention tokens=21 heads=6 qk=64 v=64 window=8 documents=3 workers=1
+y rel_l2=4.9446129e-08 max_abs=9.95267088e-08
+dq rel_l2=1.31519789e-07 max_abs=3.13823477e-08
+dk rel_l2=1.40677028e-07 max_abs=3.55834869e-08
+dv rel_l2=8.71992955e-08 max_abs=2.18336572e-07
+lse rel_l2=4.65602536e-08 max_abs=2.75894889e-07
+delta rel_l2=3.4970898e-08 max_abs=1.32247806e-07
+attention tokens=46 heads=3 qk=64 v=64 window=5 documents=3 workers=7
+y rel_l2=1.81983313e-08 max_abs=2.38418578e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.15681073e-08 max_abs=1.03314718e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=3.67432921e-08 max_abs=7.07805157e-08
+qkv+attention qk=64 v=64 paired=1 key_offset=0 workers=7
+transformed_q rel_l2=8.52922722e-08 max_abs=7.62939453e-06
+transformed_k rel_l2=8.73407002e-05 max_abs=0.0078125
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=7.3714873e-08 max_abs=2.13409173e-07
+transformed_attention_dq rel_l2=8.36682563e-06 max_abs=1.65856128e-05
+transformed_attention_dk rel_l2=7.83401797e-06 max_abs=1.19382117e-05
+transformed_attention_dv rel_l2=1.19681413e-07 max_abs=2.55496351e-07
+qkv_gradient rel_l2=1.05855018e-07 max_abs=4.43267386e-05
+attention tokens=21 heads=6 qk=128 v=128 window=8 documents=3 workers=1
+y rel_l2=4.96671552e-08 max_abs=1.08087393e-07
+dq rel_l2=1.14416663e-07 max_abs=2.72977393e-08
+dk rel_l2=1.21254799e-07 max_abs=4.52242475e-08
+dv rel_l2=8.49113813e-08 max_abs=2.59957711e-07
+lse rel_l2=4.57611017e-08 max_abs=2.27817114e-07
+delta rel_l2=5.25624248e-08 max_abs=2.23517418e-07
+attention tokens=46 heads=3 qk=128 v=128 window=5 documents=3 workers=7
+y rel_l2=1.79464725e-08 max_abs=2.38418579e-08
+dq rel_l2=0 max_abs=0
+dk rel_l2=0 max_abs=0
+dv rel_l2=6.14660331e-08 max_abs=1.27156576e-07
+lse rel_l2=1.23797799e-08 max_abs=3.00707825e-08
+delta rel_l2=5.21817387e-08 max_abs=2.75671482e-07
+qkv+attention qk=128 v=128 paired=0 key_offset=1 workers=7
+transformed_q rel_l2=0 max_abs=0
+transformed_k rel_l2=0 max_abs=0
+transformed_v rel_l2=0 max_abs=0
+transformed_attention_y rel_l2=6.39353136e-08 max_abs=2.14501032e-07
+transformed_attention_dq rel_l2=1.45285847e-07 max_abs=1.00062244e-07
+transformed_attention_dk rel_l2=1.49037686e-07 max_abs=7.80297832e-08
+transformed_attention_dv rel_l2=9.81830934e-08 max_abs=2.85756888e-07
+qkv_gradient rel_l2=1.13462992e-07 max_abs=0.000122330503
+PASS: native attention math and mixed persistent scheduling; full model and FA3 parity remain unverified
+========= ERROR SUMMARY: 0 errors
+make: Leaving directory '/workspace/cuda'
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb1EEEvNS_5GraphE: {'HMMA': 48, 'HGMMA': 0, 'LDGSTS': 28, 'LDL': 0, 'STL': 0}

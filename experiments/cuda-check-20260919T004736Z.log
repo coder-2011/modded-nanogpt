@@ -1,0 +1,32 @@
+sha256 8ef1e50e4844b7534c0cd783fda7aa275a907225d70485c6df8fb348a861e2d4 Makefile
+sha256 27d710da211d259c85d64fbbd7db383565758285686f078ee7b90fea38a70c6d bench.cuh
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 85a48816328b4330d2e63b18d711f198b93337cff64025ce59f447a18b8194d8 megakernel.cuh
+sha256 3a318f051e96c6213f1fd304b8a98061c1057e8225821ffa4431e43a22545a13 quantize.cu
+sha256 5a0017efaa3ba4c0bd75de299e853fee290f0c21a09536f4fed3831043929389 tokenizer.cpp
+sha256 9716a415e381593a50b27ac83ebe9415758ae3b957609c91ac04c0be54e4ab01 transport.cu
+sha256 8bb828361e7996398fbc73631ca172fa04d0d11e53f51e002067e5e81ea760a0 validate.cu
+$ git -C /opt/snaptokens rev-parse HEAD
+2d0f8695f21688a35dd79f3c38372c847c159a99
+
+$ curl -fL https://huggingface.co/openai-community/gpt2/resolve/607a30d783dfa663caf39e06633721c8d4cfcd7e/tokenizer.json -o /workspace/cuda/gpt2.json
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100   288  100   288    0     0   1960      0 --:--:-- --:--:-- --:--:--  1972
+
+100 1323k  100 1323k    0     0  6455k      0 --:--:-- --:--:-- --:--:-- 6455k
+
+$ sha256sum /workspace/cuda/gpt2.json
+8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6  /workspace/cuda/gpt2.json
+
+$ g++ -std=c++17 -O3 /workspace/cuda/tokenizer.cpp -I/usr/local/include/python3.12 /usr/local/lib/libpython3.12.so -Wl,-rpath,/usr/local/lib -o /workspace/cuda/tokenizer
+
+$ /workspace/cuda/tokenizer /usr/local/bin/python /workspace/cuda/gpt2.json
+exact GPT-2 parity: documents=2058 bytes=1436446 tokens=604224
+snaptokens_flat median_ms=8.92795 MB_per_s=160.893 samples_ms= 9.89207 9.18576 8.51453 8.22683 8.83495 9.02096 9.22042 9.2896 8.14545 8.55832
+tiktoken_batch median_ms=210.87 MB_per_s=6.812 samples_ms= 207.84 214.228 215.024 214.398 215.149 202.432 207.842 211.955 209.785 207.445
+preprocessing_speed_ratio=23.6191 warm repeated corpus, includes C++ ID materialization, 4 CPU threads
+wrote /tmp/nanogpt-snaptokens-check.bin tokens=606282 documents=2058
+PASS: Snaptokens preprocessing; official pretokenized benchmark shards unchanged

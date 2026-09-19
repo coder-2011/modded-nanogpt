@@ -1,0 +1,187 @@
+{
+  "checked_at": "2026-09-19T01:43:25.932983+00:00",
+  "repository": "https://github.com/KellerJordan/modded-nanogpt",
+  "pr": 360,
+  "commit": "c924f68e4d72e80307fc27a7bb3a55cfb6ad43c7",
+  "merged_reference": "bc3a0c2d640d0d73dedaef87eae26148d2e32afb",
+  "legality_ruling": "https://github.com/KellerJordan/modded-nanogpt/pull/360#issuecomment-5565930470",
+  "status": "maintainer-approved techniques; open submission; not locally reproduced",
+  "files": {
+    "train_gpt.py": "c6da246b1d87a525c0130f212d40e9a32e7eba01738e97686011d0854dd6945a",
+    "triton_kernels.py": "71728386ec63079ba65348e85165070c91a8ae5501b505d9cb469a62ff65168b",
+    "anvil_attn_kernels.py": "5882b11329fab39d968e6acf8a3e9fba08e0614f1bd7c363ec22c443cac38039",
+    "bigram_kernels.py": "8cd6986fa68edc18e8de246686be7db0c7fc35266aa120750f307980786edbb3",
+    "fuse_tiny_kernels.py": "066ae2652648c6ba5bcd023c94042a3ae7de625300b59df9a2237c196ab6b6d2",
+    "value_embed_op.py": "7f2e7f2e3d548f6e0d1bb383abec4a52a84eca27f72c7aa50b89f6691f318b3f",
+    "requirements.txt": "e15fef55588528986f7b95fd9fb9e0dc6a8426ed55110b54b2e5cd662e2f409a",
+    "Dockerfile": "919336d16fba407a113d1558c4c1826aebbf75d65fdc067d0c074d23ed4a287d",
+    "run.sh": "b97ffeee4f636c1f302ddfeec654e3fabde7bbe878afe8174502f0e578bd4b98"
+  },
+  "training": {
+    "scheduled_steps": 1174,
+    "total_steps": 1194,
+    "untie_step": 1175,
+    "stages": [
+      {
+        "begin": 0,
+        "end": 320,
+        "local_tokens": 16384,
+        "sequence_limit": 896,
+        "short_window_blocks": 1,
+        "long_window_blocks": 3,
+        "lr_mul": 1.0,
+        "mtp_start": [
+          1.0,
+          0.5,
+          0.25
+        ],
+        "mtp_end": [
+          1.0,
+          0.5,
+          0.0
+        ]
+      },
+      {
+        "begin": 320,
+        "end": 681,
+        "local_tokens": 32768,
+        "sequence_limit": 2048,
+        "short_window_blocks": 3,
+        "long_window_blocks": 7,
+        "lr_mul": 1.52,
+        "mtp_start": [
+          1.0,
+          0.5
+        ],
+        "mtp_end": [
+          1.0,
+          0.0
+        ]
+      },
+      {
+        "begin": 681,
+        "end": 1107,
+        "local_tokens": 49152,
+        "sequence_limit": 3072,
+        "short_window_blocks": 5,
+        "long_window_blocks": 11,
+        "lr_mul": 1.73,
+        "mtp_start": [
+          1.0
+        ],
+        "mtp_end": [
+          1.0
+        ]
+      },
+      {
+        "begin": 1107,
+        "end": 1174,
+        "local_tokens": 40960,
+        "sequence_limit": 3072,
+        "short_window_blocks": 5,
+        "long_window_blocks": 11,
+        "lr_mul": 1.579266707473229,
+        "mtp_start": [
+          1.0
+        ],
+        "mtp_end": [
+          1.0
+        ]
+      },
+      {
+        "begin": 1174,
+        "end": 1194,
+        "local_tokens": 16384,
+        "sequence_limit": 3072,
+        "short_window_blocks": 6,
+        "long_window_blocks": 13,
+        "lr_mul": 1.0,
+        "mtp_start": [
+          1.0
+        ],
+        "mtp_end": [
+          1.0
+        ]
+      }
+    ]
+  },
+  "native_status": "token-to-loss BF16 evaluation graph with a tiled full-vocabulary head; FP8 training components, residual/RMS backward primitives and rank-local ANVIL; compiled-trainer parity, full backward, rotary state updates, sparse-cache transport, optimizer integration and distributed training/validation remain incomplete",
+  "architecture": {
+    "model_dim": 768,
+    "mlp_width": 2816,
+    "layers": 11,
+    "heads": 6,
+    "qk_head_widths": [
+      64,
+      64,
+      64,
+      128,
+      0,
+      64,
+      0,
+      0,
+      64,
+      0,
+      128
+    ],
+    "value_head_widths": [
+      128,
+      64,
+      128,
+      128,
+      0,
+      128,
+      0,
+      0,
+      64,
+      0,
+      128
+    ],
+    "mlp_execution_bank_order": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      11,
+      9,
+      10
+    ],
+    "ngram_rows": 84602880,
+    "ngram_dim": 768,
+    "ngram_sign_rows": 8192,
+    "attention_segment_cap": 2560,
+    "padded_vocabulary": 50304,
+    "validation_tokens": 10485760,
+    "validation_local_tokens": 262144,
+    "final_validation_short_window": 768,
+    "final_validation_long_window": 2560,
+    "attention_roles": [
+      {"layer": 0, "paired": true, "auxiliary": false, "xsa": false, "head_gate": false, "extra_output_gain": true},
+      {"layer": 1, "paired": false, "auxiliary": true, "xsa": true, "head_gate": false, "extra_output_gain": true},
+      {"layer": 2, "paired": true, "auxiliary": true, "xsa": false, "head_gate": false, "extra_output_gain": true},
+      {"layer": 3, "paired": false, "auxiliary": false, "xsa": true, "head_gate": true, "extra_output_gain": true},
+      {"layer": 5, "paired": true, "auxiliary": false, "xsa": false, "head_gate": false, "extra_output_gain": true},
+      {"layer": 8, "paired": false, "auxiliary": true, "xsa": false, "head_gate": false, "extra_output_gain": true},
+      {"layer": 10, "paired": false, "auxiliary": true, "xsa": false, "head_gate": true, "extra_output_gain": false}
+    ]
+  },
+  "attention_kernel": {
+    "repository": "devenpzak/flash-attn3-12864",
+    "revision": "64c1e6d1f2780e7931839f41426ddcdb564a7cb9"
+  },
+  "mlp": {
+    "weights_inputs_post": "e4m3",
+    "incoming_gradient_dpre": "e5m2",
+    "output_weight_gradients": "bf16",
+    "input_scale": 0.0625,
+    "incoming_gradient_scale": 0.015625,
+    "post_headroom": 1.03,
+    "dpre_headroom": 1.25,
+    "weight_headroom": 1.12,
+    "exact_weight_scale_bootstrap_calls": 16
+  }
+}

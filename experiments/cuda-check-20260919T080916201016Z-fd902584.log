@@ -1,0 +1,359 @@
+sha256 d0b037b3fe4c8ec53f4cc60128d0e6366bab66156bd3c916b603b155578cd7de Makefile
+sha256 489a50ab144cd30e1e42d2029754c92de2ef09a2051f1a6034f9fe840fc8d2c2 anvil.cu
+sha256 1dc9217e8b64c5b061aff94ec81e26279bf1a64c9d3cc8386cc97568adc41936 anvil.cuh
+sha256 96d97e1fdc6596c83415a4d0ceff7138686ea3c1aecf1c99b8d8f28d38690409 anvil_graph.cuh
+sha256 5a55ce388ca131f3fcac75df07010da61a2899a0889e3f04028c49b655639607 attention.cu
+sha256 807b3e14464735c8ee64679a675f8fd06587318497feac6391b1e0f5955fde58 attention.cuh
+sha256 a8a2155c83ae275021b9cb0626865ae047eb205e067b710a6671d97ddc53633b attention_layer.cu
+sha256 5e23df96de295a12c6770293bb3724e58ffee06f6310f0dbf43293c5c377ffac attention_layer.cuh
+sha256 e43b134f524130c5fcc5b7ea3dfca072fed7dfcb72ff0957dbb0bd2e7d4f7733 attention_layer_reference.cuh
+sha256 e8c9d493882f43781cb0cf48e1ae59a39c3d87f2901a33c07d3b52c30e092220 attention_post.cuh
+sha256 7bae7cc6d4defc9026d5882b9e970dc184b2ff492d6735c7f67f40403dcfc239 attention_reference.cuh
+sha256 a3be2ab6c64f030ca01f7d30c6a6bb7604b3bbe62257ba0aad9bb72bca232c76 bench.cuh
+sha256 9dddb4cda1b99b427d6a5726c8a69513deb50cb06a97e36cdeac0893a600ac26 bf16.cu
+sha256 6e99a879dfa2957f3ef9ba1bab8065f3a66191b157b6129b191b86265fd962f6 bf16_gemm.cuh
+sha256 b6013fa23a801d8e288bf261029957d6931556cc18d7e7fc2de9974ad7887d6d embeddings.cuh
+sha256 dd38c6d6039e09b954f14669ec4cd0877700ba1011719e8d784a5629f1a728d1 evaluation_head.cuh
+sha256 ec94fd114bd2b8b97e2e890697973afe316a7ce5e2535476815f9db9e12a4778 evaluation_head_check.cuh
+sha256 d4b3c092f09347b8d6cefd89d84d64bc7bea040a24b64c0dd8614fbfe7c8b621 frontier.cuh
+sha256 75c4137f95d8b352fb02671ea4995ab6d8857390eb27d11479f7d6e628f02ce5 gates.cuh
+sha256 172a83053106e632da3ccd82e66d9c089ebbf8332e669d3199a6f6242f709ece head.cu
+sha256 6c7816f88d3635a7a72d3db3eb5fb7b09dd04f5350db0b76e7769ec0b570e361 hopper.cuh
+sha256 2b5e51d0612d34780b53c7033528f27d3463ee423a66444408bc5a388f04ef57 loss.cu
+sha256 17aed88bf780c8df9ca0ccdeaed71661fa57faee84fecdf943b19022b53c12a4 megakernel.cuh
+sha256 650935fbe0799cec650ebe91331f83e58b23a3461c0a9df0f01a27a6dcebaec7 mlp_evaluation.cuh
+sha256 abc976abdeaa14db113f1e1c880af4aa6b3399bb04b70e1f3718ac8abbc3d888 mlp_evaluation_check.cuh
+sha256 960256e6097b5eb5a2a3e5505c14fabf62213b218441a16405ed0adceaa9ea9f model_evaluation.cuh
+sha256 eafe6723a2b8a770528517590aa92e014ae315d4d9cbd9dea25bdd3139db22c4 model_evaluation_check.cuh
+sha256 2cfe05bf690ca0783fddd52ff5337f292baff00fd328c5d851d55264aadddf36 qkv.cuh
+sha256 cef57ceb07ba44e55effc962c75d7f96485a7f1b80a5555438c99016553708d9 quantize.cu
+sha256 9075da55b9c101c83b3683c723f318808b2655b7b2b7219976b812520dc6deb2 routing.cu
+sha256 ca484b3e8d99319779949171f011f533443b6cd387ad8d5459fdb676e072f33a routing.cuh
+sha256 f2bff3dccf7c4d0f34cf0013fecc638bf73931d93eb069f5791551950ad2a43b tokenizer.cpp
+sha256 5de4df83cf0040e94b7189fdc2752e58710298b69a71d7cb160ed09b0b471154 training_loss.cuh
+sha256 15b680ed94a53c4bfe715d9a1a763a5bff7f9b071581ee54c5d76bfbe636a685 training_loss_reference.cu
+sha256 6162af3343d30737858843abf1b3e930bee0e4af510aa75df73a810816d39da9 transport.cu
+sha256 4c74b0dba9a3a754d4fff90f9cab402ed715067484f50079efdc703ddb8ef6fe validate.cu
+$ nvidia-smi
+Sat Sep 19 08:09:22 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.95.05              Driver Version: 580.95.05      CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA H100 80GB HBM3          On  |   00000009:00:00.0 Off |                    0 |
+| N/A   36C    P0             74W /  700W |       4MiB /  81559MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2025 NVIDIA Corporation
+Built on Fri_Feb_21_20:23:50_PST_2025
+Cuda compilation tools, release 12.8, V12.8.93
+Build cuda_12.8.r12.8/compiler.35583870_0
+
+$ make -C /workspace/cuda head
+make: Entering directory '/workspace/cuda'
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills --use_fast_math -c training_loss_reference.cu -o training_loss_reference.o
+training_loss_reference.cu(207): warning #177-D: variable "result" was declared but never referenced
+      __nv_fp8_e5m28 result;
+                     ^
+          detected during instantiation of "void reference_loss<Vocabulary>(const nano::TrainingLoss &, const float *) [with Vocabulary=2048]" at line 301
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+training_loss_reference.cu(207): warning #177-D: variable "result" was declared but never referenced
+      __nv_fp8_e5m28 result;
+                     ^
+          detected during instantiation of "void reference_loss<Vocabulary>(const nano::TrainingLoss &, const float *) [with Vocabulary=2048]" at line 301
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi50304EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi50304EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 230.399 ms
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi24576EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi24576EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 122 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 91.712 ms
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi14336EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi14336EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 80 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 67.853 ms
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi10240EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi10240EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 63 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 52.703 ms
+ptxas info    : Compiling entry function '_ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi2048EEEvPKhPKxPKfS4_PfPciidddddd' for 'sm_90a'
+ptxas info    : Function properties for _ZN23frontier_loss_reference17ce_fwd_bwd_kernelILi2048EEEvPKhPKxPKfS4_PfPciidddddd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 32 registers, used 1 barriers, 32 bytes smem
+ptxas info    : Compile time = 25.583 ms
+nvcc -std=c++17 -O3 -arch=sm_90a -lineinfo -Xptxas=-v,-warn-spills -DNANO_TRANSPOSE_PAD=4 -DNANO_REUSE_QUANT=1 -DNANO_MIN_BLOCKS=4 -DNANO_ALIGNED=1 -DNANO_K_LOOP=1 -DNANO_FRONTIER=1 -DNANO_BF16_COALESCED=1 -DNANO_COOP_PUBLISH=1 head.cu training_loss_reference.o -lcublas -o head
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE', 44 bytes spill stores, 72 bytes spill loads
+ptxas warning : Registers are spilled to local memory in function '_ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE', 44 bytes spill stores, 72 bytes spill loads
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE
+    32 bytes stack frame, 44 bytes spill stores, 72 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 2045.215 ms
+ptxas info    : Compiling entry function '_ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE' for 'sm_90a'
+ptxas info    : Function properties for _ZN4nano10megakernelILb1ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE
+    32 bytes stack frame, 44 bytes spill stores, 72 bytes spill loads
+ptxas info    : Used 128 registers, used 1 barriers, 32 bytes cumulative stack size, 32800 bytes smem
+ptxas info    : Compile time = 1936.961 ms
+ptxas info    : Compiling entry function '_Z10head_stageN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10head_stageN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 87 registers, used 1 barriers, 32768 bytes smem
+ptxas info    : Compile time = 1086.502 ms
+ptxas info    : Compiling entry function '_Z10loss_stageN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10loss_stageN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 39 registers, used 0 barriers
+ptxas info    : Compile time = 33.843 ms
+ptxas info    : Compiling entry function '_Z10reset_lossN4nano5GraphEi' for 'sm_90a'
+ptxas info    : Function properties for _Z10reset_lossN4nano5GraphEi
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, used 0 barriers
+ptxas info    : Compile time = 2.158 ms
+make: Leaving directory '/workspace/cuda'
+
+$ /workspace/cuda/head
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LOSS FP64 max_loss=2.63540981e-07 max_raw_gradient=0.000470709119
+LOSS FP64 max_descaled_gradient=6.15638677e-09 gradient_rel_l2=9.90269377e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=2.04040129e-08 max_abs=4.76837158e-07
+HEAD product=1 M=16 N=768 K=2048 rel_l2=1.11598868e-07 max_abs=2.32830644e-09
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.96856385e-08 max_abs=2.98023224e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=0 tasks=477
+LOSS FP64 max_loss=4.55886013e-07 max_raw_gradient=0.000337956889
+LOSS FP64 max_descaled_gradient=4.42012537e-09 gradient_rel_l2=1.03824651e-07
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=0 max_abs=0
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.57767356e-08 max_abs=1.49011612e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=1 tasks=477
+LOSS FP64 max_loss=1.40505711e-06 max_raw_gradient=0.000254385983
+LOSS FP64 max_descaled_gradient=6.65420931e-09 gradient_rel_l2=9.94774971e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=3.73385649e-08 max_abs=9.31322575e-10
+HEAD product=2 M=768 N=2048 K=16 rel_l2=0 max_abs=0
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=2 tasks=477
+LOSS FP64 max_loss=6.41887151e-07 max_raw_gradient=0.000331688604
+LOSS FP64 max_descaled_gradient=4.3381427e-09 gradient_rel_l2=6.30208331e-08
+LOSS pinned CUDA max_loss=2.86102295e-06 gradient_rel_l2=0 changed_codes=0/133120
+HEAD product=0 M=65 N=2048 K=768 rel_l2=2.08668214e-08 max_abs=4.76837158e-07
+HEAD product=1 M=65 N=768 K=2048 rel_l2=1.20963233e-07 max_abs=3.25962901e-09
+HEAD product=2 M=768 N=2048 K=65 rel_l2=3.30119792e-08 max_abs=5.96046448e-08
+HEAD PASS tokens=65 vocabulary=2048 predictions=2 workers=17 step=0 tasks=650
+LOSS FP64 max_loss=4.56695016e-07 max_raw_gradient=0.000501994499
+LOSS FP64 max_descaled_gradient=6.56556707e-09 gradient_rel_l2=1.02190528e-07
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/804864
+HEAD product=0 M=16 N=50304 K=768 rel_l2=1.27492427e-08 max_abs=7.15255737e-07
+HEAD product=1 M=16 N=768 K=50304 rel_l2=1.02405318e-06 max_abs=2.18860805e-08
+HEAD product=2 M=768 N=50304 K=16 rel_l2=6.77735573e-08 max_abs=4.47034836e-08
+HEAD PASS tokens=16 vocabulary=50304 predictions=3 workers=17 step=0 tasks=11039
+LOSS FP64 max_loss=1.20549142e-07 max_raw_gradient=3.59408523e-06
+LOSS FP64 max_descaled_gradient=4.70069048e-11 gradient_rel_l2=1.14550749e-09
+LOSS pinned CUDA max_loss=1.90734863e-06 gradient_rel_l2=0 changed_codes=0/804864
+HEAD product=0 M=16 N=50304 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=50304 rel_l2=0 max_abs=0
+HEAD product=2 M=768 N=50304 K=16 rel_l2=4.26229702e-08 max_abs=2.98023224e-08
+HEAD PASS tokens=16 vocabulary=50304 predictions=3 workers=17 step=1 tasks=11039
+LOSS FP64 max_loss=1.8756824e-07 max_raw_gradient=0.000337791561
+LOSS FP64 max_descaled_gradient=8.8359261e-09 gradient_rel_l2=1.27596698e-07
+LOSS pinned CUDA max_loss=2.86102295e-06 gradient_rel_l2=0 changed_codes=0/804864
+HEAD product=0 M=16 N=50304 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=50304 rel_l2=9.73348874e-07 max_abs=1.72294676e-08
+HEAD product=2 M=768 N=50304 K=16 rel_l2=0 max_abs=0
+HEAD PASS tokens=16 vocabulary=50304 predictions=3 workers=17 step=2 tasks=11039
+LOSS FP64 max_loss=8.32599046e-07 max_raw_gradient=0.000337085333
+LOSS FP64 max_descaled_gradient=4.40872632e-09 gradient_rel_l2=7.84081583e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/819200
+HEAD product=0 M=80 N=10240 K=768 rel_l2=1.32545794e-08 max_abs=7.15255737e-07
+HEAD product=1 M=80 N=768 K=10240 rel_l2=3.64209187e-07 max_abs=1.02445483e-08
+HEAD product=2 M=768 N=10240 K=80 rel_l2=6.92467175e-08 max_abs=8.94069672e-08
+HEAD PASS tokens=80 vocabulary=10240 predictions=3 workers=17 step=0 tasks=3109
+LOSS FP64 max_loss=8.07905842e-07 max_raw_gradient=0.000538629273
+LOSS FP64 max_descaled_gradient=7.0447119e-09 gradient_rel_l2=1.02022002e-07
+LOSS pinned CUDA max_loss=3.81469727e-06 gradient_rel_l2=0 changed_codes=0/1146880
+HEAD product=0 M=80 N=14336 K=768 rel_l2=2.05242086e-08 max_abs=4.76837158e-07
+HEAD product=1 M=80 N=768 K=14336 rel_l2=4.46533997e-07 max_abs=8.84756446e-09
+HEAD product=2 M=768 N=14336 K=80 rel_l2=8.44699719e-08 max_abs=1.1920929e-07
+HEAD PASS tokens=80 vocabulary=14336 predictions=2 workers=17 step=0 tasks=4325
+LOSS FP64 max_loss=3.41342322e-07 max_raw_gradient=0.000201768635
+LOSS FP64 max_descaled_gradient=2.63892434e-09 gradient_rel_l2=4.16587993e-08
+LOSS pinned CUDA max_loss=1.90734863e-06 gradient_rel_l2=0 changed_codes=0/1966080
+HEAD product=0 M=80 N=24576 K=768 rel_l2=1.30651656e-08 max_abs=7.15255737e-07
+HEAD product=1 M=80 N=768 K=24576 rel_l2=6.0584151e-07 max_abs=1.25728548e-08
+HEAD product=2 M=768 N=24576 K=80 rel_l2=1.06774828e-07 max_abs=1.78813934e-07
+HEAD PASS tokens=80 vocabulary=24576 predictions=1 workers=17 step=0 tasks=7365
+LOSS FP64 max_loss=5.62418489e-07 max_raw_gradient=0.000449064764
+LOSS FP64 max_descaled_gradient=5.87330107e-09 gradient_rel_l2=8.98083317e-08
+LOSS pinned CUDA max_loss=3.81469727e-06 gradient_rel_l2=0 changed_codes=0/12877824
+HEAD product=0 M=256 N=50304 K=768 rel_l2=1.33859908e-08 max_abs=9.53674316e-07
+HEAD product=1 M=256 N=768 K=50304 rel_l2=9.66815847e-07 max_abs=2.60770321e-08
+HEAD product=2 M=768 N=50304 K=256 rel_l2=1.72181546e-07 max_abs=2.98023224e-07
+HEAD PASS tokens=256 vocabulary=50304 predictions=3 workers=528 step=0 tasks=25409
+HEAD CUDA Graph median_ms=1.953536 samples_ms= 1.953536 1.951616 1.953184 1.955744 1.952544 1.956736 1.954528 1.953536 1.958752 1.953312
+HEAD persistent+reset median_ms=2.092336 samples_ms= 2.099680 2.345152 2.084992 2.079296 1.920736 2.349920 2.103520 2.101664 1.925664 1.919264
+PASS: connected FP8 training head; compiled-trainer parity, candidate transport and full-model integration remain
+
+$ compute-sanitizer --tool memcheck --error-exitcode 1 /workspace/cuda/head --quick
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LOSS FP64 max_loss=2.63540981e-07 max_raw_gradient=0.000470709119
+LOSS FP64 max_descaled_gradient=6.15638677e-09 gradient_rel_l2=9.90269377e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=2.04040129e-08 max_abs=4.76837158e-07
+HEAD product=1 M=16 N=768 K=2048 rel_l2=1.11598868e-07 max_abs=2.32830644e-09
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.96856385e-08 max_abs=2.98023224e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=0 tasks=477
+LOSS FP64 max_loss=4.55886013e-07 max_raw_gradient=0.000337956889
+LOSS FP64 max_descaled_gradient=4.42012537e-09 gradient_rel_l2=1.03824651e-07
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=0 max_abs=0
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.57767356e-08 max_abs=1.49011612e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=1 tasks=477
+LOSS FP64 max_loss=1.40505711e-06 max_raw_gradient=0.000254385983
+LOSS FP64 max_descaled_gradient=6.65420931e-09 gradient_rel_l2=9.94774971e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=3.73385649e-08 max_abs=9.31322575e-10
+HEAD product=2 M=768 N=2048 K=16 rel_l2=0 max_abs=0
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=2 tasks=477
+LOSS FP64 max_loss=6.41887151e-07 max_raw_gradient=0.000331688604
+LOSS FP64 max_descaled_gradient=4.3381427e-09 gradient_rel_l2=6.30208331e-08
+LOSS pinned CUDA max_loss=2.86102295e-06 gradient_rel_l2=0 changed_codes=0/133120
+HEAD product=0 M=65 N=2048 K=768 rel_l2=2.08668214e-08 max_abs=4.76837158e-07
+HEAD product=1 M=65 N=768 K=2048 rel_l2=1.20963233e-07 max_abs=3.25962901e-09
+HEAD product=2 M=768 N=2048 K=65 rel_l2=3.30119792e-08 max_abs=5.96046448e-08
+HEAD PASS tokens=65 vocabulary=2048 predictions=2 workers=17 step=0 tasks=650
+PASS: connected FP8 training head; compiled-trainer parity, candidate transport and full-model integration remain
+========= ERROR SUMMARY: 0 errors
+
+$ compute-sanitizer --tool initcheck --error-exitcode 1 /workspace/cuda/head --quick
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LOSS FP64 max_loss=2.63540981e-07 max_raw_gradient=0.000470709119
+LOSS FP64 max_descaled_gradient=6.15638677e-09 gradient_rel_l2=9.90269377e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=2.04040129e-08 max_abs=4.76837158e-07
+HEAD product=1 M=16 N=768 K=2048 rel_l2=1.11598868e-07 max_abs=2.32830644e-09
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.96856385e-08 max_abs=2.98023224e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=0 tasks=477
+LOSS FP64 max_loss=4.55886013e-07 max_raw_gradient=0.000337956889
+LOSS FP64 max_descaled_gradient=4.42012537e-09 gradient_rel_l2=1.03824651e-07
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=0 max_abs=0
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.57767356e-08 max_abs=1.49011612e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=1 tasks=477
+LOSS FP64 max_loss=1.40505711e-06 max_raw_gradient=0.000254385983
+LOSS FP64 max_descaled_gradient=6.65420931e-09 gradient_rel_l2=9.94774971e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=3.73385649e-08 max_abs=9.31322575e-10
+HEAD product=2 M=768 N=2048 K=16 rel_l2=0 max_abs=0
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=2 tasks=477
+LOSS FP64 max_loss=6.41887151e-07 max_raw_gradient=0.000331688604
+LOSS FP64 max_descaled_gradient=4.3381427e-09 gradient_rel_l2=6.30208331e-08
+LOSS pinned CUDA max_loss=2.86102295e-06 gradient_rel_l2=0 changed_codes=0/133120
+HEAD product=0 M=65 N=2048 K=768 rel_l2=2.08668214e-08 max_abs=4.76837158e-07
+HEAD product=1 M=65 N=768 K=2048 rel_l2=1.20963233e-07 max_abs=3.25962901e-09
+HEAD product=2 M=768 N=2048 K=65 rel_l2=3.30119792e-08 max_abs=5.96046448e-08
+HEAD PASS tokens=65 vocabulary=2048 predictions=2 workers=17 step=0 tasks=650
+PASS: connected FP8 training head; compiled-trainer parity, candidate transport and full-model integration remain
+========= ERROR SUMMARY: 0 errors
+
+$ compute-sanitizer --tool racecheck --error-exitcode 1 /workspace/cuda/head --quick
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LOSS FP64 max_loss=2.63540981e-07 max_raw_gradient=0.000470709119
+LOSS FP64 max_descaled_gradient=6.15638677e-09 gradient_rel_l2=9.90269377e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=2.04040129e-08 max_abs=4.76837158e-07
+HEAD product=1 M=16 N=768 K=2048 rel_l2=1.11598868e-07 max_abs=2.32830644e-09
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.96856385e-08 max_abs=2.98023224e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=0 tasks=477
+LOSS FP64 max_loss=4.55886013e-07 max_raw_gradient=0.000337956889
+LOSS FP64 max_descaled_gradient=4.42012537e-09 gradient_rel_l2=1.03824651e-07
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=0 max_abs=0
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.57767356e-08 max_abs=1.49011612e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=1 tasks=477
+LOSS FP64 max_loss=1.40505711e-06 max_raw_gradient=0.000254385983
+LOSS FP64 max_descaled_gradient=6.65420931e-09 gradient_rel_l2=9.94774971e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=3.73385649e-08 max_abs=9.31322575e-10
+HEAD product=2 M=768 N=2048 K=16 rel_l2=0 max_abs=0
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=2 tasks=477
+LOSS FP64 max_loss=6.41887151e-07 max_raw_gradient=0.000331688604
+LOSS FP64 max_descaled_gradient=4.3381427e-09 gradient_rel_l2=6.30208331e-08
+LOSS pinned CUDA max_loss=2.86102295e-06 gradient_rel_l2=0 changed_codes=0/133120
+HEAD product=0 M=65 N=2048 K=768 rel_l2=2.08668214e-08 max_abs=4.76837158e-07
+HEAD product=1 M=65 N=768 K=2048 rel_l2=1.20963233e-07 max_abs=3.25962901e-09
+HEAD product=2 M=768 N=2048 K=65 rel_l2=3.30119792e-08 max_abs=5.96046448e-08
+HEAD PASS tokens=65 vocabulary=2048 predictions=2 workers=17 step=0 tasks=650
+PASS: connected FP8 training head; compiled-trainer parity, candidate transport and full-model integration remain
+========= RACECHECK SUMMARY: 0 hazards displayed (0 errors, 0 warnings)
+
+$ compute-sanitizer --tool synccheck --error-exitcode 1 /workspace/cuda/head --quick
+========= COMPUTE-SANITIZER
+GPU[0]=NVIDIA H100 80GB HBM3 SMs=132 runtime=12080
+LOSS FP64 max_loss=2.63540981e-07 max_raw_gradient=0.000470709119
+LOSS FP64 max_descaled_gradient=6.15638677e-09 gradient_rel_l2=9.90269377e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=2.04040129e-08 max_abs=4.76837158e-07
+HEAD product=1 M=16 N=768 K=2048 rel_l2=1.11598868e-07 max_abs=2.32830644e-09
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.96856385e-08 max_abs=2.98023224e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=0 tasks=477
+LOSS FP64 max_loss=4.55886013e-07 max_raw_gradient=0.000337956889
+LOSS FP64 max_descaled_gradient=4.42012537e-09 gradient_rel_l2=1.03824651e-07
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=0 max_abs=0
+HEAD product=2 M=768 N=2048 K=16 rel_l2=1.57767356e-08 max_abs=1.49011612e-08
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=1 tasks=477
+LOSS FP64 max_loss=1.40505711e-06 max_raw_gradient=0.000254385983
+LOSS FP64 max_descaled_gradient=6.65420931e-09 gradient_rel_l2=9.94774971e-08
+LOSS pinned CUDA max_loss=0 gradient_rel_l2=0 changed_codes=0/32768
+HEAD product=0 M=16 N=2048 K=768 rel_l2=0 max_abs=0
+HEAD product=1 M=16 N=768 K=2048 rel_l2=3.73385649e-08 max_abs=9.31322575e-10
+HEAD product=2 M=768 N=2048 K=16 rel_l2=0 max_abs=0
+HEAD PASS tokens=16 vocabulary=2048 predictions=3 workers=1 step=2 tasks=477
+LOSS FP64 max_loss=6.41887151e-07 max_raw_gradient=0.000331688604
+LOSS FP64 max_descaled_gradient=4.3381427e-09 gradient_rel_l2=6.30208331e-08
+LOSS pinned CUDA max_loss=2.86102295e-06 gradient_rel_l2=0 changed_codes=0/133120
+HEAD product=0 M=65 N=2048 K=768 rel_l2=2.08668214e-08 max_abs=4.76837158e-07
+HEAD product=1 M=65 N=768 K=2048 rel_l2=1.20963233e-07 max_abs=3.25962901e-09
+HEAD product=2 M=768 N=2048 K=65 rel_l2=3.30119792e-08 max_abs=5.96046448e-08
+HEAD PASS tokens=65 vocabulary=2048 predictions=2 workers=17 step=0 tasks=650
+PASS: connected FP8 training head; compiled-trainer parity, candidate transport and full-model integration remain
+========= ERROR SUMMARY: 0 errors
+
+Static SASS instruction counts for _ZN4nano10megakernelILb0ELb0ELb0ELb1ELb0ELb0ELb0ELb1EEEvNS_5GraphE: {'HMMA': 104, 'HGMMA': 0, 'LDGSTS': 84, 'LDL': 18, 'STL': 11}
